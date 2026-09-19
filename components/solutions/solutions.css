@@ -1,0 +1,143 @@
+/* Solutions & Use Cases: one engine, six processes.
+
+   The base styles below ARE the complete static picture (used with reduced motion, without JS, or
+   before the network scrolls into view). Motion is layered on only when the ViewGate wrapper has set
+   `data-sv` AND the user has not asked for reduced motion.
+
+   Two clocks:
+   - Icons: each loops on a 6s cycle. It builds itself (up to ~2.5s, at the same speeds as always),
+     holds complete for a moment, dissolves in the order it was built and starts again. Neighbouring
+     icons start half a cycle apart (`--sv-off` = 0s or 3s), so the two columns alternate.
+   - Engine: an 18s clock in which each of the six processes gets a 3s turn (`--sv-off` = slot x 3s).
+     A signal travels in from the process to the engine (0-1.1s), the engine takes it in (~1.1s),
+     one orange pulse travels back out (1.5-2.7s) and the process's node lights as it lands.
+   Both clocks are multiples of 3s and start together, so they never drift apart.
+   Icon percentages below are of the 6s cycle (1s = 16.67%); engine percentages are of 18s (1s = 5.556%). */
+
+/* Static (final) state */
+.sv-draw {
+  stroke-dasharray: 1;
+}
+
+.sv-in,
+.sv-out {
+  stroke-dasharray: 0.1 2;
+  opacity: 0;
+}
+
+.sv-run,
+.sv-node,
+.sv-trunk-dot {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-sv] :is(.sv-draw, .sv-fade, .sv-run, .sv-in, .sv-out, .sv-node) {
+    animation-duration: 6s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-delay: calc(var(--sv-off, 0s) + var(--sv-d, 0ms));
+  }
+
+  [data-sv] :is(.sv-in, .sv-out, .sv-node) {
+    animation-duration: 18s;
+  }
+
+  [data-sv] .sv-draw { animation-name: sv-draw; }
+  [data-sv] .sv-fade { animation-name: sv-fade; }
+  [data-sv] .sv-run { animation-name: sv-run; }
+  [data-sv] .sv-in { animation-name: sv-in; animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+  [data-sv] .sv-out { animation-name: sv-out; animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+  [data-sv] .sv-node { animation-name: sv-node; }
+
+  /* Engine: the orange core acknowledges each signal; the four DARP marks light in sequence. */
+  [data-sv] .sv-core {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: sv-core 3s ease-in-out infinite;
+  }
+
+  [data-sv] .sv-dp {
+    animation: sv-dp 3s ease-in-out infinite;
+    animation-delay: var(--sv-d, 0ms);
+  }
+
+  /* Tablet/mobile trunks: a single small dot drifts down the line now and then. */
+  [data-sv] .sv-trunk-dot {
+    animation: sv-trunk 6s ease-in-out infinite;
+    animation-delay: var(--sv-d, 0ms);
+  }
+
+  [data-sv="paused"] :is(.sv-draw, .sv-fade, .sv-run, .sv-in, .sv-out, .sv-node, .sv-core, .sv-dp, .sv-trunk-dot) {
+    animation-play-state: paused;
+  }
+}
+
+/* Icon parts. Timings are the same absolute ones as before (a stroke draws in 0.76s, a fade takes
+   0.58s, a marker crosses in 1.17s, a part dissolves over 0.72s); only the wait between loops is
+   shorter. The dissolve begins at 3.6s so the last-built part (up to 1.65s later than the first) has
+   finished dissolving by the time the next loop starts at 6s: cycles never overlap. */
+@keyframes sv-draw {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.9% { stroke-dashoffset: 1; opacity: 1; }
+  13.5% { stroke-dashoffset: 0; opacity: 1; }
+  60% { stroke-dashoffset: 0; opacity: 1; }
+  72%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes sv-fade {
+  0%, 0.9% { opacity: 0; }
+  10.5% { opacity: 1; }
+  60% { opacity: 1; }
+  72%, 100% { opacity: 0; }
+}
+
+/* A transient marker (coin / signal) that crosses the icon and disappears */
+@keyframes sv-run {
+  0% { opacity: 0; transform: translate(0, 0); }
+  0.9% { opacity: 1; transform: translate(0, 0); }
+  19.5% { opacity: 1; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+  22.5%, 100% { opacity: 0; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+}
+
+/* Connector signals, on paths of pathLength 1 drawn from the process node to the engine centre.
+   The dash is 0.1 long: offset 0.1 puts it just before the start, -1 just past the end. */
+@keyframes sv-in {
+  0%, 100% { stroke-dashoffset: 0.1; opacity: 0; }
+  0.5% { stroke-dashoffset: 0.1; opacity: 1; }
+  6% { stroke-dashoffset: -1; opacity: 1; }
+  6.5% { stroke-dashoffset: -1; opacity: 0; }
+}
+
+@keyframes sv-out {
+  0%, 8.3%, 100% { stroke-dashoffset: -1; opacity: 0; }
+  8.8% { stroke-dashoffset: -1; opacity: 1; }
+  14.5% { stroke-dashoffset: 0.1; opacity: 1; }
+  15% { stroke-dashoffset: 0.1; opacity: 0; }
+}
+
+/* The process node lights as the pulse lands */
+@keyframes sv-node {
+  0%, 14%, 100% { opacity: 0; }
+  15.5%, 19% { opacity: 1; }
+  24% { opacity: 0; }
+}
+
+/* Engine, on a 3s cycle that lines up with each process's 3s turn */
+@keyframes sv-core {
+  0%, 30%, 60%, 100% { transform: scale(1); }
+  40% { transform: scale(1.3); }
+}
+
+@keyframes sv-dp {
+  0%, 22%, 100% { fill: white; }
+  4%, 18% { fill: var(--accent); }
+}
+
+@keyframes sv-trunk {
+  0%, 100% { opacity: 0; transform: translateY(0); }
+  10% { opacity: 1; }
+  50% { opacity: 1; transform: translateY(var(--th, 48px)); }
+  60% { opacity: 0; transform: translateY(var(--th, 48px)); }
+}
