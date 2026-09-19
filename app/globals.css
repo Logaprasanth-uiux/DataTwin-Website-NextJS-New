@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand */
+  --navy: #1b2c46;
+  --accent: #df9e64;
+
+  /* Hero gradient stops (white -> warm cream/peach) */
+  --cream-50: #fefcfb;
+  --cream-100: #fbf4ed;
+  --cream-200: #f9ede3;
+
+  /* Text/border tones derived from navy via opacity, not new hues */
+  --navy-muted: color-mix(in srgb, var(--navy) 62%, transparent); /* eyebrow, nav, labels */
+  --navy-body: color-mix(in srgb, var(--navy) 70%, transparent); /* paragraph copy */
+  --navy-faint: color-mix(in srgb, var(--navy) 34%, transparent);
+  --navy-hairline: color-mix(in srgb, var(--navy) 16%, transparent);
+
+  /* Restrained financial-loss red — a narrow semantic/functional token, not a brand color */
+  --loss: #c96b5c;
+
+  --background: #ffffff;
+  --foreground: var(--navy);
+
+  /* Layout */
+  --content-max-width: 1200px;
+
+  /* Radius: subtle scale, no large pill rounding by default */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  /* Radius for the large contained section canvas */
+  --radius-section: 32px;
+
+  /* Shadow: reserved, used sparingly */
+  --shadow-soft: 0 1px 2px rgba(27, 44, 70, 0.05);
+}
+
+@theme inline {
+  --color-navy: var(--navy);
+  --color-accent: var(--accent);
+  --color-cream-50: var(--cream-50);
+  --color-cream-100: var(--cream-100);
+  --color-cream-200: var(--cream-200);
+  --color-navy-muted: var(--navy-muted);
+  --color-navy-body: var(--navy-body);
+  --color-navy-faint: var(--navy-faint);
+  --color-navy-hairline: var(--navy-hairline);
+  --color-loss: var(--loss);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Two-level type system: Darker Grotesque (display/editorial), Manrope (body/UI) */
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-section: var(--radius-section);
+
+  --shadow-soft: var(--shadow-soft);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Darker Grotesque — headlines, display statements, large numbers. Never body copy. */
+.dt-display {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Manrope-based type roles, reusable across future sections */
+.dt-eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  color: var(--navy-muted);
+}
+
+@media (min-width: 640px) {
+  .dt-eyebrow {
+    font-size: 12px;
+  }
+}
+
+.dt-heading {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+}
+
+.dt-body {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--navy-body);
+}
+
+.dt-caption {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--navy-faint);
+}
+
+.dt-nav-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--navy-muted);
+}
+
+.dt-button {
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.dt-container {
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+}
+
+.dt-hero-gradient {
+  background: linear-gradient(to bottom, #ffffff, var(--cream-50), var(--cream-100), var(--cream-200));
+}
+
+/* Restrained entrance motion. Base styles are the final state, so reduced-motion needs no override beyond disabling the animation. */
+@keyframes dt-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes dt-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes dt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dt-fill-in {
+  from {
+    opacity: 0.35;
+    transform: translateY(3px);
+  }
+}
+
+.dt-fade-up {
+  animation: dt-fade-up 700ms cubic-bezier(0.22, 1, 0.36, 1) 300ms both;
+}
+
+.dt-draw {
+  stroke-dasharray: 1;
+  animation: dt-draw 900ms ease-in-out 850ms both;
+}
+
+.dt-arrowhead {
+  animation: dt-fade-in 250ms ease-out 1650ms both;
+}
+
+.dt-fill-in {
+  animation: dt-fill-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Prompt entrance: characters resolve in one after another (per-character delay set inline); the finished phrase settles away. */
+@keyframes dt-char-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dt-phrase-out {
+  to {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+.dt-char {
+  animation: dt-char-in 260ms ease-out both;
+}
+
+.dt-phrase-out {
+  animation: dt-phrase-out 380ms ease-in-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dt-char,
+  .dt-phrase-out,
+  .dt-fade-up,
+  .dt-draw,
+  .dt-arrowhead,
+  .dt-fill-in {
+    animation: none;
+  }
+}
