@@ -370,3 +370,232 @@ body {
     animation: none;
   }
 }
+
+/* DARP engine. The base styles below ARE the complete static picture (used with reduced motion);
+   animation is layered on only under prefers-reduced-motion: no-preference. One 16s period drives
+   everything. Signals flow left to right; a couple of them turn orange between Assess and Recover. */
+/* Mobile spine */
+.dp-seg::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -2rem;
+  height: 2rem;
+  opacity: 0;
+  background: linear-gradient(to bottom, transparent, rgb(255 255 255 / 0.55), transparent);
+}
+
+/* Trusted-by running text: static wrap by default */
+.dp-ticker-track {
+  display: flex;
+  justify-content: center;
+}
+
+.dp-ticker-set {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  row-gap: 0.75rem;
+}
+
+.dp-ticker-set-dup {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dp-p {
+    animation: dp-flow 16s linear infinite;
+  }
+
+  .dp-x {
+    animation: dp-flow-x 16s linear infinite;
+  }
+
+  .dp-seg::after {
+    opacity: 1;
+    animation: dp-seg-flow 5.5s linear infinite;
+    animation-delay: var(--dp-d, 0s);
+  }
+
+  .dp-ticker {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  }
+
+  .dp-ticker-track {
+    width: max-content;
+    justify-content: flex-start;
+    animation: dp-marquee 55s linear infinite;
+  }
+
+  .dp-ticker-set {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+
+  .dp-ticker-set-dup {
+    display: flex;
+  }
+}
+
+@keyframes dp-flow {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  3%,
+  95% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(920px);
+    opacity: 0;
+  }
+}
+
+@keyframes dp-flow-x {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+    fill: rgb(255 255 255 / 0.6);
+  }
+  3% {
+    opacity: 1;
+  }
+  36% {
+    fill: rgb(255 255 255 / 0.6);
+  }
+  40% {
+    fill: var(--accent);
+  }
+  58% {
+    fill: var(--accent);
+    opacity: 1;
+  }
+  62% {
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(920px);
+    opacity: 0;
+    fill: var(--accent);
+  }
+}
+
+@keyframes dp-seg-flow {
+  from {
+    top: -2rem;
+  }
+  to {
+    top: 100%;
+  }
+}
+
+@keyframes dp-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* DARP stage glyphs. The base styles are the completed icons (reduced motion); the cycle below runs
+   only under prefers-reduced-motion: no-preference. One 4.8s period, absolute times: Discover
+   draws its lines then nudges its arrow forward (0-0.9s), Assess scans and flags an exception
+   (0.8-1.8s), Recover confirms (1.6-2.1s), Prevent confirms (2.4-2.9s); all four hold complete
+   until 3.9s, reset together over 0.5s, rest briefly, repeat. Outer circles never animate. */
+@media (prefers-reduced-motion: no-preference) {
+  .dg-d-line1,
+  .dg-d-line2,
+  .dg-d-line3,
+  .dg-r-check,
+  .dg-p-check {
+    stroke-dasharray: 1;
+  }
+
+  .dg-d-line1 { animation: dg-d-line1 4800ms ease-in-out infinite; }
+  .dg-d-line2 { animation: dg-d-line2 4800ms ease-in-out infinite; }
+  .dg-d-line3 { animation: dg-d-line3 4800ms ease-in-out infinite; }
+  .dg-d-arrow { animation: dg-d-arrow 4800ms ease-in-out infinite; }
+  .dg-a-scan { animation: dg-a-scan 4800ms ease-in-out infinite; }
+  .dg-a-under { animation: dg-a-under 4800ms ease-in-out infinite; }
+  .dg-r-check { animation: dg-r-check 4800ms ease-in-out infinite; }
+  .dg-p-check { animation: dg-p-check 4800ms ease-in-out infinite; }
+}
+
+/* the "under" mark only exists during the scan; it is not part of the completed icon */
+.dg-a-under {
+  opacity: 0;
+}
+
+@keyframes dg-d-line1 {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.000% { stroke-dashoffset: 1; opacity: 0; }
+  0.500% { stroke-dashoffset: 1; opacity: 1; }
+  7.792% { stroke-dashoffset: 0; opacity: 1; }
+  81.250% { stroke-dashoffset: 0; opacity: 1; }
+  91.667%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes dg-d-line2 {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  2.500% { stroke-dashoffset: 1; opacity: 0; }
+  3.000% { stroke-dashoffset: 1; opacity: 1; }
+  10.292% { stroke-dashoffset: 0; opacity: 1; }
+  81.250% { stroke-dashoffset: 0; opacity: 1; }
+  91.667%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes dg-d-line3 {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  5.000% { stroke-dashoffset: 1; opacity: 0; }
+  5.500% { stroke-dashoffset: 1; opacity: 1; }
+  12.792% { stroke-dashoffset: 0; opacity: 1; }
+  81.250% { stroke-dashoffset: 0; opacity: 1; }
+  91.667%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes dg-d-arrow {
+  0%, 10.000% { opacity: 0; transform: translateX(-2.5px); }
+  17.917% { opacity: 1; transform: translateX(0); }
+  81.250% { opacity: 1; transform: translateX(0); }
+  91.667%, 99.9% { opacity: 0; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(-2.5px); }
+}
+
+@keyframes dg-a-scan {
+  0%, 16.667% { transform: translate(0, 0); }
+  23.958% { transform: translate(-1.3px, -0.3px); }
+  34.375% { transform: translate(1.5px, 0.5px); }
+  37.500%, 100% { transform: translate(0, 0); }
+}
+
+@keyframes dg-a-under {
+  0%, 26.042% { opacity: 0; }
+  30.208%, 35.417% { opacity: 1; }
+  39.583%, 100% { opacity: 0; }
+}
+
+@keyframes dg-r-check {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  33.333% { stroke-dashoffset: 1; opacity: 0; }
+  33.833% { stroke-dashoffset: 1; opacity: 1; }
+  44.250% { stroke-dashoffset: 0; opacity: 1; }
+  81.250% { stroke-dashoffset: 0; opacity: 1; }
+  91.667%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes dg-p-check {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  50.000% { stroke-dashoffset: 1; opacity: 0; }
+  50.500% { stroke-dashoffset: 1; opacity: 1; }
+  60.917% { stroke-dashoffset: 0; opacity: 1; }
+  81.250% { stroke-dashoffset: 0; opacity: 1; }
+  91.667%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+

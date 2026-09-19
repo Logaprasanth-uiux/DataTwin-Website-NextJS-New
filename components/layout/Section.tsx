@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 
-type SectionBackground = "white" | "cream-gradient";
+type SectionBackground = "white" | "cream-gradient" | "navy";
 
 const BACKGROUND_CLASSES: Record<SectionBackground, string> = {
   white: "bg-background",
   "cream-gradient": "dt-hero-gradient",
+  navy: "bg-navy",
 };
 
 export function Section({
