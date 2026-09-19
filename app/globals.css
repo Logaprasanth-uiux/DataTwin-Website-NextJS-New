@@ -15,6 +15,7 @@
   --navy-body: color-mix(in srgb, var(--navy) 70%, transparent); /* paragraph copy */
   --navy-faint: color-mix(in srgb, var(--navy) 34%, transparent);
   --navy-hairline: color-mix(in srgb, var(--navy) 16%, transparent);
+  --navy-divider: color-mix(in srgb, var(--navy) 9%, transparent); /* extra-light section dividers */
 
   /* Restrained financial-loss red — a narrow semantic/functional token, not a brand color */
   --loss: #c96b5c;
@@ -45,6 +46,7 @@
   --color-navy-body: var(--navy-body);
   --color-navy-faint: var(--navy-faint);
   --color-navy-hairline: var(--navy-hairline);
+  --color-navy-divider: var(--navy-divider);
   --color-loss: var(--loss);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -85,6 +87,10 @@ body {
   .dt-eyebrow {
     font-size: 12px;
   }
+}
+
+.dt-eyebrow-accent {
+  color: var(--accent);
 }
 
 .dt-heading {
@@ -195,7 +201,166 @@ body {
   animation: dt-phrase-out 380ms ease-in-out both;
 }
 
+/* Recovery micro-illustrations. The base styles ARE the final, static picture (used with reduced
+   motion or without JS). Only when the wrapper carries data-anim do the animated parts drop to
+   their starting pose and run a seamless loop: build (~1.2-1.5s) -> short hold on the complete
+   icon (1.2s) -> the animated parts fade back out in the same order (0.64s) -> a brief rest
+   showing only the structure (0.45s) -> repeat. Action speeds are fixed in ms; each icon has its
+   own period (--rv-period) because its build finishes at a different moment. "paused" freezes
+   the loop while the icon is off-screen. Keyframes below are generated from those timings. */
+.rv-draw,
+.rv-draw-long {
+  stroke-dasharray: 1;
+}
+
+[data-anim] .rv-draw,
+[data-anim] .rv-draw-long {
+  stroke-dashoffset: 1;
+}
+
+[data-anim] .rv-fade {
+  opacity: 0;
+}
+
+.rv-hide,
+.rv-blip,
+.rv-coin-bank,
+.rv-coin-credit {
+  opacity: 0;
+}
+
+[data-anim] .rv-hide {
+  opacity: 1;
+}
+
+.rv-bank { --rv-period: 3566ms; --rv-offset: 0ms; }
+.rv-refund { --rv-period: 4366ms; --rv-offset: 700ms; }
+.rv-audit { --rv-period: 4666ms; --rv-offset: 1400ms; }
+.rv-loop { --rv-period: 3966ms; --rv-offset: 2100ms; }
+
+:is([data-anim="play"], [data-anim="paused"]) :is(.rv-draw, .rv-draw-long, .rv-fade, .rv-hide, .rv-blip, .rv-coin-bank, .rv-coin-credit) {
+  animation-duration: var(--rv-period);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-delay: calc(var(--rv-delay, 0ms) + var(--rv-offset, 0ms));
+}
+
+:is([data-anim="play"], [data-anim="paused"]).rv-bank .rv-draw { animation-name: rv-bank-draw; }
+:is([data-anim="play"], [data-anim="paused"]).rv-bank .rv-coin-bank { animation-name: rv-bank-coin; }
+:is([data-anim="play"], [data-anim="paused"]).rv-refund .rv-draw-long { animation-name: rv-refund-arc; }
+:is([data-anim="play"], [data-anim="paused"]).rv-refund .rv-fade { animation-name: rv-refund-head; }
+:is([data-anim="play"], [data-anim="paused"]).rv-refund .rv-coin-credit { animation-name: rv-refund-coin; }
+:is([data-anim="play"], [data-anim="paused"]).rv-refund .rv-draw { animation-name: rv-refund-check; }
+:is([data-anim="play"], [data-anim="paused"]).rv-audit .rv-draw { animation-name: rv-audit-draw; }
+:is([data-anim="play"], [data-anim="paused"]).rv-audit .rv-fade { animation-name: rv-audit-fade; }
+:is([data-anim="play"], [data-anim="paused"]).rv-loop .rv-hide { animation-name: rv-loop-hide; }
+:is([data-anim="play"], [data-anim="paused"]).rv-loop .rv-blip { animation-name: rv-loop-blip; }
+:is([data-anim="play"], [data-anim="paused"]).rv-loop .rv-draw { animation-name: rv-loop-draw; }
+
+[data-anim="paused"] :is(.rv-draw, .rv-draw-long, .rv-fade, .rv-hide, .rv-blip, .rv-coin-bank, .rv-coin-credit) {
+  animation-play-state: paused;
+}
+
+@keyframes rv-bank-draw {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.673% { stroke-dashoffset: 1; opacity: 1; }
+  10.544% { stroke-dashoffset: 0; opacity: 1; }
+  44.195% { stroke-dashoffset: 0; opacity: 1; }
+  62.142%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes rv-bank-coin {
+  0% { opacity: 0; transform: translateX(-30px); }
+  4.627% { opacity: 1; }
+  20.050% { opacity: 1; transform: translateX(0); }
+  30.847%, 100% { opacity: 0; transform: translateX(4px); }
+}
+
+@keyframes rv-refund-arc {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.550% { stroke-dashoffset: 1; opacity: 1; }
+  16.491% { stroke-dashoffset: 0; opacity: 1; }
+  55.566% { stroke-dashoffset: 0; opacity: 1; }
+  89.693%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes rv-refund-head {
+  0% { opacity: 0; }
+  7.329% { opacity: 1; }
+  55.566% { opacity: 1; }
+  75.951%, 100% { opacity: 0; }
+}
+
+@keyframes rv-refund-coin {
+  0% { opacity: 0; transform: translate(0, 0); }
+  2.474% { opacity: 1; }
+  5.131% { transform: translate(8px, -7px); }
+  10.261% { transform: translate(17px, -7.4px); }
+  15.392% { opacity: 1; transform: translate(25px, -2.4px); }
+  20.614%, 100% { opacity: 0; transform: translate(30px, 7px); }
+}
+
+@keyframes rv-refund-check {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.550% { stroke-dashoffset: 1; opacity: 1; }
+  8.612% { stroke-dashoffset: 0; opacity: 1; }
+  55.566% { stroke-dashoffset: 0; opacity: 1; }
+  70.224%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes rv-audit-draw {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.514% { stroke-dashoffset: 1; opacity: 1; }
+  8.058% { stroke-dashoffset: 0; opacity: 1; }
+  54.136% { stroke-dashoffset: 0; opacity: 1; }
+  67.853%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes rv-audit-fade {
+  0% { opacity: 0; }
+  6.858% { opacity: 1; }
+  54.136% { opacity: 1; }
+  67.853%, 100% { opacity: 0; }
+}
+
+@keyframes rv-loop-hide {
+  0% { opacity: 1; }
+  6.253% { opacity: 0; }
+  43.520% { opacity: 0; }
+  59.657%, 100% { opacity: 1; }
+}
+
+@keyframes rv-loop-blip {
+  0% { opacity: 0; }
+  5.245%, 12.305% { opacity: 1; }
+  17.650%, 100% { opacity: 0; }
+}
+
+@keyframes rv-loop-draw {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.605% { stroke-dashoffset: 1; opacity: 1; }
+  9.481% { stroke-dashoffset: 0; opacity: 1; }
+  43.520% { stroke-dashoffset: 0; opacity: 1; }
+  59.657%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+/* Scroll reveal: a small opacity/translate as an element enters the viewport. Browsers without
+   scroll-driven animations simply show the content; nothing is hidden by default. */
+@supports (animation-timeline: view()) {
+  .dt-reveal {
+    animation: dt-fade-up linear both;
+    animation-timeline: view();
+    animation-range: entry 5% entry 45%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .dt-reveal,
   .dt-char,
   .dt-phrase-out,
   .dt-fade-up,
