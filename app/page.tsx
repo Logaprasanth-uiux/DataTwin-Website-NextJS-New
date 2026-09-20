@@ -4,6 +4,7 @@ import { RecoverySection } from "@/components/sections/RecoverySection";
 import { DarpSection } from "@/components/sections/DarpSection";
 import { SituationSection } from "@/components/sections/SituationSection";
 import { SolutionsSection } from "@/components/sections/SolutionsSection";
+import { NextStepsSection } from "@/components/sections/NextStepsSection";
 
 export default function Home() {
   return (
@@ -15,6 +16,7 @@ export default function Home() {
         <DarpSection />
         <SituationSection />
         <SolutionsSection />
+        <NextStepsSection />
       </main>
     </>
   );

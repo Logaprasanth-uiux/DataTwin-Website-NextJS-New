@@ -1,0 +1,305 @@
+/* What happens next: the four-step engagement journey.
+
+   Drawn for the dark DataTwin canvas: light linework, orange accent. The base styles ARE the completed
+   static picture (used with reduced motion, without JS, or before the journey scrolls into view): every icon complete, every line drawn in orange, the final stage
+   resolved. Motion is layered on only when the ViewGate wrapper has set `data-sv` AND the user has
+   not asked for reduced motion.
+
+   One 16s cycle. A small orange signal leaves stage 01, and travels the line to 02, 03 and 04,
+   pausing at each. When it arrives at a stage: the stage's ring warms (its border turns orange), and
+   the stage's icon builds itself. Until then a stage shows only its bare structure, so the journey
+   visibly fills in as the signal moves. Stage 04 resolves and holds; at 13.6s everything dissolves
+   together and the cycle starts again.
+   Arrival times: 01 at 0s, 02 at 3.4s, 03 at 6.8s, 04 at 10.2s. Each stage has its own keyframes
+   (jn-draw-1 ... jn-draw-4 etc.) with its arrival baked in, so the reset is simultaneous for all.
+   A part's own offset within its stage (--jn-d, up to ~1.1s) is applied as an animation delay.
+
+   The line is not one long element: each stage owns the segment that leads to the next stage
+   (.jn-seg-1..3), laid out in flow beside its ring. `.jn-fill` is the orange progress inside a
+   segment and `.jn-dot` the signal riding its head. Segments run left to right from the lg
+   breakpoint (1024px, matching Tailwind) and top to bottom below it. */
+
+/* Static (complete) state */
+.jn-draw {
+  stroke-dasharray: 1;
+}
+
+.jn-run {
+  opacity: 0;
+}
+
+.jn-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+}
+
+.jn-dot {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin: 0 0 -3.5px -3.5px;
+  border-radius: 9999px;
+  background: var(--accent);
+  opacity: 0;
+}
+
+@media (min-width: 1024px) {
+  .jn-dot {
+    top: 50%;
+    right: 0;
+    bottom: auto;
+    left: auto;
+    margin: -3.5px -3.5px 0 0;
+  }
+}
+
+/* The final stage is the resolved one: its ring is already orange in the static picture */
+.jn-node-final {
+  border-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-sv] :is(.jn-node, .jn-fill, .jn-dot) {
+    animation-duration: 16s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+  [data-sv] :is(.jn-draw, .jn-fade, .jn-run) {
+    animation-duration: 16s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-delay: var(--jn-d, 0ms);
+    /* during a part's first delay, sit in its blank starting pose rather than the complete one */
+    animation-fill-mode: backwards;
+  }
+
+  [data-sv] .jn-s1 .jn-draw { animation-name: jn-draw-1; }
+  [data-sv] .jn-s2 .jn-draw { animation-name: jn-draw-2; }
+  [data-sv] .jn-s3 .jn-draw { animation-name: jn-draw-3; }
+  [data-sv] .jn-s4 .jn-draw { animation-name: jn-draw-4; }
+  [data-sv] .jn-s1 .jn-fade { animation-name: jn-fade-1; }
+  [data-sv] .jn-s2 .jn-fade { animation-name: jn-fade-2; }
+  [data-sv] .jn-s3 .jn-fade { animation-name: jn-fade-3; }
+  [data-sv] .jn-s4 .jn-fade { animation-name: jn-fade-4; }
+  [data-sv] .jn-s1 .jn-run { animation-name: jn-run-1; }
+  [data-sv] .jn-s2 .jn-run { animation-name: jn-run-2; }
+  [data-sv] .jn-s3 .jn-run { animation-name: jn-run-3; }
+  [data-sv] .jn-s4 .jn-run { animation-name: jn-run-4; }
+  [data-sv] .jn-node-1 { animation-name: jn-node-1; }
+  [data-sv] .jn-node-2 { animation-name: jn-node-2; }
+  [data-sv] .jn-node-3 { animation-name: jn-node-3; }
+  [data-sv] .jn-node-4 { animation-name: jn-node-4; }
+  [data-sv] .jn-seg-1 .jn-fill { animation-name: jn-fill-1-y; }
+  [data-sv] .jn-seg-2 .jn-fill { animation-name: jn-fill-2-y; }
+  [data-sv] .jn-seg-3 .jn-fill { animation-name: jn-fill-3-y; }
+  [data-sv] .jn-seg-1 .jn-dot { animation-name: jn-dot-1; }
+  [data-sv] .jn-seg-2 .jn-dot { animation-name: jn-dot-2; }
+  [data-sv] .jn-seg-3 .jn-dot { animation-name: jn-dot-3; }
+
+  [data-sv="paused"] :is(.jn-draw, .jn-fade, .jn-run, .jn-node, .jn-fill, .jn-dot) {
+    animation-play-state: paused;
+  }
+}
+
+/* Horizontal segments from the lg breakpoint: the fill grows left to right instead of top to bottom */
+@media (prefers-reduced-motion: no-preference) and (min-width: 1024px) {
+  [data-sv] .jn-seg-1 .jn-fill { animation-name: jn-fill-1-x; }
+  [data-sv] .jn-seg-2 .jn-fill { animation-name: jn-fill-2-x; }
+  [data-sv] .jn-seg-3 .jn-fill { animation-name: jn-fill-3-x; }
+}
+
+@keyframes jn-draw-1 {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.312% { stroke-dashoffset: 1; opacity: 1; }
+  5.062% { stroke-dashoffset: 0; opacity: 1; }
+  85% { stroke-dashoffset: 0; opacity: 1; }
+  88.75%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes jn-fade-1 {
+  0% { opacity: 0; }
+  3.75% { opacity: 1; }
+  85% { opacity: 1; }
+  88.75%, 100% { opacity: 0; }
+}
+
+@keyframes jn-run-1 {
+  0% { opacity: 0; transform: translate(0, 0); }
+  0.312% { opacity: 1; transform: translate(0, 0); }
+  7.312% { opacity: 1; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+  8.438%, 100% { opacity: 0; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+}
+
+@keyframes jn-node-1 {
+  0% { border-color: rgb(255 255 255 / 0.2); }
+  2.5% { border-color: var(--accent); }
+  15.625% { border-color: var(--accent); }
+  19.375%, 100% { border-color: rgb(255 255 255 / 0.2); }
+}
+
+@keyframes jn-draw-2 {
+  0%, 21.25% { stroke-dashoffset: 1; opacity: 0; }
+  21.562% { stroke-dashoffset: 1; opacity: 1; }
+  26.312% { stroke-dashoffset: 0; opacity: 1; }
+  85% { stroke-dashoffset: 0; opacity: 1; }
+  88.75%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes jn-fade-2 {
+  0%, 21.25% { opacity: 0; }
+  25% { opacity: 1; }
+  85% { opacity: 1; }
+  88.75%, 100% { opacity: 0; }
+}
+
+@keyframes jn-run-2 {
+  0%, 21.25% { opacity: 0; transform: translate(0, 0); }
+  21.562% { opacity: 1; transform: translate(0, 0); }
+  28.562% { opacity: 1; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+  29.688%, 100% { opacity: 0; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+}
+
+@keyframes jn-node-2 {
+  0%, 21.25% { border-color: rgb(255 255 255 / 0.2); }
+  23.75% { border-color: var(--accent); }
+  36.875% { border-color: var(--accent); }
+  40.625%, 100% { border-color: rgb(255 255 255 / 0.2); }
+}
+
+@keyframes jn-draw-3 {
+  0%, 42.5% { stroke-dashoffset: 1; opacity: 0; }
+  42.812% { stroke-dashoffset: 1; opacity: 1; }
+  47.562% { stroke-dashoffset: 0; opacity: 1; }
+  85% { stroke-dashoffset: 0; opacity: 1; }
+  88.75%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes jn-fade-3 {
+  0%, 42.5% { opacity: 0; }
+  46.25% { opacity: 1; }
+  85% { opacity: 1; }
+  88.75%, 100% { opacity: 0; }
+}
+
+@keyframes jn-run-3 {
+  0%, 42.5% { opacity: 0; transform: translate(0, 0); }
+  42.812% { opacity: 1; transform: translate(0, 0); }
+  49.812% { opacity: 1; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+  50.938%, 100% { opacity: 0; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+}
+
+@keyframes jn-node-3 {
+  0%, 42.5% { border-color: rgb(255 255 255 / 0.2); }
+  45% { border-color: var(--accent); }
+  58.125% { border-color: var(--accent); }
+  61.875%, 100% { border-color: rgb(255 255 255 / 0.2); }
+}
+
+@keyframes jn-draw-4 {
+  0%, 63.75% { stroke-dashoffset: 1; opacity: 0; }
+  64.062% { stroke-dashoffset: 1; opacity: 1; }
+  68.812% { stroke-dashoffset: 0; opacity: 1; }
+  85% { stroke-dashoffset: 0; opacity: 1; }
+  88.75%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 0; }
+}
+
+@keyframes jn-fade-4 {
+  0%, 63.75% { opacity: 0; }
+  67.5% { opacity: 1; }
+  85% { opacity: 1; }
+  88.75%, 100% { opacity: 0; }
+}
+
+@keyframes jn-run-4 {
+  0%, 63.75% { opacity: 0; transform: translate(0, 0); }
+  64.062% { opacity: 1; transform: translate(0, 0); }
+  71.062% { opacity: 1; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+  72.188%, 100% { opacity: 0; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+}
+
+@keyframes jn-node-4 {
+  0%, 63.75% { border-color: rgb(255 255 255 / 0.2); }
+  66.25% { border-color: var(--accent); }
+  85% { border-color: var(--accent); }
+  91.25%, 100% { border-color: rgb(255 255 255 / 0.2); }
+}
+
+@keyframes jn-fill-1-x {
+  0%, 9.375% { width: 0%; opacity: 1; }
+  21.25% { width: 100%; opacity: 1; }
+  85% { width: 100%; opacity: 1; }
+  90%, 99.9% { width: 100%; opacity: 0; }
+  100% { width: 0%; opacity: 0; }
+}
+
+@keyframes jn-fill-1-y {
+  0%, 9.375% { height: 0%; opacity: 1; }
+  21.25% { height: 100%; opacity: 1; }
+  85% { height: 100%; opacity: 1; }
+  90%, 99.9% { height: 100%; opacity: 0; }
+  100% { height: 0%; opacity: 0; }
+}
+
+@keyframes jn-dot-1 {
+  0%, 0% { opacity: 0; }
+  2.5% { opacity: 1; }
+  21.25% { opacity: 1; }
+  23.75%, 100% { opacity: 0; }
+}
+
+@keyframes jn-fill-2-x {
+  0%, 30.625% { width: 0%; opacity: 1; }
+  42.5% { width: 100%; opacity: 1; }
+  85% { width: 100%; opacity: 1; }
+  90%, 99.9% { width: 100%; opacity: 0; }
+  100% { width: 0%; opacity: 0; }
+}
+
+@keyframes jn-fill-2-y {
+  0%, 30.625% { height: 0%; opacity: 1; }
+  42.5% { height: 100%; opacity: 1; }
+  85% { height: 100%; opacity: 1; }
+  90%, 99.9% { height: 100%; opacity: 0; }
+  100% { height: 0%; opacity: 0; }
+}
+
+@keyframes jn-dot-2 {
+  0%, 21.25% { opacity: 0; }
+  23.75% { opacity: 1; }
+  42.5% { opacity: 1; }
+  45%, 100% { opacity: 0; }
+}
+
+@keyframes jn-fill-3-x {
+  0%, 51.875% { width: 0%; opacity: 1; }
+  63.75% { width: 100%; opacity: 1; }
+  85% { width: 100%; opacity: 1; }
+  90%, 99.9% { width: 100%; opacity: 0; }
+  100% { width: 0%; opacity: 0; }
+}
+
+@keyframes jn-fill-3-y {
+  0%, 51.875% { height: 0%; opacity: 1; }
+  63.75% { height: 100%; opacity: 1; }
+  85% { height: 100%; opacity: 1; }
+  90%, 99.9% { height: 100%; opacity: 0; }
+  100% { height: 0%; opacity: 0; }
+}
+
+@keyframes jn-dot-3 {
+  0%, 42.5% { opacity: 0; }
+  45% { opacity: 1; }
+  85% { opacity: 1; }
+  88.75%, 100% { opacity: 0; }
+}
