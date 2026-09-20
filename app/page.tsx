@@ -5,6 +5,7 @@ import { DarpSection } from "@/components/sections/DarpSection";
 import { SituationSection } from "@/components/sections/SituationSection";
 import { SolutionsSection } from "@/components/sections/SolutionsSection";
 import { NextStepsSection } from "@/components/sections/NextStepsSection";
+import { OutcomesSection } from "@/components/sections/OutcomesSection";
 
 export default function Home() {
   return (
@@ -17,6 +18,7 @@ export default function Home() {
         <SituationSection />
         <SolutionsSection />
         <NextStepsSection />
+        <OutcomesSection />
       </main>
     </>
   );

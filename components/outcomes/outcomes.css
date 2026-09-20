@@ -1,0 +1,659 @@
+/* Outcomes: two phases, and the turning point between them.
+
+   The base styles ARE the completed static picture (used with reduced motion, without JS, or before the
+   section scrolls into view): every icon complete, the spine's orange trail drawn end to end, the
+   OBSERVABILITY turning point lit. Motion is layered on only when the ViewGate wrapper has set
+   `data-sv` AND the user has not asked for reduced motion. The numbers are static labels: nothing here
+   animates them.
+
+   One 16.6s pass, looping with no reset. A small orange signal travels down the spine: down phase one
+   (0.5s - 6.7s), through OBSERVABILITY, which lights as it arrives (7.0s), and on down phase two
+   (7.4s - 14.4s). The orange trail it leaves behind holds, then dissolves at the end of the pass
+   (15.6s - 16.3s) and the signal starts again.
+   - Icons: every icon is COMPLETE at all times except during its own turn. A turn is timed to when the
+     signal reaches that icon's row: the icon dissolves (all its parts together, over the 0.7s before)
+     and rebuilds part by part, exactly as it always has. Nothing waits around blank or half-built.
+   - Each animated part has its own keyframes, named oc-<kind>-<outcome>-<stagger ms>, with its own
+     rebuild time baked in. That is what lets all the parts of an icon dissolve at the same moment while
+     rebuilding one after another. Every keyframe percentage is a time in seconds divided by the 16.6s pass.
+   - The spine is the left border of three stacked blocks; `.oc-sp-1` and `.oc-sp-2` lay the orange trail
+     over the first and last, `.oc-fill` is the trail and `.oc-head` the signal riding its end. */
+
+/* Static (complete) state */
+.oc-draw {
+  stroke-dasharray: 1;
+}
+
+.oc-run {
+  opacity: 0;
+}
+
+.oc-pill {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.oc-tnode {
+  border-color: var(--accent);
+  background-color: var(--accent);
+}
+
+.oc-sp {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1px;
+  width: 1px;
+}
+
+.oc-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+}
+
+.oc-head {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin: 0 0 -3.5px -3.5px;
+  border-radius: 9999px;
+  background: var(--accent);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-sv] :is(.oc-draw, .oc-fade, .oc-run, .oc-pill, .oc-tnode, .oc-fill, .oc-head) {
+    animation-duration: 16.6s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+  /* The signal keeps a steady pace down the spine */
+  [data-sv] :is(.oc-fill, .oc-head) {
+    animation-timing-function: linear;
+  }
+
+  [data-sv] .oc-s1 .oc-draw.oc-d0 { animation-name: oc-draw-1-0; }
+  [data-sv] .oc-s1 .oc-draw.oc-d150 { animation-name: oc-draw-1-150; }
+  [data-sv] .oc-s1 .oc-draw.oc-d700 { animation-name: oc-draw-1-700; }
+  [data-sv] .oc-s1 .oc-draw.oc-d850 { animation-name: oc-draw-1-850; }
+  [data-sv] .oc-s1 .oc-draw.oc-d1000 { animation-name: oc-draw-1-1000; }
+  [data-sv] .oc-s1 .oc-draw.oc-d1400 { animation-name: oc-draw-1-1400; }
+  [data-sv] .oc-s1 .oc-fade.oc-d1200 { animation-name: oc-fade-1-1200; }
+  [data-sv] .oc-s1 .oc-run.oc-d350 { animation-name: oc-run-1-350; }
+  [data-sv] .oc-s2 .oc-draw.oc-d0 { animation-name: oc-draw-2-0; }
+  [data-sv] .oc-s2 .oc-draw.oc-d140 { animation-name: oc-draw-2-140; }
+  [data-sv] .oc-s2 .oc-draw.oc-d280 { animation-name: oc-draw-2-280; }
+  [data-sv] .oc-s2 .oc-draw.oc-d500 { animation-name: oc-draw-2-500; }
+  [data-sv] .oc-s2 .oc-draw.oc-d800 { animation-name: oc-draw-2-800; }
+  [data-sv] .oc-s2 .oc-draw.oc-d900 { animation-name: oc-draw-2-900; }
+  [data-sv] .oc-s2 .oc-draw.oc-d1000 { animation-name: oc-draw-2-1000; }
+  [data-sv] .oc-s2 .oc-draw.oc-d1400 { animation-name: oc-draw-2-1400; }
+  [data-sv] .oc-s2 .oc-fade.oc-d1200 { animation-name: oc-fade-2-1200; }
+  [data-sv] .oc-s3 .oc-draw.oc-d0 { animation-name: oc-draw-3-0; }
+  [data-sv] .oc-s3 .oc-draw.oc-d200 { animation-name: oc-draw-3-200; }
+  [data-sv] .oc-s3 .oc-draw.oc-d340 { animation-name: oc-draw-3-340; }
+  [data-sv] .oc-s3 .oc-draw.oc-d480 { animation-name: oc-draw-3-480; }
+  [data-sv] .oc-s3 .oc-draw.oc-d700 { animation-name: oc-draw-3-700; }
+  [data-sv] .oc-s3 .oc-draw.oc-d1000 { animation-name: oc-draw-3-1000; }
+  [data-sv] .oc-s4 .oc-draw.oc-d0 { animation-name: oc-draw-4-0; }
+  [data-sv] .oc-s4 .oc-draw.oc-d140 { animation-name: oc-draw-4-140; }
+  [data-sv] .oc-s4 .oc-draw.oc-d700 { animation-name: oc-draw-4-700; }
+  [data-sv] .oc-s4 .oc-draw.oc-d800 { animation-name: oc-draw-4-800; }
+  [data-sv] .oc-s4 .oc-draw.oc-d1250 { animation-name: oc-draw-4-1250; }
+  [data-sv] .oc-s4 .oc-fade.oc-d1000 { animation-name: oc-fade-4-1000; }
+  [data-sv] .oc-s4 .oc-run.oc-d350 { animation-name: oc-run-4-350; }
+  [data-sv] .oc-s5 .oc-draw.oc-d0 { animation-name: oc-draw-5-0; }
+  [data-sv] .oc-s5 .oc-draw.oc-d120 { animation-name: oc-draw-5-120; }
+  [data-sv] .oc-s5 .oc-draw.oc-d240 { animation-name: oc-draw-5-240; }
+  [data-sv] .oc-s5 .oc-draw.oc-d400 { animation-name: oc-draw-5-400; }
+  [data-sv] .oc-s5 .oc-draw.oc-d480 { animation-name: oc-draw-5-480; }
+  [data-sv] .oc-s5 .oc-draw.oc-d560 { animation-name: oc-draw-5-560; }
+  [data-sv] .oc-s5 .oc-draw.oc-d1100 { animation-name: oc-draw-5-1100; }
+  [data-sv] .oc-s5 .oc-draw.oc-d1300 { animation-name: oc-draw-5-1300; }
+  [data-sv] .oc-s5 .oc-fade.oc-d900 { animation-name: oc-fade-5-900; }
+  [data-sv] .oc-s6 .oc-draw.oc-d0 { animation-name: oc-draw-6-0; }
+  [data-sv] .oc-s6 .oc-draw.oc-d120 { animation-name: oc-draw-6-120; }
+  [data-sv] .oc-s6 .oc-draw.oc-d240 { animation-name: oc-draw-6-240; }
+  [data-sv] .oc-s6 .oc-draw.oc-d500 { animation-name: oc-draw-6-500; }
+  [data-sv] .oc-s6 .oc-draw.oc-d600 { animation-name: oc-draw-6-600; }
+  [data-sv] .oc-s6 .oc-draw.oc-d800 { animation-name: oc-draw-6-800; }
+  [data-sv] .oc-s6 .oc-draw.oc-d920 { animation-name: oc-draw-6-920; }
+  [data-sv] .oc-s6 .oc-draw.oc-d1040 { animation-name: oc-draw-6-1040; }
+  [data-sv] .oc-s6 .oc-draw.oc-d1350 { animation-name: oc-draw-6-1350; }
+  [data-sv] .oc-s6 .oc-fade.oc-d1200 { animation-name: oc-fade-6-1200; }
+  [data-sv] .oc-sp-1 .oc-fill { animation-name: oc-fill-1; }
+  [data-sv] .oc-sp-1 .oc-head { animation-name: oc-head-1; }
+  [data-sv] .oc-sp-2 .oc-fill { animation-name: oc-fill-2; }
+  [data-sv] .oc-sp-2 .oc-head { animation-name: oc-head-2; }
+  [data-sv] .oc-pill { animation-name: oc-pill; }
+  [data-sv] .oc-tnode { animation-name: oc-tnode; }
+
+  [data-sv="paused"] :is(.oc-draw, .oc-fade, .oc-run, .oc-pill, .oc-tnode, .oc-fill, .oc-head) {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes oc-draw-1-0 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  3.863% { stroke-dashoffset: 0; opacity: 1; }
+  8.08% { stroke-dashoffset: 0; opacity: 0; }
+  8.14% { stroke-dashoffset: 1; opacity: 0; }
+  8.381% { stroke-dashoffset: 1; opacity: 1; }
+  12.959% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-1-150 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  3.863% { stroke-dashoffset: 0; opacity: 1; }
+  8.08% { stroke-dashoffset: 0; opacity: 0; }
+  8.14% { stroke-dashoffset: 1; opacity: 0; }
+  9.284% { stroke-dashoffset: 1; opacity: 1; }
+  13.863% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-1-700 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  3.863% { stroke-dashoffset: 0; opacity: 1; }
+  8.08% { stroke-dashoffset: 0; opacity: 0; }
+  8.14% { stroke-dashoffset: 1; opacity: 0; }
+  12.598% { stroke-dashoffset: 1; opacity: 1; }
+  17.176% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-1-850 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  3.863% { stroke-dashoffset: 0; opacity: 1; }
+  8.08% { stroke-dashoffset: 0; opacity: 0; }
+  8.14% { stroke-dashoffset: 1; opacity: 0; }
+  13.501% { stroke-dashoffset: 1; opacity: 1; }
+  18.08% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-1-1000 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  3.863% { stroke-dashoffset: 0; opacity: 1; }
+  8.08% { stroke-dashoffset: 0; opacity: 0; }
+  8.14% { stroke-dashoffset: 1; opacity: 0; }
+  14.405% { stroke-dashoffset: 1; opacity: 1; }
+  18.983% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-1-1400 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  3.863% { stroke-dashoffset: 0; opacity: 1; }
+  8.08% { stroke-dashoffset: 0; opacity: 0; }
+  8.14% { stroke-dashoffset: 1; opacity: 0; }
+  16.814% { stroke-dashoffset: 1; opacity: 1; }
+  21.393% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-fade-1-1200 {
+  0% { opacity: 1; }
+  3.863% { opacity: 1; }
+  8.08% { opacity: 0; }
+  18.923% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes oc-run-1-350 {
+  0%, 10.188% { opacity: 0; transform: translate(0, 0); }
+  10.489% { opacity: 1; transform: translate(0, 0); }
+  17.236% { opacity: 1; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+  18.32%, 100% { opacity: 0; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+}
+
+@keyframes oc-draw-2-0 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  14.955% { stroke-dashoffset: 0; opacity: 1; }
+  19.172% { stroke-dashoffset: 0; opacity: 0; }
+  19.233% { stroke-dashoffset: 1; opacity: 0; }
+  19.473% { stroke-dashoffset: 1; opacity: 1; }
+  24.052% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-2-140 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  14.955% { stroke-dashoffset: 0; opacity: 1; }
+  19.172% { stroke-dashoffset: 0; opacity: 0; }
+  19.233% { stroke-dashoffset: 1; opacity: 0; }
+  20.317% { stroke-dashoffset: 1; opacity: 1; }
+  24.895% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-2-280 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  14.955% { stroke-dashoffset: 0; opacity: 1; }
+  19.172% { stroke-dashoffset: 0; opacity: 0; }
+  19.233% { stroke-dashoffset: 1; opacity: 0; }
+  21.16% { stroke-dashoffset: 1; opacity: 1; }
+  25.739% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-2-500 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  14.955% { stroke-dashoffset: 0; opacity: 1; }
+  19.172% { stroke-dashoffset: 0; opacity: 0; }
+  19.233% { stroke-dashoffset: 1; opacity: 0; }
+  22.486% { stroke-dashoffset: 1; opacity: 1; }
+  27.064% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-2-800 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  14.955% { stroke-dashoffset: 0; opacity: 1; }
+  19.172% { stroke-dashoffset: 0; opacity: 0; }
+  19.233% { stroke-dashoffset: 1; opacity: 0; }
+  24.293% { stroke-dashoffset: 1; opacity: 1; }
+  28.871% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-2-900 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  14.955% { stroke-dashoffset: 0; opacity: 1; }
+  19.172% { stroke-dashoffset: 0; opacity: 0; }
+  19.233% { stroke-dashoffset: 1; opacity: 0; }
+  24.895% { stroke-dashoffset: 1; opacity: 1; }
+  29.473% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-2-1000 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  14.955% { stroke-dashoffset: 0; opacity: 1; }
+  19.172% { stroke-dashoffset: 0; opacity: 0; }
+  19.233% { stroke-dashoffset: 1; opacity: 0; }
+  25.498% { stroke-dashoffset: 1; opacity: 1; }
+  30.076% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-2-1400 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  14.955% { stroke-dashoffset: 0; opacity: 1; }
+  19.172% { stroke-dashoffset: 0; opacity: 0; }
+  19.233% { stroke-dashoffset: 1; opacity: 0; }
+  27.907% { stroke-dashoffset: 1; opacity: 1; }
+  32.486% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-fade-2-1200 {
+  0% { opacity: 1; }
+  14.955% { opacity: 1; }
+  19.172% { opacity: 0; }
+  30.016% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes oc-draw-3-0 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  26.011% { stroke-dashoffset: 0; opacity: 1; }
+  30.228% { stroke-dashoffset: 0; opacity: 0; }
+  30.288% { stroke-dashoffset: 1; opacity: 0; }
+  30.529% { stroke-dashoffset: 1; opacity: 1; }
+  35.107% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-3-200 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  26.011% { stroke-dashoffset: 0; opacity: 1; }
+  30.228% { stroke-dashoffset: 0; opacity: 0; }
+  30.288% { stroke-dashoffset: 1; opacity: 0; }
+  31.734% { stroke-dashoffset: 1; opacity: 1; }
+  36.312% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-3-340 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  26.011% { stroke-dashoffset: 0; opacity: 1; }
+  30.228% { stroke-dashoffset: 0; opacity: 0; }
+  30.288% { stroke-dashoffset: 1; opacity: 0; }
+  32.577% { stroke-dashoffset: 1; opacity: 1; }
+  37.155% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-3-480 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  26.011% { stroke-dashoffset: 0; opacity: 1; }
+  30.228% { stroke-dashoffset: 0; opacity: 0; }
+  30.288% { stroke-dashoffset: 1; opacity: 0; }
+  33.42% { stroke-dashoffset: 1; opacity: 1; }
+  37.999% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-3-700 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  26.011% { stroke-dashoffset: 0; opacity: 1; }
+  30.228% { stroke-dashoffset: 0; opacity: 0; }
+  30.288% { stroke-dashoffset: 1; opacity: 0; }
+  34.746% { stroke-dashoffset: 1; opacity: 1; }
+  39.324% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-3-1000 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  26.011% { stroke-dashoffset: 0; opacity: 1; }
+  30.228% { stroke-dashoffset: 0; opacity: 0; }
+  30.288% { stroke-dashoffset: 1; opacity: 0; }
+  36.553% { stroke-dashoffset: 1; opacity: 1; }
+  41.131% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-4-0 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  47.542% { stroke-dashoffset: 0; opacity: 1; }
+  51.759% { stroke-dashoffset: 0; opacity: 0; }
+  51.819% { stroke-dashoffset: 1; opacity: 0; }
+  52.06% { stroke-dashoffset: 1; opacity: 1; }
+  56.639% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-4-140 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  47.542% { stroke-dashoffset: 0; opacity: 1; }
+  51.759% { stroke-dashoffset: 0; opacity: 0; }
+  51.819% { stroke-dashoffset: 1; opacity: 0; }
+  52.904% { stroke-dashoffset: 1; opacity: 1; }
+  57.482% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-4-700 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  47.542% { stroke-dashoffset: 0; opacity: 1; }
+  51.759% { stroke-dashoffset: 0; opacity: 0; }
+  51.819% { stroke-dashoffset: 1; opacity: 0; }
+  56.277% { stroke-dashoffset: 1; opacity: 1; }
+  60.855% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-4-800 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  47.542% { stroke-dashoffset: 0; opacity: 1; }
+  51.759% { stroke-dashoffset: 0; opacity: 0; }
+  51.819% { stroke-dashoffset: 1; opacity: 0; }
+  56.88% { stroke-dashoffset: 1; opacity: 1; }
+  61.458% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-4-1250 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  47.542% { stroke-dashoffset: 0; opacity: 1; }
+  51.759% { stroke-dashoffset: 0; opacity: 0; }
+  51.819% { stroke-dashoffset: 1; opacity: 0; }
+  59.59% { stroke-dashoffset: 1; opacity: 1; }
+  64.169% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-fade-4-1000 {
+  0% { opacity: 1; }
+  47.542% { opacity: 1; }
+  51.759% { opacity: 0; }
+  61.398% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes oc-run-4-350 {
+  0%, 53.867% { opacity: 0; transform: translate(0, 0); }
+  54.169% { opacity: 1; transform: translate(0, 0); }
+  60.916% { opacity: 1; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+  62%, 100% { opacity: 0; transform: translate(var(--rx, 0px), var(--ry, 0px)); }
+}
+
+@keyframes oc-draw-5-0 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  62.133% { stroke-dashoffset: 0; opacity: 1; }
+  66.349% { stroke-dashoffset: 0; opacity: 0; }
+  66.41% { stroke-dashoffset: 1; opacity: 0; }
+  66.651% { stroke-dashoffset: 1; opacity: 1; }
+  71.229% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-5-120 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  62.133% { stroke-dashoffset: 0; opacity: 1; }
+  66.349% { stroke-dashoffset: 0; opacity: 0; }
+  66.41% { stroke-dashoffset: 1; opacity: 0; }
+  67.373% { stroke-dashoffset: 1; opacity: 1; }
+  71.952% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-5-240 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  62.133% { stroke-dashoffset: 0; opacity: 1; }
+  66.349% { stroke-dashoffset: 0; opacity: 0; }
+  66.41% { stroke-dashoffset: 1; opacity: 0; }
+  68.096% { stroke-dashoffset: 1; opacity: 1; }
+  72.675% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-5-400 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  62.133% { stroke-dashoffset: 0; opacity: 1; }
+  66.349% { stroke-dashoffset: 0; opacity: 0; }
+  66.41% { stroke-dashoffset: 1; opacity: 0; }
+  69.06% { stroke-dashoffset: 1; opacity: 1; }
+  73.639% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-5-480 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  62.133% { stroke-dashoffset: 0; opacity: 1; }
+  66.349% { stroke-dashoffset: 0; opacity: 0; }
+  66.41% { stroke-dashoffset: 1; opacity: 0; }
+  69.542% { stroke-dashoffset: 1; opacity: 1; }
+  74.12% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-5-560 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  62.133% { stroke-dashoffset: 0; opacity: 1; }
+  66.349% { stroke-dashoffset: 0; opacity: 0; }
+  66.41% { stroke-dashoffset: 1; opacity: 0; }
+  70.024% { stroke-dashoffset: 1; opacity: 1; }
+  74.602% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-5-1100 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  62.133% { stroke-dashoffset: 0; opacity: 1; }
+  66.349% { stroke-dashoffset: 0; opacity: 0; }
+  66.41% { stroke-dashoffset: 1; opacity: 0; }
+  73.277% { stroke-dashoffset: 1; opacity: 1; }
+  77.855% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-5-1300 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  62.133% { stroke-dashoffset: 0; opacity: 1; }
+  66.349% { stroke-dashoffset: 0; opacity: 0; }
+  66.41% { stroke-dashoffset: 1; opacity: 0; }
+  74.482% { stroke-dashoffset: 1; opacity: 1; }
+  79.06% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-fade-5-900 {
+  0% { opacity: 1; }
+  62.133% { opacity: 1; }
+  66.349% { opacity: 0; }
+  75.386% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes oc-draw-6-0 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  74.488% { stroke-dashoffset: 0; opacity: 1; }
+  78.705% { stroke-dashoffset: 0; opacity: 0; }
+  78.765% { stroke-dashoffset: 1; opacity: 0; }
+  79.006% { stroke-dashoffset: 1; opacity: 1; }
+  83.584% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-6-120 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  74.488% { stroke-dashoffset: 0; opacity: 1; }
+  78.705% { stroke-dashoffset: 0; opacity: 0; }
+  78.765% { stroke-dashoffset: 1; opacity: 0; }
+  79.729% { stroke-dashoffset: 1; opacity: 1; }
+  84.307% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-6-240 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  74.488% { stroke-dashoffset: 0; opacity: 1; }
+  78.705% { stroke-dashoffset: 0; opacity: 0; }
+  78.765% { stroke-dashoffset: 1; opacity: 0; }
+  80.452% { stroke-dashoffset: 1; opacity: 1; }
+  85.03% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-6-500 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  74.488% { stroke-dashoffset: 0; opacity: 1; }
+  78.705% { stroke-dashoffset: 0; opacity: 0; }
+  78.765% { stroke-dashoffset: 1; opacity: 0; }
+  82.018% { stroke-dashoffset: 1; opacity: 1; }
+  86.596% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-6-600 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  74.488% { stroke-dashoffset: 0; opacity: 1; }
+  78.705% { stroke-dashoffset: 0; opacity: 0; }
+  78.765% { stroke-dashoffset: 1; opacity: 0; }
+  82.62% { stroke-dashoffset: 1; opacity: 1; }
+  87.199% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-6-800 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  74.488% { stroke-dashoffset: 0; opacity: 1; }
+  78.705% { stroke-dashoffset: 0; opacity: 0; }
+  78.765% { stroke-dashoffset: 1; opacity: 0; }
+  83.825% { stroke-dashoffset: 1; opacity: 1; }
+  88.404% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-6-920 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  74.488% { stroke-dashoffset: 0; opacity: 1; }
+  78.705% { stroke-dashoffset: 0; opacity: 0; }
+  78.765% { stroke-dashoffset: 1; opacity: 0; }
+  84.548% { stroke-dashoffset: 1; opacity: 1; }
+  89.127% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-6-1040 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  74.488% { stroke-dashoffset: 0; opacity: 1; }
+  78.705% { stroke-dashoffset: 0; opacity: 0; }
+  78.765% { stroke-dashoffset: 1; opacity: 0; }
+  85.271% { stroke-dashoffset: 1; opacity: 1; }
+  89.849% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-draw-6-1350 {
+  0% { stroke-dashoffset: 0; opacity: 1; }
+  74.488% { stroke-dashoffset: 0; opacity: 1; }
+  78.705% { stroke-dashoffset: 0; opacity: 0; }
+  78.765% { stroke-dashoffset: 1; opacity: 0; }
+  87.139% { stroke-dashoffset: 1; opacity: 1; }
+  91.717% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes oc-fade-6-1200 {
+  0% { opacity: 1; }
+  74.488% { opacity: 1; }
+  78.705% { opacity: 0; }
+  89.548% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes oc-fill-1 {
+  0%, 3.012% { height: 0%; opacity: 1; }
+  40.361% { height: 100%; opacity: 1; }
+  93.976% { height: 100%; opacity: 1; }
+  98.193%, 99.9% { height: 100%; opacity: 0; }
+  100% { height: 0%; opacity: 0; }
+}
+
+@keyframes oc-head-1 {
+  0%, 3.012% { opacity: 0; }
+  4.819% { opacity: 1; }
+  40.361% { opacity: 1; }
+  42.771%, 100% { opacity: 0; }
+}
+
+@keyframes oc-fill-2 {
+  0%, 44.578% { height: 0%; opacity: 1; }
+  86.747% { height: 100%; opacity: 1; }
+  93.976% { height: 100%; opacity: 1; }
+  98.193%, 99.9% { height: 100%; opacity: 0; }
+  100% { height: 0%; opacity: 0; }
+}
+
+@keyframes oc-head-2 {
+  0%, 44.578% { opacity: 0; }
+  46.386% { opacity: 1; }
+  86.747% { opacity: 1; }
+  89.157%, 100% { opacity: 0; }
+}
+
+@keyframes oc-pill {
+  0%, 39.759% { border-color: var(--navy-hairline); color: var(--navy-muted); }
+  42.169% { border-color: var(--accent); color: var(--accent); }
+  93.976% { border-color: var(--accent); color: var(--accent); }
+  98.193%, 100% { border-color: var(--navy-hairline); color: var(--navy-muted); }
+}
+
+@keyframes oc-tnode {
+  0%, 39.759% { border-color: var(--navy-hairline); background-color: #fff; }
+  42.169% { border-color: var(--accent); background-color: var(--accent); }
+  93.976% { border-color: var(--accent); background-color: var(--accent); }
+  98.193%, 100% { border-color: var(--navy-hairline); background-color: #fff; }
+}
