@@ -2,19 +2,30 @@ import type { ReactNode } from "react";
 
 // Outlined, understated CTA in the same language as the header loss control:
 // hairline navy border, navy label, accent arrow, accent border on hover.
+//
+// `variant="solid"` is the same shape and arrow in DataTwin navy, for the one action on a page that
+// needs to lead (the final call to action). Default output is unchanged.
+const VARIANT_CLASSES = {
+  outline:
+    "h-11 border-navy-hairline px-5 text-navy hover:border-accent focus-visible:border-accent",
+  solid: "h-12 border-navy bg-navy px-7 text-white hover:bg-navy/90 focus-visible:bg-navy/90",
+} as const;
+
 export function CtaLink({
   href,
   children,
   className = "",
+  variant = "outline",
 }: {
   href: string;
   children: ReactNode;
   className?: string;
+  variant?: keyof typeof VARIANT_CLASSES;
 }) {
   return (
     <a
       href={href}
-      className={`dt-button group inline-flex h-11 items-center gap-2.5 rounded-full border border-navy-hairline px-5 text-[14px] text-navy transition-colors hover:border-accent focus-visible:border-accent ${className}`.trim()}
+      className={`dt-button group inline-flex items-center gap-2.5 rounded-full border text-[14px] transition-colors ${VARIANT_CLASSES[variant]} ${className}`.trim()}
     >
       {children}
       <svg

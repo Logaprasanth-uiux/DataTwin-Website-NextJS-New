@@ -6,6 +6,8 @@ import { SituationSection } from "@/components/sections/SituationSection";
 import { SolutionsSection } from "@/components/sections/SolutionsSection";
 import { NextStepsSection } from "@/components/sections/NextStepsSection";
 import { OutcomesSection } from "@/components/sections/OutcomesSection";
+import { FinalCta } from "@/components/sections/FinalCta";
+import { Footer } from "@/components/layout/Footer";
 
 export default function Home() {
   return (
@@ -20,6 +22,9 @@ export default function Home() {
         <NextStepsSection />
         <OutcomesSection />
       </main>
+      <Footer>
+        <FinalCta />
+      </Footer>
     </>
   );
 }
