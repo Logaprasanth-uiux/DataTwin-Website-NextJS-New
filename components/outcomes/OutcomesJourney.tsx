@@ -14,18 +14,16 @@ import { ViewGate } from "@/components/solutions/ViewGate";
 //   |     icon   01 / Title ................ Description
 //   |     icon   02 / Title ................ Description
 //   |     icon   03 / Title ................ Description
-//   o OBSERVABILITY
 //   . WITH OBSERVABILITY
 //   |     icon   04 / Title ................ Description
 //   |     icon   05 ...
 //   |     icon   06 ...
 //
 // It is deliberately not a numbered list, a timeline of dots, or a set of cards: the spine carries only
-// three small nodes (the two phase labels and the turning point), the outcomes hang off it with no
-// markers of their own, and the numbers are small static labels. The spine is the left border of three
-// stacked blocks, so it is one continuous line with no positioning to keep in step. A small orange
-// signal travels down it (see outcomes.css), lights the OBSERVABILITY turning point as it passes, and
-// carries on down through the second phase.
+// two small nodes (the two phase labels), the outcomes hang off it with no markers of their own, and the
+// numbers are small static labels. The spine is the left border of two stacked blocks, so it is one
+// continuous line with no positioning to keep in step. A small orange signal travels down it (see
+// outcomes.css) through the first phase and carries on down through the second.
 //
 // Below md the row stacks (icon, number, title, description) and the spine indent shrinks.
 
@@ -95,17 +93,6 @@ export function OutcomesJourney() {
             <OutcomeRow key={outcome.key} outcome={outcome} stage={index + 1} />
           ))}
         </ol>
-      </div>
-
-      {/* The turning point: the spine reaches OBSERVABILITY */}
-      <div className={`${SPINE} pb-10 md:pb-12`}>
-        <div className="-ml-[calc(2rem+8px)] flex items-center md:-ml-[calc(4rem+8px)]">
-          <span aria-hidden="true" className="oc-tnode h-[15px] w-[15px] flex-shrink-0 rounded-full border" />
-          <span aria-hidden="true" className="mr-2 h-px w-[17px] flex-shrink-0 bg-accent md:w-[49px]" />
-          <span className={`oc-pill ${EYEBROW} inline-flex h-9 items-center rounded-full border px-5`}>
-            Observability
-          </span>
-        </div>
       </div>
 
       {/* Phase two: the same system, continued */}

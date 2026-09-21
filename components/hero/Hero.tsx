@@ -7,7 +7,8 @@ import { HeroValueCallout } from "./HeroValueCallout";
 export function Hero() {
   return (
     <Section
-      background="cream-gradient"
+      id="hero"
+      background="canvas"
       className="pt-16 pb-16 sm:pt-20 sm:pb-20 lg:pt-24 lg:pb-24"
     >
       <Container className="flex flex-col items-center px-6 text-center sm:px-8 lg:px-10">

@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { Container } from "./Container";
 import { LossIndicator } from "./LossIndicator";
+import { Logo } from "./Logo";
 
 const SCROLL_THRESHOLD = 8;
 
@@ -15,6 +15,17 @@ function subscribeToScroll(onChange: () => void) {
 
 const getScrolled = () => window.scrollY > SCROLL_THRESHOLD;
 const getScrolledOnServer = () => false;
+
+// True while the Hero is still behind the header. In the Dark Theme the header is dark for exactly that
+// long (so it reads as part of the Hero) and turns to the standard frosted white once the Hero has gone.
+// Pages without a #hero are never "over the hero". The server renders the top-of-page state.
+const getOverHero = () => {
+  const hero = document.getElementById("hero");
+  if (!hero) return false;
+  const headerHeight = document.querySelector<HTMLElement>(".dt-header")?.offsetHeight ?? 0;
+  return hero.getBoundingClientRect().bottom > headerHeight;
+};
+const getOverHeroOnServer = () => true;
 
 const NAV_LINKS = [
   { label: "Platform", href: "#platform" },
@@ -27,23 +38,18 @@ const NAV_LINKS = [
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const scrolled = useSyncExternalStore(subscribeToScroll, getScrolled, getScrolledOnServer);
+  const overHero = useSyncExternalStore(subscribeToScroll, getOverHero, getOverHeroOnServer);
 
   return (
     <header
-      className={`sticky top-0 z-50 w-full bg-white/85 backdrop-blur-[16px] after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:content-[''] after:transition-colors after:duration-300 ${
+      data-over-hero={overHero}
+      className={`dt-header sticky top-0 z-50 w-full bg-white/85 backdrop-blur-[16px] after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:content-[''] after:transition-colors after:duration-300 ${
         scrolled ? "after:bg-[rgba(27,44,70,0.03)]" : "after:bg-transparent"
       }`}
     >
       <Container className="flex h-20 items-center justify-between px-6 sm:px-8 lg:px-10">
         <Link href="/" className="flex items-center" aria-label="DataTwin home">
-          <Image
-            src="/logo/datatwin-logo.svg"
-            alt="DataTwin"
-            width={140}
-            height={26}
-            priority
-            className="h-6 w-auto sm:h-7"
-          />
+          <Logo priority className="h-6 w-auto sm:h-7" />
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex">
@@ -95,7 +101,7 @@ export function Navbar() {
 
 function MenuGlyph({ open }: { open: boolean }) {
   return (
-    <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5 text-navy" aria-hidden="true">
+    <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5 text-navy transition-colors" aria-hidden="true">
       {open ? (
         <path
           d="M5 5l10 10M15 5L5 15"

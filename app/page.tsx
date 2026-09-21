@@ -13,7 +13,7 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <main className="pt-3 sm:pt-4 lg:pt-6">
+      <main className="dt-main pt-3 sm:pt-4 lg:pt-6">
         <Hero />
         <RecoverySection />
         <DarpSection />

@@ -2,16 +2,18 @@ import "@/components/solutions/solutions.css";
 import { Container } from "@/components/layout/Container";
 import { Section } from "@/components/layout/Section";
 import { CtaLink } from "@/components/ui/CtaLink";
+import { LongSectionContextLabel } from "@/components/ui/LongSectionContextLabel";
 import { MORE_USE_CASES } from "@/components/solutions/solutions-data";
 import { SolutionsNetwork } from "@/components/solutions/SolutionsNetwork";
 
 export function SolutionsSection() {
   return (
     <Section id="solutions" background="white" contained={false} className="py-24 sm:py-28 lg:py-36">
+      <LongSectionContextLabel label="Solutions & use cases" headingId="solutions-title" />
       <Container className="px-6 sm:px-8 lg:px-10">
         <div className="text-center">
           <p className="dt-eyebrow dt-eyebrow-accent dt-reveal">Solutions &amp; use cases</p>
-          <h2 className="dt-display dt-reveal mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.02em] text-balance sm:text-5xl lg:text-[3.5rem]">
+          <h2 id="solutions-title" className="dt-display dt-reveal mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.02em] text-balance sm:text-5xl lg:text-[3.5rem]">
             <span className="block text-accent">One engine.</span>
             <span className="block text-navy">Every place money is calculated, owed or moved.</span>
           </h2>

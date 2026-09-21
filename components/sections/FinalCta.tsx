@@ -23,7 +23,9 @@ export function FinalCta() {
         <CtaLink href="#contact" variant="solid">
           Tell us your problem
         </CtaLink>
-        <CtaLink href={CONTACT_MAILTO}>Email us instead</CtaLink>
+        <CtaLink href={CONTACT_MAILTO} variant="outline">
+          Email us instead
+        </CtaLink>
       </div>
     </div>
   );

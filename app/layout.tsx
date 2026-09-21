@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, Darker_Grotesque } from "next/font/google";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -24,9 +26,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      data-theme="dark"
+      suppressHydrationWarning
       className={`${manrope.variable} ${darkerGrotesque.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <head>
+        {/* Applies the saved theme before first paint, so a refresh never flashes the other one. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="min-h-full">
+        {children}
+        <ThemeToggle />
+      </body>
     </html>
   );
 }

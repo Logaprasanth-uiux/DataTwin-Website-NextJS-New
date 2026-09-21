@@ -1,14 +1,12 @@
-/* Outcomes: two phases, and the turning point between them.
+/* Outcomes: two phases, one spine.
 
    The base styles ARE the completed static picture (used with reduced motion, without JS, or before the
-   section scrolls into view): every icon complete, the spine's orange trail drawn end to end, the
-   OBSERVABILITY turning point lit. Motion is layered on only when the ViewGate wrapper has set
+   section scrolls into view): every icon complete, the spine's orange trail drawn end to end. Motion is layered on only when the ViewGate wrapper has set
    `data-sv` AND the user has not asked for reduced motion. The numbers are static labels: nothing here
    animates them.
 
    One 16.6s pass, looping with no reset. A small orange signal travels down the spine: down phase one
-   (0.5s - 6.7s), through OBSERVABILITY, which lights as it arrives (7.0s), and on down phase two
-   (7.4s - 14.4s). The orange trail it leaves behind holds, then dissolves at the end of the pass
+   (0.5s - 6.7s), and on down phase two (7.4s - 14.4s). The orange trail it leaves behind holds, then dissolves at the end of the pass
    (15.6s - 16.3s) and the signal starts again.
    - Icons: every icon is COMPLETE at all times except during its own turn. A turn is timed to when the
      signal reaches that icon's row: the icon dissolves (all its parts together, over the 0.7s before)
@@ -16,8 +14,8 @@
    - Each animated part has its own keyframes, named oc-<kind>-<outcome>-<stagger ms>, with its own
      rebuild time baked in. That is what lets all the parts of an icon dissolve at the same moment while
      rebuilding one after another. Every keyframe percentage is a time in seconds divided by the 16.6s pass.
-   - The spine is the left border of three stacked blocks; `.oc-sp-1` and `.oc-sp-2` lay the orange trail
-     over the first and last, `.oc-fill` is the trail and `.oc-head` the signal riding its end. */
+   - The spine is the left border of two stacked blocks; `.oc-sp-1` and `.oc-sp-2` lay the orange trail
+     over the first and the second, `.oc-fill` is the trail and `.oc-head` the signal riding its end. */
 
 /* Static (complete) state */
 .oc-draw {
@@ -26,16 +24,6 @@
 
 .oc-run {
   opacity: 0;
-}
-
-.oc-pill {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.oc-tnode {
-  border-color: var(--accent);
-  background-color: var(--accent);
 }
 
 .oc-sp {
@@ -68,7 +56,7 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  [data-sv] :is(.oc-draw, .oc-fade, .oc-run, .oc-pill, .oc-tnode, .oc-fill, .oc-head) {
+  [data-sv] :is(.oc-draw, .oc-fade, .oc-run, .oc-fill, .oc-head) {
     animation-duration: 16.6s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
@@ -132,10 +120,8 @@
   [data-sv] .oc-sp-1 .oc-head { animation-name: oc-head-1; }
   [data-sv] .oc-sp-2 .oc-fill { animation-name: oc-fill-2; }
   [data-sv] .oc-sp-2 .oc-head { animation-name: oc-head-2; }
-  [data-sv] .oc-pill { animation-name: oc-pill; }
-  [data-sv] .oc-tnode { animation-name: oc-tnode; }
 
-  [data-sv="paused"] :is(.oc-draw, .oc-fade, .oc-run, .oc-pill, .oc-tnode, .oc-fill, .oc-head) {
+  [data-sv="paused"] :is(.oc-draw, .oc-fade, .oc-run, .oc-fill, .oc-head) {
     animation-play-state: paused;
   }
 }
@@ -642,18 +628,4 @@
   46.386% { opacity: 1; }
   86.747% { opacity: 1; }
   89.157%, 100% { opacity: 0; }
-}
-
-@keyframes oc-pill {
-  0%, 39.759% { border-color: var(--navy-hairline); color: var(--navy-muted); }
-  42.169% { border-color: var(--accent); color: var(--accent); }
-  93.976% { border-color: var(--accent); color: var(--accent); }
-  98.193%, 100% { border-color: var(--navy-hairline); color: var(--navy-muted); }
-}
-
-@keyframes oc-tnode {
-  0%, 39.759% { border-color: var(--navy-hairline); background-color: #fff; }
-  42.169% { border-color: var(--accent); background-color: var(--accent); }
-  93.976% { border-color: var(--accent); background-color: var(--accent); }
-  98.193%, 100% { border-color: var(--navy-hairline); background-color: #fff; }
 }

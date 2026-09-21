@@ -110,7 +110,7 @@ export function HeroPrompt({
         ref={formRef}
         onSubmit={handleSubmit}
         onClick={() => inputRef.current?.focus()}
-        className="dt-prompt group flex min-h-[62px] w-full items-center gap-3 rounded-2xl border border-navy-hairline bg-white/70 px-4 py-2.5 shadow-soft transition-colors hover:border-accent focus-within:border-accent sm:min-h-0"
+        className="dt-prompt group flex min-h-[62px] w-full items-center gap-3 rounded-2xl border border-navy-hairline bg-white/70 on-dark:bg-white/[0.05] px-4 py-2.5 shadow-soft transition-colors hover:border-accent focus-within:border-accent sm:min-h-0"
       >
         <PromptGlyph className="h-4 w-4 flex-shrink-0 text-navy-faint transition-colors group-hover:text-accent group-focus-within:text-accent" />
         <div className="relative min-w-0 flex-1">
@@ -159,7 +159,7 @@ export function HeroPrompt({
         <button
           type="submit"
           aria-label="Ask DataTwin"
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-navy text-white transition-colors group-hover:bg-accent group-focus-within:bg-accent"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-navy text-white on-dark:bg-white/[0.14] on-dark:text-white transition-colors group-hover:bg-accent group-focus-within:bg-accent on-dark:group-hover:text-canvas on-dark:group-focus-within:text-canvas"
         >
           <PromptArrow className="h-3.5 w-3.5" />
         </button>

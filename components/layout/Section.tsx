@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
 
-type SectionBackground = "white" | "cream-gradient" | "navy";
+// "canvas" is the themable surface: the warm gradient in the Light Theme, the DataTwin navy in the Dark
+// Theme (Hero, closing CTA + footer). "cream-gradient" is the fixed warm gradient in both themes.
+type SectionBackground = "white" | "cream-gradient" | "canvas" | "navy";
 
 const BACKGROUND_CLASSES: Record<SectionBackground, string> = {
   white: "bg-background",
   "cream-gradient": "dt-hero-gradient",
+  canvas: "dt-canvas",
   navy: "bg-navy",
 };
 
@@ -34,7 +37,7 @@ export function Section({
   return (
     <section id={id} className="w-full px-3 sm:px-5 lg:px-8">
       <div
-        className={`overflow-hidden rounded-section ${backgroundClass} ${className}`.trim()}
+        className={`dt-section-clip rounded-section ${backgroundClass} ${className}`.trim()}
       >
         {children}
       </div>

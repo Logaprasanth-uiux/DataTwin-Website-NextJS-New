@@ -5,6 +5,10 @@
   --navy: #1b2c46;
   --accent: #df9e64;
 
+  /* Dark theme surface (the DataTwin navy) and the light ink used on it */
+  --canvas: #1b2c46;
+  --ink-on-dark: #f5f0e9;
+
   /* Hero gradient stops (white -> warm cream/peach) */
   --cream-50: #fefcfb;
   --cream-100: #fbf4ed;
@@ -36,9 +40,14 @@
   --shadow-soft: 0 1px 2px rgba(27, 44, 70, 0.05);
 }
 
+/* `on-dark:` styles an element only while it sits on a dark-theme canvas (the themed Hero/footer, or the
+   header over the dark Hero). Use it for the few places the token swap below is not enough. */
+@custom-variant on-dark (&:where([data-theme="dark"] .dt-canvas, [data-theme="dark"] .dt-canvas *, [data-theme="dark"] .dt-header[data-over-hero="true"], [data-theme="dark"] .dt-header[data-over-hero="true"] *));
+
 @theme inline {
   --color-navy: var(--navy);
   --color-accent: var(--accent);
+  --color-canvas: var(--canvas);
   --color-cream-50: var(--cream-50);
   --color-cream-100: var(--cream-100);
   --color-cream-200: var(--cream-200);
@@ -123,6 +132,51 @@ body {
 .dt-button {
   font-weight: 600;
   letter-spacing: -0.005em;
+}
+
+/* The rounded section canvas clips its content to the corners. `clip` does that like `hidden` but, unlike
+   it, does not turn the canvas into a scroll container, so `position: sticky` inside it (the section
+   context label) still works. Browsers without `clip` keep the `hidden` line. */
+.dt-section-clip {
+  overflow: hidden;
+  overflow: clip;
+}
+
+/* Section context label: a small amber editorial marker. As wide as its text, solid amber around the text,
+   then dissolving to transparent over a long, eased fade (amber, then translucent amber, then a faint
+   tint, then nothing), so there is no visible right edge, border or shadow. The colours are fixed brand
+   values, not the theme's ink tokens, so it reads the same on every section in both themes. */
+.dt-context-marker {
+  --fade: 7rem; /* shorter on phones so the marker never runs past the screen */
+  --amber: 223 158 100; /* #df9e64 */
+  width: fit-content;
+  padding: 0.4rem calc(var(--fade) + 0.75rem) 0.4rem 0.875rem; /* 0.75rem solid after the text, then the fade */
+  background: linear-gradient(
+    to right,
+    rgb(var(--amber)) calc(100% - var(--fade)),
+    rgb(var(--amber) / 0.9) calc(100% - var(--fade) * 0.9),
+    rgb(var(--amber) / 0.76) calc(100% - var(--fade) * 0.8),
+    rgb(var(--amber) / 0.52) calc(100% - var(--fade) * 0.65),
+    rgb(var(--amber) / 0.32) calc(100% - var(--fade) * 0.5),
+    rgb(var(--amber) / 0.16) calc(100% - var(--fade) * 0.35),
+    rgb(var(--amber) / 0.06) calc(100% - var(--fade) * 0.2),
+    rgb(var(--amber) / 0.015) calc(100% - var(--fade) * 0.08),
+    rgb(var(--amber) / 0) 100%
+  );
+  color: var(--canvas);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .dt-context-marker {
+    --fade: 14rem;
+    font-size: 12px;
+  }
 }
 
 .dt-container {
@@ -599,3 +653,252 @@ body {
   100% { stroke-dashoffset: 1; opacity: 0; }
 }
 
+
+/* ------------------------------------------------------------------------------------------------
+   Theme. Light is the approved design and is defined above; nothing here changes it.
+
+   Dark is switched by <html data-theme="dark"> (see lib/theme.ts). Only surfaces that opt in change:
+   - a <Section background="canvas"> (the Hero and the closing CTA + footer) becomes the DataTwin navy;
+   - the header does the same while it is over the Hero.
+   Those surfaces re-point the ink tokens (--navy, --navy-muted, ...) at a light ink, so every existing
+   `text-navy`, `text-navy-body`, `border-navy-hairline` ... inside them adapts with no per-component
+   dark classes. Sections that are not canvases (Recovery, DARP, Situation, Solutions, Next steps,
+   Outcomes) never see the swap and render exactly as in the Light Theme.
+   ------------------------------------------------------------------------------------------------ */
+
+/* A themable canvas: the warm gradient in Light (identical to .dt-hero-gradient), the navy in Dark. Each is
+   its own layer beneath the content and the two cross-fade (a gradient cannot be transitioned), so at rest
+   only one is present and no edge of the other shows through the rounded corners. */
+.dt-canvas {
+  position: relative;
+  isolation: isolate;
+}
+
+.dt-canvas::before,
+.dt-canvas::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dt-canvas::before {
+  z-index: -2;
+  background: linear-gradient(to bottom, #ffffff, var(--cream-50), var(--cream-100), var(--cream-200));
+}
+
+.dt-canvas::after {
+  z-index: -1;
+  background: var(--canvas);
+  opacity: 0;
+}
+
+[data-theme="dark"] .dt-canvas::before {
+  opacity: 0;
+}
+
+[data-theme="dark"] .dt-canvas::after {
+  opacity: 1;
+}
+
+[data-theme="dark"] .dt-canvas,
+[data-theme="dark"] .dt-header[data-over-hero="true"] {
+  --navy: var(--ink-on-dark);
+  --navy-muted: color-mix(in srgb, var(--navy) 68%, transparent);
+  --navy-body: color-mix(in srgb, var(--navy) 76%, transparent);
+  --navy-faint: color-mix(in srgb, var(--navy) 46%, transparent);
+  --navy-hairline: color-mix(in srgb, var(--navy) 18%, transparent);
+  --navy-divider: color-mix(in srgb, var(--navy) 11%, transparent);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Horizontal inset of the contained canvases: the sections' px-3 / sm:px-5 / lg:px-8. The header shares
+   it, so its dark panel lines up with the Hero card edge to edge. */
+.dt-header,
+.dt-main {
+  --dt-inset: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .dt-header,
+  .dt-main {
+    --dt-inset: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dt-header,
+  .dt-main {
+    --dt-inset: 2rem;
+  }
+}
+
+/* Header. Over the dark Hero the header element itself is clear and a navy panel, exactly as wide as the
+   Hero and with a straight, square top edge, sits behind its content: header and Hero read as one
+   contained canvas (the gap between them is filled by .dt-main::before below). It is not full-bleed. Once
+   the Hero has scrolled away the panel fades out and the approved full-width frosted white header (the
+   utilities on the element) fades back in, unchanged. */
+.dt-header {
+  transition:
+    background-color 300ms ease,
+    -webkit-backdrop-filter 300ms ease,
+    backdrop-filter 300ms ease;
+}
+
+.dt-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: -1px; /* overlaps the navy gap patch below, so no hairline shows at the join */
+  right: var(--dt-inset);
+  left: var(--dt-inset);
+  z-index: -1;
+  background: var(--canvas);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+[data-theme="dark"] .dt-header[data-over-hero="true"] {
+  background-color: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .dt-header[data-over-hero="true"]::before {
+  opacity: 1;
+}
+
+/* At the very top the Hero sits a small gap below the header, on the white page. In Dark that gap and the
+   Hero's own top corners are painted navy, so the header panel and the Hero join into one canvas whose
+   only rounded corners are the Hero's bottom pair (the top edge is straight and square). */
+.dt-main {
+  --dt-main-gap: 0.75rem; /* mirrors main's pt-3 / sm:pt-4 / lg:pt-6 */
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .dt-main {
+    --dt-main-gap: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dt-main {
+    --dt-main-gap: 1.5rem;
+  }
+}
+
+.dt-main::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: var(--dt-inset);
+  left: var(--dt-inset);
+  height: calc(var(--dt-main-gap) + var(--radius-section));
+  background: var(--canvas);
+  opacity: 0;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .dt-main::before {
+  opacity: 1;
+}
+
+/* Logo: standard mark by default, inverted mark on a dark canvas, cross-faded. */
+.dt-logo {
+  position: relative;
+  display: inline-flex;
+}
+
+.dt-logo-inv {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+}
+
+.dt-logo-base,
+.dt-logo-inv {
+  transition: opacity 300ms ease;
+}
+
+[data-theme="dark"] .dt-canvas .dt-logo-inv,
+[data-theme="dark"] .dt-header[data-over-hero="true"] .dt-logo-inv {
+  opacity: 1;
+}
+
+[data-theme="dark"] .dt-canvas .dt-logo-base,
+[data-theme="dark"] .dt-header[data-over-hero="true"] .dt-logo-base {
+  opacity: 0;
+}
+
+/* Floating theme switch. */
+.dt-theme-toggle {
+  color: var(--navy);
+  background-color: rgb(255 255 255 / 0.88);
+  border: 1px solid var(--navy-hairline);
+  box-shadow: 0 6px 20px rgb(27 44 70 / 0.12);
+  transition:
+    border-color 200ms ease,
+    color 200ms ease,
+    background-color 200ms ease;
+}
+
+.dt-theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dt-theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+[data-theme="dark"] .dt-theme-toggle {
+  color: var(--ink-on-dark);
+  background-color: rgb(27 44 70 / 0.9);
+  border-color: rgb(255 255 255 / 0.22);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.3);
+}
+
+[data-theme="dark"] .dt-theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dt-theme-icon {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    opacity 300ms ease,
+    transform 300ms ease;
+}
+
+.dt-theme-icon-sun {
+  opacity: 0;
+  transform: rotate(-50deg) scale(0.6);
+}
+
+[data-theme="dark"] .dt-theme-icon-moon {
+  opacity: 0;
+  transform: rotate(50deg) scale(0.6);
+}
+
+[data-theme="dark"] .dt-theme-icon-sun {
+  opacity: 1;
+  transform: none;
+}
+
+/* The moment of switching: colours ease across the whole page instead of snapping. Added by useTheme for
+   about half a second, and only for people who have not asked for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html.dt-theme-fade,
+  html.dt-theme-fade *,
+  html.dt-theme-fade *::before,
+  html.dt-theme-fade *::after {
+    transition-property: color, background-color, border-color, fill, stroke, opacity, box-shadow, transform;
+    transition-duration: 450ms;
+    transition-timing-function: ease;
+  }
+}

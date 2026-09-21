@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Container } from "./Container";
+import { Logo } from "./Logo";
 import { SocialIcon, TrustShieldIcon } from "./footer-icons";
 import { Section } from "./Section";
 import {
@@ -18,10 +18,11 @@ import {
 
 // The site-wide footer. Render it once, at the end of any page: `<Footer />`.
 //
-// It owns its whole closing canvas: the Hero's warm gradient, in the same rounded container the other
+// It owns its whole closing canvas: the Hero's canvas (warm gradient in the Light Theme, DataTwin navy in
+// the Dark Theme), in the same rounded container the other
 // contained sections use, and inside it the navigation, brand statement, trust line and legal row, on
 // the same Container and gutters as the header. A page may pass `children` to put its own closing call
-// to action at the top of that same canvas: the gradient then runs unbroken from the CTA through to the
+// to action at the top of that same canvas: the canvas then runs unbroken from the CTA through to the
 // bottom of the page, and a hairline (not a change of background) marks where the footer proper begins.
 // Everything the footer says lives in footer-data.ts, including the social accounts (icon slots until
 // their URLs are supplied).
@@ -33,7 +34,7 @@ const SMALL = "text-[12.5px] font-medium text-navy-muted";
 export function Footer({ children }: { children?: ReactNode }) {
   return (
     <footer className="pb-3 sm:pb-5 lg:pb-8">
-      <Section background="cream-gradient" className="pt-20 pb-10 sm:pt-24 sm:pb-12 lg:pt-32 lg:pb-14">
+      <Section background="canvas" className="pt-20 pb-10 sm:pt-24 sm:pb-12 lg:pt-32 lg:pb-14">
         <Container className="px-6 sm:px-8 lg:px-10">
           {children}
 
@@ -67,13 +68,7 @@ export function Footer({ children }: { children?: ReactNode }) {
             <div className="mt-16 flex flex-col gap-8 border-t border-navy-divider pt-12 lg:mt-20 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
               <div className="max-w-2xl">
                 <Link href="/" aria-label="DataTwin home" className="inline-flex">
-                  <Image
-                    src="/logo/datatwin-logo.svg"
-                    alt="DataTwin"
-                    width={140}
-                    height={26}
-                    className="h-6 w-auto sm:h-7"
-                  />
+                  <Logo className="h-6 w-auto sm:h-7" />
                 </Link>
                 <p className="mt-6 text-[15px] leading-[1.7] text-navy-body">{BRAND_STATEMENT}</p>
                 <ul aria-label="DataTwin on social media" className="mt-6 flex items-center gap-5">

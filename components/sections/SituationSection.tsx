@@ -1,6 +1,7 @@
 import { Container } from "@/components/layout/Container";
 import { Section } from "@/components/layout/Section";
 import { CtaLink } from "@/components/ui/CtaLink";
+import { LongSectionContextLabel } from "@/components/ui/LongSectionContextLabel";
 
 const PROBLEMS = [
   {
@@ -44,6 +45,7 @@ export function SituationSection() {
         background="cream-gradient"
         className="py-20 sm:py-24 lg:py-32"
       >
+        <LongSectionContextLabel label="The situation" headingId="situation-title" />
         <Container className="px-6 sm:px-8 lg:px-10">
           <div className="grid gap-8 lg:grid-cols-12 lg:items-start lg:gap-x-12 lg:pb-11">
             <div className="dt-reveal lg:col-span-8">
@@ -51,7 +53,7 @@ export function SituationSection() {
                 <span aria-hidden="true" className="h-px w-10 bg-accent" />
                 <p className="dt-eyebrow dt-eyebrow-accent">The situation</p>
               </div>
-              <h2 className="dt-display mt-6 text-4xl leading-[1.04] font-semibold tracking-[-0.02em] sm:text-5xl lg:text-[3.5rem]">
+              <h2 id="situation-title" className="dt-display mt-6 text-4xl leading-[1.04] font-semibold tracking-[-0.02em] sm:text-5xl lg:text-[3.5rem]">
                 <span className="block text-navy">The ERP records the transaction.</span>
                 <span className="block text-accent">The leakage happens around it.</span>
               </h2>
