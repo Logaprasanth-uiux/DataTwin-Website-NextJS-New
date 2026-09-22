@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { Manrope, Darker_Grotesque } from "next/font/google";
+import { Inter, Poppins } from "next/font/google";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-const manrope = Manrope({
+// Inter: body, UI and supporting text. A variable font, so one file covers every weight the site uses.
+const inter = Inter({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
 });
 
-const darkerGrotesque = Darker_Grotesque({
+// Poppins: headings and display text. Not variable, so only the weights the site uses are loaded.
+const poppins = Poppins({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["600"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       data-theme="dark"
       suppressHydrationWarning
-      className={`${manrope.variable} ${darkerGrotesque.variable} h-full antialiased`}
+      className={`${inter.variable} ${poppins.variable} h-full antialiased`}
     >
       <head>
         {/* Applies the saved theme before first paint, so a refresh never flashes the other one. */}

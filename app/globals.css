@@ -2,11 +2,12 @@
 
 :root {
   /* Brand */
-  --navy: #1b2c46;
-  --accent: #df9e64;
+  --navy: #041e3c;
+  --accent: #dda162;
+  --crimson: #710c10;
 
   /* Dark theme surface (the DataTwin navy) and the light ink used on it */
-  --canvas: #1b2c46;
+  --canvas: #041e3c;
   --ink-on-dark: #f5f0e9;
 
   /* Hero gradient stops (white -> warm cream/peach) */
@@ -23,6 +24,10 @@
 
   /* Restrained financial-loss red — a narrow semantic/functional token, not a brand color */
   --loss: #c96b5c;
+
+  /* Eyebrow accent: crimson on light/white surfaces (more embossed contrast there), amber on dark
+     surfaces — see the .bg-navy rule and the dark-canvas override below. */
+  --eyebrow-accent: var(--crimson);
 
   --background: #ffffff;
   --foreground: var(--navy);
@@ -47,6 +52,7 @@
 @theme inline {
   --color-navy: var(--navy);
   --color-accent: var(--accent);
+  --color-crimson: var(--crimson);
   --color-canvas: var(--canvas);
   --color-cream-50: var(--cream-50);
   --color-cream-100: var(--cream-100);
@@ -60,7 +66,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* Two-level type system: Darker Grotesque (display/editorial), Manrope (body/UI) */
+  /* Two-level type system: Poppins (display/headings), Inter (body/UI) */
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
 
@@ -77,12 +83,18 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Darker Grotesque — headlines, display statements, large numbers. Never body copy. */
+/* Poppins — headlines, display statements, large numbers. Never body copy.
+   Poppins is much larger than the face the approved sizes were set in (x-height 0.555em against 0.41em,
+   about 36% wider for the same text), so at the same `font-size` it would look far bigger and re-wrap
+   every heading. `font-size-adjust` fixes that in one place: it scales the glyphs so their x-height is
+   0.41 of the size, which is the approved look, while every `font-size` in the components stays as
+   approved. Browsers without support just show Poppins at its nominal size. */
 .dt-display {
   font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size-adjust: ex-height 0.41;
 }
 
-/* Manrope-based type roles, reusable across future sections */
+/* Inter-based type roles, reusable across future sections */
 .dt-eyebrow {
   font-size: 11px;
   font-weight: 500;
@@ -99,11 +111,17 @@ body {
 }
 
 .dt-eyebrow-accent {
-  color: var(--accent);
+  color: var(--eyebrow-accent);
+}
+
+/* Fixed-navy sections (DARP, closing CTA) are always dark, regardless of theme — their eyebrow stays amber. */
+.bg-navy {
+  --eyebrow-accent: var(--accent);
 }
 
 .dt-heading {
   font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size-adjust: ex-height 0.41;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--navy);
@@ -148,7 +166,7 @@ body {
    values, not the theme's ink tokens, so it reads the same on every section in both themes. */
 .dt-context-marker {
   --fade: 7rem; /* shorter on phones so the marker never runs past the screen */
-  --amber: 223 158 100; /* #df9e64 */
+  --amber: 221 161 98; /* #dda162 */
   width: fit-content;
   padding: 0.4rem calc(var(--fade) + 0.75rem) 0.4rem 0.875rem; /* 0.75rem solid after the text, then the fade */
   background: linear-gradient(
@@ -555,82 +573,79 @@ body {
 
 /* DARP stage glyphs. The base styles are the completed icons (reduced motion); the cycle below runs
    only under prefers-reduced-motion: no-preference. One 4.8s period, absolute times: Discover
-   draws its lines then nudges its arrow forward (0-0.9s), Assess scans and flags an exception
-   (0.8-1.8s), Recover confirms (1.6-2.1s), Prevent confirms (2.4-2.9s); all four hold complete
-   until 3.9s, reset together over 0.5s, rest briefly, repeat. Outer circles never animate. */
+   (the magnifier) scans and flags an exception (0-1.0s), Assess (the lines) draws them then nudges its
+   arrow forward (0.8-1.8s), Recover confirms (1.6-2.1s), Prevent confirms (2.4-2.9s); all four hold
+   complete until 3.9s, reset together over 0.5s, rest briefly, repeat. Outer circles never animate. */
 @media (prefers-reduced-motion: no-preference) {
-  .dg-d-line1,
-  .dg-d-line2,
-  .dg-d-line3,
+  .dg-a-line1,
+  .dg-a-line2,
+  .dg-a-line3,
   .dg-r-check,
   .dg-p-check {
     stroke-dasharray: 1;
   }
 
-  .dg-d-line1 { animation: dg-d-line1 4800ms ease-in-out infinite; }
-  .dg-d-line2 { animation: dg-d-line2 4800ms ease-in-out infinite; }
-  .dg-d-line3 { animation: dg-d-line3 4800ms ease-in-out infinite; }
-  .dg-d-arrow { animation: dg-d-arrow 4800ms ease-in-out infinite; }
-  .dg-a-scan { animation: dg-a-scan 4800ms ease-in-out infinite; }
-  .dg-a-under { animation: dg-a-under 4800ms ease-in-out infinite; }
+  .dg-a-line1 { animation: dg-a-line1 4800ms ease-in-out infinite; }
+  .dg-a-line2 { animation: dg-a-line2 4800ms ease-in-out infinite; }
+  .dg-a-line3 { animation: dg-a-line3 4800ms ease-in-out infinite; }
+  .dg-a-arrow { animation: dg-a-arrow 4800ms ease-in-out infinite; }
+  .dg-d-scan { animation: dg-d-scan 4800ms ease-in-out infinite; }
+  .dg-d-under { animation: dg-d-under 4800ms ease-in-out infinite; }
   .dg-r-check { animation: dg-r-check 4800ms ease-in-out infinite; }
   .dg-p-check { animation: dg-p-check 4800ms ease-in-out infinite; }
 }
 
 /* the "under" mark only exists during the scan; it is not part of the completed icon */
-.dg-a-under {
+.dg-d-under {
   opacity: 0;
 }
 
-@keyframes dg-d-line1 {
-  0% { stroke-dashoffset: 1; opacity: 0; }
-  0.000% { stroke-dashoffset: 1; opacity: 0; }
-  0.500% { stroke-dashoffset: 1; opacity: 1; }
-  7.792% { stroke-dashoffset: 0; opacity: 1; }
+@keyframes dg-a-line1 {
+  0%, 16.667% { stroke-dashoffset: 1; opacity: 0; }
+  17.167% { stroke-dashoffset: 1; opacity: 1; }
+  24.459% { stroke-dashoffset: 0; opacity: 1; }
   81.250% { stroke-dashoffset: 0; opacity: 1; }
   91.667%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
   100% { stroke-dashoffset: 1; opacity: 0; }
 }
 
-@keyframes dg-d-line2 {
-  0% { stroke-dashoffset: 1; opacity: 0; }
-  2.500% { stroke-dashoffset: 1; opacity: 0; }
-  3.000% { stroke-dashoffset: 1; opacity: 1; }
-  10.292% { stroke-dashoffset: 0; opacity: 1; }
+@keyframes dg-a-line2 {
+  0%, 19.167% { stroke-dashoffset: 1; opacity: 0; }
+  19.667% { stroke-dashoffset: 1; opacity: 1; }
+  26.959% { stroke-dashoffset: 0; opacity: 1; }
   81.250% { stroke-dashoffset: 0; opacity: 1; }
   91.667%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
   100% { stroke-dashoffset: 1; opacity: 0; }
 }
 
-@keyframes dg-d-line3 {
-  0% { stroke-dashoffset: 1; opacity: 0; }
-  5.000% { stroke-dashoffset: 1; opacity: 0; }
-  5.500% { stroke-dashoffset: 1; opacity: 1; }
-  12.792% { stroke-dashoffset: 0; opacity: 1; }
+@keyframes dg-a-line3 {
+  0%, 21.667% { stroke-dashoffset: 1; opacity: 0; }
+  22.167% { stroke-dashoffset: 1; opacity: 1; }
+  29.459% { stroke-dashoffset: 0; opacity: 1; }
   81.250% { stroke-dashoffset: 0; opacity: 1; }
   91.667%, 99.9% { stroke-dashoffset: 0; opacity: 0; }
   100% { stroke-dashoffset: 1; opacity: 0; }
 }
 
-@keyframes dg-d-arrow {
-  0%, 10.000% { opacity: 0; transform: translateX(-2.5px); }
-  17.917% { opacity: 1; transform: translateX(0); }
+@keyframes dg-a-arrow {
+  0%, 26.667% { opacity: 0; transform: translateX(-2.5px); }
+  34.584% { opacity: 1; transform: translateX(0); }
   81.250% { opacity: 1; transform: translateX(0); }
   91.667%, 99.9% { opacity: 0; transform: translateX(0); }
   100% { opacity: 0; transform: translateX(-2.5px); }
 }
 
-@keyframes dg-a-scan {
-  0%, 16.667% { transform: translate(0, 0); }
-  23.958% { transform: translate(-1.3px, -0.3px); }
-  34.375% { transform: translate(1.5px, 0.5px); }
-  37.500%, 100% { transform: translate(0, 0); }
+@keyframes dg-d-scan {
+  0% { transform: translate(0, 0); }
+  7.291% { transform: translate(-1.3px, -0.3px); }
+  17.708% { transform: translate(1.5px, 0.5px); }
+  20.833%, 100% { transform: translate(0, 0); }
 }
 
-@keyframes dg-a-under {
-  0%, 26.042% { opacity: 0; }
-  30.208%, 35.417% { opacity: 1; }
-  39.583%, 100% { opacity: 0; }
+@keyframes dg-d-under {
+  0%, 9.375% { opacity: 0; }
+  13.541%, 18.750% { opacity: 1; }
+  22.916%, 100% { opacity: 0; }
 }
 
 @keyframes dg-r-check {
@@ -710,6 +725,7 @@ body {
   --navy-hairline: color-mix(in srgb, var(--navy) 18%, transparent);
   --navy-divider: color-mix(in srgb, var(--navy) 11%, transparent);
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --eyebrow-accent: var(--accent);
 }
 
 /* Horizontal inset of the contained canvases: the sections' px-3 / sm:px-5 / lg:px-8. The header shares

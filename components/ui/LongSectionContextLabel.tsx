@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useSyncExternalStore } from "react";
-import { Container } from "@/components/layout/Container";
 
 // A quiet "where am I" label for long sections. Once the section's own heading has fully scrolled out of
 // the top of the viewport it appears just below the sticky header, and it stays while the reader is still
@@ -15,7 +14,8 @@ import { Container } from "@/components/layout/Container";
 //     <Container>… <h2 id="solutions-title">…</h2> …</Container>
 //   </Section>
 //
-// It works in both plain and `contained` (rounded card) sections. In a card, the strip spans the card.
+// It works in both plain and `contained` (rounded card) sections. It breaks out to the true viewport left
+// edge in both cases, rather than following the card's or content container's own inset.
 //
 // The marker is the same DataTwin amber with navy text in every section and both themes (see
 // `.dt-context-marker` in globals.css): it is as wide as its text and fades out to the right.
@@ -63,14 +63,15 @@ export function LongSectionContextLabel({ label, headingId }: { label: string; h
       className="pointer-events-none sticky z-30 h-0"
       style={{ top: HEADER_OFFSET }}
     >
+      {/* `fixed` (not `absolute`) so the strip is positioned against the viewport itself, breaking out of
+          the section's own max-width/padding/rounded-card constraints and reaching the true left edge. */}
       <div
-        className={`absolute inset-x-0 top-0 overflow-hidden transition-[opacity,transform] duration-300 ease-out motion-reduce:transform-none motion-reduce:transition-none ${
+        className={`fixed inset-x-0 overflow-hidden transition-[opacity,transform] duration-300 ease-out motion-reduce:transform-none motion-reduce:transition-none ${
           visible ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
         }`}
+        style={{ top: HEADER_OFFSET }}
       >
-        <Container className="px-6 sm:px-8 lg:px-10">
-          <p className="dt-context-marker">{label}</p>
-        </Container>
+        <p className="dt-context-marker">{label}</p>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 // The site's call-to-action link, in three treatments (all the same pill shape and arrow):
 //
-// - `dark` (the default): the in-content secondary CTA. Solid DataTwin navy (#1b2c46) with a white label
+// - `dark` (the default): the in-content secondary CTA. Solid DataTwin navy (#041e3c) with a white label
 //   and arrow, the same in both themes (it is a fixed brand fill, not the theme's ink colour).
 // - `outline`: the quiet hairline version: navy label, accent arrow, accent border on hover. It reads its
 //   colours from the theme's ink tokens, so it also works on a dark canvas (e.g. "Email us instead").

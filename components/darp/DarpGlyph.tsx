@@ -1,6 +1,6 @@
 import type { DarpStageKey } from "./darp-data";
 
-// 24×24 line glyphs for the four stages. Structure uses the current stroke colour; the one
+// 24×24 line glyphs for the four stages (Discover: the magnifier; Assess: the lines and arrow). Structure uses the current stroke colour; the one
 // orange accent per glyph marks what that stage surfaces. Every glyph is written in its completed
 // state (what reduced-motion users see); the .dg-* classes are hooks for the shared micro-animation
 // cycle in globals.css. Each stage's animation is independent, so any one can be refined alone.
@@ -9,21 +9,21 @@ export function DarpGlyphPaths({ stage }: { stage: DarpStageKey }) {
     case "discover":
       return (
         <>
-          <path className="dg-d-line1" pathLength={1} d="M4 7h9" />
-          <path className="dg-d-line2" pathLength={1} d="M4 12h13" />
-          <path className="dg-d-line3" pathLength={1} d="M4 17h7" />
-          <path className="dg-d-arrow text-accent" d="M16.5 9.5L19.5 12l-3 2.5" />
+          <g className="dg-d-scan">
+            <circle cx="11" cy="11" r="5.5" />
+            <path d="M15.2 15.2L19.5 19.5" />
+            <circle cx="11" cy="11" r="1.7" className="text-accent" fill="currentColor" stroke="none" />
+          </g>
+          <path className="dg-d-under text-accent" d="M6.5 20.2h6" />
         </>
       );
     case "assess":
       return (
         <>
-          <g className="dg-a-scan">
-            <circle cx="11" cy="11" r="5.5" />
-            <path d="M15.2 15.2L19.5 19.5" />
-            <circle cx="11" cy="11" r="1.7" className="text-accent" fill="currentColor" stroke="none" />
-          </g>
-          <path className="dg-a-under text-accent" d="M6.5 20.2h6" />
+          <path className="dg-a-line1" pathLength={1} d="M4 7h9" />
+          <path className="dg-a-line2" pathLength={1} d="M4 12h13" />
+          <path className="dg-a-line3" pathLength={1} d="M4 17h7" />
+          <path className="dg-a-arrow text-accent" d="M16.5 9.5L19.5 12l-3 2.5" />
         </>
       );
     case "recover":
