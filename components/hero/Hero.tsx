@@ -1,6 +1,6 @@
 import { Container } from "@/components/layout/Container";
 import { Section } from "@/components/layout/Section";
-import { HeroPrompt } from "./HeroPrompt";
+import { HeroPromptLauncher } from "./HeroPromptLauncher";
 import { HeroTrustSignals } from "./HeroTrustSignals";
 import { HeroValueCallout } from "./HeroValueCallout";
 
@@ -33,7 +33,7 @@ export function Hero() {
 
         <div className="relative mt-12 w-full max-w-[34rem] text-left xl:mt-14">
           <HeroValueCallout className="mb-3 xl:mb-0" />
-          <HeroPrompt />
+          <HeroPromptLauncher />
         </div>
 
         <HeroTrustSignals className="mt-10 sm:mt-12" />

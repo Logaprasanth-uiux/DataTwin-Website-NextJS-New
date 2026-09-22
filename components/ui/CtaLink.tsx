@@ -22,37 +22,54 @@ const ARROW_CLASSES = {
   solid: "text-accent on-dark:text-canvas",
 } as const;
 
+// Either `href` (renders an `<a>`, the default) or `onClick` (renders a `<button>`, for actions
+// that need to run JS before/instead of navigating, e.g. the chat launch's existing-conversation
+// check) is provided — same visual treatment either way.
 export function CtaLink({
   href,
+  onClick,
   children,
   className = "",
   variant = "dark",
 }: {
-  href: string;
+  href?: string;
+  onClick?: () => void;
   children: ReactNode;
   className?: string;
   variant?: keyof typeof VARIANT_CLASSES;
 }) {
-  return (
-    <a
-      href={href}
-      className={`dt-button group inline-flex items-center gap-2.5 rounded-full border text-[14px] transition-colors ${VARIANT_CLASSES[variant]} ${className}`.trim()}
+  const classes =
+    `dt-button group inline-flex items-center gap-2.5 rounded-full border text-[14px] transition-colors ${VARIANT_CLASSES[variant]} ${className}`.trim();
+  const arrow = (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      className={`h-3.5 w-3.5 flex-shrink-0 ${ARROW_CLASSES[variant]}`}
+      aria-hidden="true"
     >
+      <path
+        d="M3 8h10M9 4l4 4-4 4"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={classes}>
+        {children}
+        {arrow}
+      </button>
+    );
+  }
+
+  return (
+    <a href={href} className={classes}>
       {children}
-      <svg
-        viewBox="0 0 16 16"
-        fill="none"
-        className={`h-3.5 w-3.5 flex-shrink-0 ${ARROW_CLASSES[variant]}`}
-        aria-hidden="true"
-      >
-        <path
-          d="M3 8h10M9 4l4 4-4 4"
-          stroke="currentColor"
-          strokeWidth="1.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      {arrow}
     </a>
   );
 }

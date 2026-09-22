@@ -1,6 +1,6 @@
 import { Container } from "@/components/layout/Container";
 import { Section } from "@/components/layout/Section";
-import { CtaLink } from "@/components/ui/CtaLink";
+import { RecoveryCtaButton } from "@/components/chat/RecoveryCtaButton";
 import { LongSectionContextLabel } from "@/components/ui/LongSectionContextLabel";
 import {
   AuditReadyVisual,
@@ -82,7 +82,7 @@ export function RecoverySection() {
         </div>
 
         <div className="mt-14 flex justify-center sm:mt-16">
-          <CtaLink href="#contact">Find your recoverable number</CtaLink>
+          <RecoveryCtaButton>Find your recoverable number</RecoveryCtaButton>
         </div>
       </Container>
     </Section>
