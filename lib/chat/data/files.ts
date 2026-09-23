@@ -1,55 +1,69 @@
-import type { FileRequirement } from "../types";
+// Generated from File_Requirements.xlsx (all 57 source files). `id` is an internal key only.
+export type FileLevel = "required" | "optional" | "conditional";
 
-// Human-friendly file descriptions, distilled from the DataTwin reconciliation source data
-// (File_Requirements). Internal file IDs (F01, F02, ...) are kept only as an internal key —
-// they are never rendered in the UI.
-
-const FILE_LIBRARY = {
-  F01: {
-    name: "GSTR-2B Detail",
-    optionalWhy: "Can help investigate supplier-upload or amendment-related differences.",
-  },
-  F02: {
-    name: "GSTR-2B Detail",
-    requiredWhy:
-      "Helps identify eligible ITC available in the portal and compare it against your books and claims.",
-    optionalWhy: "Adds portal-availability context alongside what's already been claimed.",
-  },
-  F03: {
-    name: "GSTR-3B Filing Summary",
-    requiredWhy: "Shows what was actually claimed in the filed return, by tax period.",
-  },
-  F05: {
-    name: "Vendor Bill Register",
-    requiredWhy:
-      "Establishes the invoices recorded in your books and helps identify invoices missing from the portal.",
-    optionalWhy: "Helps cross-check eligible ITC against what's actually booked.",
-  },
-  F10: {
-    name: "ITC Claim Working",
-    requiredWhy: "Shows what your team determined was eligible and what was actually claimed, invoice by invoice.",
-    optionalWhy: "Adds invoice-level detail to strengthen the audit trail.",
-  },
-} as const;
-
-type FileId = keyof typeof FILE_LIBRARY;
-
-function file(id: FileId, level: FileRequirement["level"]): FileRequirement {
-  const entry = FILE_LIBRARY[id];
-  const why =
-    level === "optional"
-      ? (entry as { optionalWhy?: string }).optionalWhy ?? (entry as { requiredWhy: string }).requiredWhy
-      : (entry as { requiredWhy: string }).requiredWhy;
-  return { fileId: id, name: entry.name, level, why };
+export interface FileDef {
+  id: string;
+  name: string;
+  level: FileLevel;
+  why: string;
 }
 
-export const FILES = {
-  gstr2bRequired: () => file("F02", "required"),
-  gstr2bOptional: () => file("F02", "optional"),
-  gstr2aOptional: () => file("F01", "optional"),
-  gstr3bRequired: () => file("F03", "required"),
-  vendorBillRequired: () => file("F05", "required"),
-  vendorBillOptional: () => file("F05", "optional"),
-  itcClaimWorkingRequired: () => file("F10", "required"),
-  itcClaimWorkingOptional: () => file("F10", "optional"),
+export const FILE_DEFS: Record<string, FileDef> = {
+  F01: { id: "F01", name: "GSTR-2A Detail", level: "optional", why: "Provides supplier-reported inward-supply invoices, credit/debit notes and amendments. Useful for supplier-upload and amendment root-cause analysis." },
+  F02: { id: "F02", name: "GSTR-2B Detail", level: "required", why: "Primary period-wise auto-drafted ITC statement used to determine whether purchase documents are reflected for ITC reconciliation." },
+  F03: { id: "F03", name: "GSTR-3B Filing", level: "required", why: "Shows ITC actually reported in the filed return by tax period, including reversals and net ITC." },
+  F04: { id: "F04", name: "Electronic Credit Ledger", level: "optional", why: "Provides portal-side credit movements and balances after return filing." },
+  F05: { id: "F05", name: "Vendor Bill Register", level: "required", why: "Establishes the purchase-invoice population and GST originally booked in the company books." },
+  F06: { id: "F06", name: "Credit Debit Notes", level: "conditional", why: "Captures subsequent adjustments that increase or reduce original taxable value and GST." },
+  F07: { id: "F07", name: "Input GST GL", level: "required", why: "Shows accounting postings to Input CGST/SGST/IGST/Cess, including reversals, reclaims and return claim movements." },
+  F08: { id: "F08", name: "Vendor Ledger Statement", level: "optional", why: "Shows AP invoice, credit note, reversal and payment lifecycle by vendor." },
+  F09: { id: "F09", name: "Bank Statement", level: "optional", why: "Provides independent evidence of vendor-payment transactions and consolidated payment batches." },
+  F10: { id: "F10", name: "ITC Claim Working", level: "required", why: "Provides invoice-level internal determination of eligible ITC and ITC selected/claimed by period." },
+  F11: { id: "F11", name: "Opening GST Balance", level: "required", why: "Provides brought-forward GST receivable balances before the current reconciliation period." },
+  F12: { id: "F12", name: "ITC Reversal Reclaim", level: "required", why: "Tracks temporary/permanent ITC reversals and later reclaims." },
+  F13: { id: "F13", name: "RCM Liability Working", level: "conditional", why: "Provides transaction-level reverse-charge liability and payment/eligibility linkage." },
+  F14: { id: "F14", name: "GSTR-9 Annual Return", level: "required", why: "Annual return is the statutory return against which turnover, tax and ITC are reconciled in GSTR-9C." },
+  F15: { id: "F15", name: "Annual Financial Statements", level: "required", why: "Provides annual financial-statement turnover and book figures used as the books-side starting point for GSTR-9C." },
+  F16: { id: "F16", name: "Trial Balance", level: "required", why: "Provides GL-level annual book balances needed to derive GSTIN-wise turnover, taxes, expenses and ITC." },
+  F17: { id: "F17", name: "Sales Revenue Register", level: "required", why: "Provides transaction-level outward-supply data supporting turnover and tax-liability reconciliation." },
+  F18: { id: "F18", name: "GSTR-1 GSTR-1A Annual", level: "required", why: "Provides annual outward-supply reporting and amendments used to bridge books to tax liability." },
+  F19: { id: "F19", name: "Electronic Liability Ledger", level: "optional", why: "Provides portal-side liability postings and offsets supporting annual tax-payable reconciliation." },
+  F20: { id: "F20", name: "Electronic Cash Ledger", level: "optional", why: "Provides cash deposits and offsets used to discharge GST liabilities." },
+  F21: { id: "F21", name: "DRC-03 Additional Payments", level: "conditional", why: "Captures voluntary/additional payments made outside normal return offset that may relate to annual reconciliation differences." },
+  F22: { id: "F22", name: "Advance Register", level: "conditional", why: "Supports GSTR-9C gross-turnover adjustments for advances where GST/book recognition timing differs." },
+  F23: { id: "F23", name: "Unbilled Deferred Revenue", level: "conditional", why: "Supports annual reconciliation where revenue recognition and GST invoicing occur in different financial years." },
+  F24: { id: "F24", name: "Export SEZ Register", level: "conditional", why: "Provides annual zero-rated/export/SEZ supply data required to explain taxable-turnover composition." },
+  F25: { id: "F25", name: "Exempt Nil Non-GST Register", level: "conditional", why: "Provides annual exempt, nil-rated, non-GST and no-supply amounts used to derive taxable turnover." },
+  F26: { id: "F26", name: "GSTIN Wise Allocation", level: "required", why: "Allocates PAN/entity-level financial-statement turnover and ITC to the specific GSTIN for which GSTR-9C is prepared." },
+  F27: { id: "F27", name: "Prior Next Year Timing", level: "optional", why: "Tracks transactions/ITC booked in one financial year but reported/availed in another." },
+  F28: { id: "F28", name: "Expense Head ITC Working", level: "required", why: "Maps annual GST-bearing expenses/capital-goods heads to total and eligible ITC for expense-head reconciliation." },
+  F29: { id: "F29", name: "IMS Detail", level: "required", why: "Provides document-level IMS records and recipient action/status before GSTR-2B generation." },
+  F30: { id: "F30", name: "Output GST GL", level: "required", why: "Provides accounting-side output GST liability postings by tax head." },
+  F31: { id: "F31", name: "Sales Credit Debit Notes", level: "required", why: "Captures outward credit/debit notes and amendments linked to original sales invoices." },
+  F32: { id: "F32", name: "E-Commerce Sales Register", level: "conditional", why: "Provides marketplace sales, operator and TCS linkage for outward/TCS reconciliation." },
+  F33: { id: "F33", name: "GST Payment Challan Register", level: "optional", why: "Provides challan/CIN-based GST cash deposits feeding Electronic Cash Ledger." },
+  F34: { id: "F34", name: "Bill of Entry Register", level: "required", why: "Provides customs Bill-of-Entry details and IGST paid on imports/SEZ procurements." },
+  F35: { id: "F35", name: "ICEGATE Import Data", level: "required", why: "Provides customs-side import data that flows to GSTR-2B." },
+  F36: { id: "F36", name: "Import Purchase Register", level: "optional", why: "Separates import/SEZ purchases from normal domestic vendor bills." },
+  F37: { id: "F37", name: "GSTR-6 ISD Return", level: "required", why: "Provides ISD credit received/distributed and amendments reported through GSTR-6." },
+  F38: { id: "F38", name: "ISD Credit Distribution Register", level: "required", why: "Provides internal source-to-recipient allocation of common input-service credit." },
+  F39: { id: "F39", name: "E-Invoice IRP Register", level: "required", why: "Provides IRN/QR/e-invoice registration status and values from IRP." },
+  F40: { id: "F40", name: "E-Way Bill Register", level: "conditional", why: "Provides goods-movement document details linked to invoice/e-invoice." },
+  F41: { id: "F41", name: "RFD-01 Refund Applications", level: "required", why: "Provides refund applications, category, claimed amount and ARN." },
+  F42: { id: "F42", name: "RFD-06 Refund Orders", level: "required", why: "Provides sanction/rejection order and sanctioned amount." },
+  F43: { id: "F43", name: "Refund Bank Receipts", level: "optional", why: "Provides actual bank receipt of sanctioned refunds." },
+  F44: { id: "F44", name: "Refund Eligibility Working", level: "required", why: "Calculates eligible refund before RFD-01 for each applicable refund category." },
+  F45: { id: "F45", name: "Refund Deficiency SCN Register", level: "conditional", why: "Tracks deficiency memos, notices, replies and evidence gaps during refund processing." },
+  F46: { id: "F46", name: "GSTR-7 TDS Data", level: "conditional", why: "Provides GST TDS deductions reported by deductors." },
+  F47: { id: "F47", name: "GSTR-8 TCS Data", level: "conditional", why: "Provides TCS reported by e-commerce operators." },
+  F48: { id: "F48", name: "GST TDS TCS Credit Received", level: "required", why: "Provides taxpayer-side TDS/TCS credit received/accepted status." },
+  F49: { id: "F49", name: "Books GST TDS TCS Receivable", level: "optional", why: "Provides accounting receivable for GST TDS/TCS deductions/collections." },
+  F50: { id: "F50", name: "ITC Eligibility Register", level: "required", why: "Captures final invoice-level ITC eligibility reason beyond portal availability." },
+  F51: { id: "F51", name: "Common Credit Rule 42/43 Working", level: "conditional", why: "Calculates common-credit attribution/reversal for mixed taxable/exempt/non-business use." },
+  F52: { id: "F52", name: "Supplier Payment Condition Working", level: "conditional", why: "Tracks supplier payment status relevant to ITC reversal/reclaim conditions." },
+  F53: { id: "F53", name: "Rule-37A Compliance Working", level: "conditional", why: "Tracks supplier-filing related ITC reversal/reclaim requirements where applicable." },
+  F54: { id: "F54", name: "DRC-01B Return Compliance", level: "required", why: "Provides liability-mismatch intimations comparing GSTR-1/IFF and GSTR-3B." },
+  F55: { id: "F55", name: "DRC-01C Return Compliance", level: "required", why: "Provides ITC-mismatch intimations comparing GSTR-2B and GSTR-3B." },
+  F56: { id: "F56", name: "System Generated GSTR-3B Summary", level: "optional", why: "Provides system-computed GSTR-3B values from GSTR-1/1A and GSTR-2B before edits." },
+  F57: { id: "F57", name: "DRC Response Register", level: "optional", why: "Tracks reasons, responses, payments/reversals and closure evidence for DRC intimations." },
 };

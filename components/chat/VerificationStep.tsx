@@ -4,9 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { VERIFICATION_STEPS } from "@/lib/chat/types";
 
 const STEP_INTERVAL_MS = 650;
+const COLLAPSE_DELAY_MS = 700;
 
-export function VerificationStep({ onComplete }: { onComplete: () => void }) {
-  const [activeIndex, setActiveIndex] = useState(0);
+export function VerificationStep({ active, onComplete }: { active: boolean; onComplete: () => void }) {
+  // `active` is only true while the conversation is genuinely mid-verification. A resumed
+  // conversation that has already moved past this step mounts straight into the finished,
+  // collapsed state instead of replaying four-plus seconds of an animation nobody needs to see
+  // again — the checklist itself is a transient UI state, but it shouldn't be replayable.
+  const [activeIndex, setActiveIndex] = useState(active ? 0 : VERIFICATION_STEPS.length);
+  const [collapsed, setCollapsed] = useState(!active);
 
   // `onComplete` gets a fresh identity on every parent render (it closes over conversation
   // state). Keeping only the latest one in a ref — and keying the effect on `activeIndex` alone —
@@ -19,13 +25,36 @@ export function VerificationStep({ onComplete }: { onComplete: () => void }) {
   });
 
   useEffect(() => {
+    if (!active) return;
     if (activeIndex >= VERIFICATION_STEPS.length) {
-      const id = window.setTimeout(() => onCompleteRef.current(), 500);
+      const id = window.setTimeout(() => {
+        onCompleteRef.current();
+        // Once verification is done, this checklist shouldn't keep occupying the primary
+        // viewport with the result sitting below it — it collapses to a compact confirmation and
+        // stays that way for good (a genuinely new re-run, if that's ever added, would be its own
+        // appended turn, not a resurrection of this one).
+        setCollapsed(true);
+      }, COLLAPSE_DELAY_MS);
       return () => window.clearTimeout(id);
     }
     const id = window.setTimeout(() => setActiveIndex((prev) => prev + 1), STEP_INTERVAL_MS);
     return () => window.clearTimeout(id);
-  }, [activeIndex]);
+  }, [activeIndex, active]);
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.14em] text-accent uppercase">
+          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" />
+          DataTwin
+        </span>
+        <div className="mt-1 flex items-center gap-2.5 rounded-full border border-navy-hairline bg-white py-2 pr-4 pl-3 text-[13px] font-medium text-navy w-fit">
+          <CheckIcon className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
+          Verification complete
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -36,22 +65,22 @@ export function VerificationStep({ onComplete }: { onComplete: () => void }) {
       <div className="mt-1 flex flex-col gap-2.5 rounded-2xl border border-navy-hairline bg-white p-5 shadow-soft">
         {VERIFICATION_STEPS.map((step, index) => {
           const done = index < activeIndex;
-          const active = index === activeIndex;
+          const isCurrent = index === activeIndex;
           return (
             <div
               key={step}
               className={`flex items-center gap-3 text-[13.5px] transition-opacity duration-300 ${
-                done || active ? "opacity-100" : "opacity-35"
+                done || isCurrent ? "opacity-100" : "opacity-35"
               }`}
             >
               {done ? (
                 <CheckIcon className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
-              ) : active ? (
+              ) : isCurrent ? (
                 <SpinnerIcon className="h-3.5 w-3.5 flex-shrink-0 animate-spin text-accent" />
               ) : (
                 <span aria-hidden="true" className="h-3.5 w-3.5 flex-shrink-0 rounded-full border border-navy-hairline" />
               )}
-              <span className={done ? "text-navy" : active ? "font-medium text-navy" : "text-navy-faint"}>{step}</span>
+              <span className={done ? "text-navy" : isCurrent ? "font-medium text-navy" : "text-navy-faint"}>{step}</span>
             </div>
           );
         })}

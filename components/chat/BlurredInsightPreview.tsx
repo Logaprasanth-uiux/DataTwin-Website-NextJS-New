@@ -1,13 +1,15 @@
 "use client";
 
 import { useCurrencyFormatter } from "@/lib/chat/useCurrency";
-import type { RecoveryPreviewRow } from "@/lib/chat/types";
+import type { RecoveryBucket, RecoveryPreviewRow } from "@/lib/chat/types";
 
-const CLASSIFICATION_STYLES: Record<RecoveryPreviewRow["classification"], string> = {
-  "Potential Recovery": "bg-accent/[0.12] text-navy",
-  "Follow-up / Timing": "bg-navy/[0.06] text-navy-muted",
-  "Compliance / Correction": "bg-crimson/[0.08] text-crimson",
-  "Vendor Follow-up": "bg-navy/[0.06] text-navy-muted",
+// Styled by `bucket` (a small internal grouping), not by the raw classification text — the real
+// data spans roughly 40 distinct classifications, too many for a fixed style each.
+const BUCKET_STYLES: Record<RecoveryBucket, string> = {
+  recovery: "bg-accent/[0.12] text-navy",
+  correction: "bg-crimson/[0.08] text-crimson",
+  followup: "bg-navy/[0.06] text-navy-muted",
+  neutral: "bg-navy/[0.06] text-navy-muted",
 };
 
 export function BlurredInsightPreview({
@@ -28,7 +30,7 @@ export function BlurredInsightPreview({
           <div key={index} className="flex items-center justify-between gap-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
               <span
-                className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.04em] whitespace-nowrap ${CLASSIFICATION_STYLES[row.classification]}`}
+                className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.04em] whitespace-nowrap ${BUCKET_STYLES[row.bucket]}`}
               >
                 {row.classification}
               </span>

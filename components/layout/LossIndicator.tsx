@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useChatLaunch } from "@/components/chat/useChatLaunch";
 import { createCurrencyFormatter, detectCurrencyKey } from "@/lib/currency";
 
 // Illustrative pacing only — not a live customer metric. The amount is a plain,
@@ -50,6 +51,7 @@ export function LossIndicator() {
   const displayedLoss = useTweenedNumber(loss, TWEEN_MS);
   const currencyKey = useSyncExternalStore(subscribeNever, detectCurrencyKey, getKeyOnServer);
   const formatter = useMemo(() => createCurrencyFormatter(currencyKey ?? "en-US|USD"), [currencyKey]);
+  const { onClick, modal } = useChatLaunch("leakage");
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -61,29 +63,36 @@ export function LossIndicator() {
   const formatted = formatter.format(-displayedLoss);
 
   return (
-    <a
-      href="#contact"
-      aria-label={currencyKey ? `Stop the leakage. Illustrative loss so far, ${formatted}.` : "Stop the leakage"}
-      title="Illustrative example — not live customer data"
-      className="group flex flex-shrink-0 flex-col items-start gap-1 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent xl:flex-row xl:items-center xl:gap-3"
-    >
-      <span className="flex items-center gap-1.5 pl-1 text-[11px] leading-none font-semibold tracking-[0.01em] whitespace-nowrap text-navy xl:pl-0 xl:text-[13px]">
-        Stop the leakage
-        <ArrowIcon className="h-3 w-3 flex-shrink-0 text-accent transition-transform duration-200 group-hover:translate-x-0.5 xl:h-3.5 xl:w-3.5" />
-      </span>
-
-      <span className="flex h-7 items-center gap-1.5 rounded-full border border-navy-hairline px-2.5 transition-colors duration-200 group-hover:border-accent group-hover:bg-accent/[0.07] sm:h-8 sm:gap-2 sm:px-3 xl:h-9">
-        <TrendIcon className="h-3.5 w-3.5 flex-shrink-0 text-loss sm:h-4 sm:w-4" />
-        <OrgIcon className="h-3.5 w-3.5 flex-shrink-0 text-navy-muted sm:h-4 sm:w-4" />
-        <span
-          className={`text-[12px] leading-none font-medium whitespace-nowrap tabular-nums text-loss transition-opacity duration-300 sm:text-sm ${
-            currencyKey ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          {formatted}
+    <>
+      <a
+        href="#contact"
+        onClick={(event) => {
+          event.preventDefault();
+          onClick();
+        }}
+        aria-label={currencyKey ? `Stop the leakage. Illustrative loss so far, ${formatted}.` : "Stop the leakage"}
+        title="Illustrative example — not live customer data"
+        className="group flex flex-shrink-0 flex-col items-start gap-1 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent xl:flex-row xl:items-center xl:gap-3"
+      >
+        <span className="flex items-center gap-1.5 pl-1 text-[11px] leading-none font-semibold tracking-[0.01em] whitespace-nowrap text-navy xl:pl-0 xl:text-[13px]">
+          Stop the leakage
+          <ArrowIcon className="h-3 w-3 flex-shrink-0 text-accent transition-transform duration-200 group-hover:translate-x-0.5 xl:h-3.5 xl:w-3.5" />
         </span>
-      </span>
-    </a>
+
+        <span className="flex h-7 items-center gap-1.5 rounded-full border border-navy-hairline px-2.5 transition-colors duration-200 group-hover:border-accent group-hover:bg-accent/[0.07] sm:h-8 sm:gap-2 sm:px-3 xl:h-9">
+          <TrendIcon className="h-3.5 w-3.5 flex-shrink-0 text-loss sm:h-4 sm:w-4" />
+          <OrgIcon className="h-3.5 w-3.5 flex-shrink-0 text-navy-muted sm:h-4 sm:w-4" />
+          <span
+            className={`text-[12px] leading-none font-medium whitespace-nowrap tabular-nums text-loss transition-opacity duration-300 sm:text-sm ${
+              currencyKey ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            {formatted}
+          </span>
+        </span>
+      </a>
+      {modal}
+    </>
   );
 }
 

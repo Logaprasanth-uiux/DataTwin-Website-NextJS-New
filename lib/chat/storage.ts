@@ -1,15 +1,17 @@
-import type { ConversationState, ConversationSummary } from "./types";
+import type { ConversationState, ConversationSummary, EntryContext } from "./types";
 
 // Mock persistence for the prototype conversational experience — plain localStorage, no backend,
 // no auth, no cookies. A conversation opened in a new tab reads its handoff payload from here.
 
 const INDEX_KEY = "dt-chat:index";
 const PENDING_KEY = "dt-chat:pending";
+const USER_KEY = "dt-chat:user";
 const conversationKey = (id: string) => `dt-chat:conversation:${id}`;
 
 export interface PendingHandoff {
   id: string;
   firstMessage: string | null;
+  entryContext: EntryContext;
   createdAt: number;
 }
 
@@ -64,6 +66,29 @@ export function getMostRecentConversation(): ConversationSummary | null {
   const index = readIndex();
   if (index.length === 0) return null;
   return [...index].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null;
+}
+
+/** Every conversation in this browser, most recent first — backs the left-hand conversations panel. */
+export function listConversations(): ConversationSummary[] {
+  return [...readIndex()].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+// A single mock "temporary user" per browser (not per conversation), minted the first time any
+// conversation reaches the contact step — a prototype stand-in for a real account, conceptually
+// grouping every conversation in this browser under one identifier.
+export function getOrCreateUserId(): string {
+  if (!isBrowser()) return "";
+  try {
+    const existing = window.localStorage.getItem(USER_KEY);
+    if (existing) return existing;
+    const year = new Date().getFullYear();
+    const sequence = Math.floor(1 + Math.random() * 9999).toString().padStart(4, "0");
+    const id = `DT-${year}-${sequence}`;
+    window.localStorage.setItem(USER_KEY, id);
+    return id;
+  } catch {
+    return "";
+  }
 }
 
 export function loadConversation(id: string): ConversationState | null {

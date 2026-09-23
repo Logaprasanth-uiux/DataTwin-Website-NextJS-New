@@ -11,5 +11,9 @@ export function ChatPageWithParams() {
   // Only used if someone opens /chat directly with no id — keeps the page usable on its own.
   const fallbackId = useMemo(() => createConversationId(), []);
 
-  return <ChatPageClient conversationId={cid ?? fallbackId} />;
+  const conversationId = cid ?? fallbackId;
+  // `key` forces a full remount on switching conversations (e.g. via the conversations panel) —
+  // otherwise ChatPageClient's local `override` state would keep showing the previous
+  // conversation's messages/files under the new id until something else happened to update it.
+  return <ChatPageClient key={conversationId} conversationId={conversationId} />;
 }

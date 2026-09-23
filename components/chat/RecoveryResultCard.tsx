@@ -10,7 +10,7 @@ export function RecoveryResultCard({ result }: { result: TopicMockResult }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-2xl border border-navy-hairline bg-white p-7 shadow-soft sm:p-8">
+      <div data-scroll-target="result" className="rounded-2xl border border-navy-hairline bg-white p-7 shadow-soft sm:p-8">
         <p className="dt-eyebrow dt-eyebrow-accent">Potential recovery identified</p>
         <p
           className={`dt-display mt-3 text-4xl leading-none font-semibold tracking-[-0.02em] text-navy transition-opacity duration-300 sm:text-5xl ${

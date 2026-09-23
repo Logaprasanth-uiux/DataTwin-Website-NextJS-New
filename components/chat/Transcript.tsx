@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { RECONCILIATION_TOPICS, SOMETHING_ELSE_OPTION_ID } from "@/lib/chat/data/topics";
-import { getTopic } from "@/lib/chat/engine";
-import type { ConversationState, PeriodOptionId, TranscriptItem, UploadedFile } from "@/lib/chat/types";
+import type {
+  ContactDetails,
+  ConversationState,
+  CustomPeriodRange,
+  PeriodOptionId,
+  TranscriptItem,
+  UploadedFile,
+} from "@/lib/chat/types";
 import { PERIOD_OPTIONS } from "@/lib/chat/types";
 import { ContactFormStep } from "./ContactFormStep";
+import { CustomPeriodInput } from "./CustomPeriodInput";
 import { FileUploadStep } from "./FileUploadStep";
 import { HandoffStep } from "./HandoffStep";
 import { MessageTurn } from "./MessageTurn";
@@ -16,22 +22,18 @@ import { ResultStep } from "./ResultStep";
 import { SomethingElseInput } from "./SomethingElseInput";
 import { VerificationStep } from "./VerificationStep";
 
-const TOPIC_OPTIONS = [
-  ...RECONCILIATION_TOPICS.map((topic) => ({ id: topic.id, label: topic.label })),
-  { id: SOMETHING_ELSE_OPTION_ID, label: "Something else" },
-];
-
 export interface TranscriptActions {
-  onSelectTopic: (id: string) => void;
-  onSubmitSomethingElse: (text: string) => void;
+  onSelectDiscoveryOption: (turnId: string, optionId: string) => void;
+  onSubmitDiscoveryFreeText: (turnId: string, text: string) => void;
   onSelectPeriod: (id: PeriodOptionId) => void;
+  onSubmitCustomPeriod: (range: CustomPeriodRange) => void;
   onUpload: (fileId: string, fileName: string) => void;
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemoveUpload: (fileId: string) => void;
   onContinueFiles: () => void;
   onVerificationComplete: () => void;
   onConnect: () => void;
-  onSubmitContact: (contact: NonNullable<ConversationState["contact"]>) => void;
+  onSubmitContact: (contact: ContactDetails) => void;
   onPreviewReveal: () => void;
 }
 
@@ -69,28 +71,29 @@ export function Transcript({
                 <MessageTurn speaker="DataTwin" text={item.text} />
               </AssistantReveal>
             );
-          case "topic-options":
+          case "discovery-options":
             return (
               <OptionGroup
                 key={item.id}
                 id={item.id}
                 tracker={tracker}
                 prompt={item.prompt}
-                options={TOPIC_OPTIONS}
+                options={item.options}
                 selectedId={item.selectedId}
                 resolved={item.resolved}
-                onSelect={actions.onSelectTopic}
+                onSelect={(optionId) => actions.onSelectDiscoveryOption(item.id, optionId)}
               />
             );
-          case "something-else-input":
+          case "discovery-freetext":
             return (
-              <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker} showTyping={false}>
+              <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
                 <SomethingElseInput
                   itemKey={item.id}
                   tracker={tracker}
+                  prompt={item.prompt}
                   resolved={item.resolved}
                   value={item.value}
-                  onSubmit={actions.onSubmitSomethingElse}
+                  onSubmit={(text) => actions.onSubmitDiscoveryFreeText(item.id, text)}
                 />
               </AssistantReveal>
             );
@@ -107,6 +110,18 @@ export function Transcript({
                 onSelect={(id) => actions.onSelectPeriod(id as PeriodOptionId)}
               />
             );
+          case "custom-period-input":
+            return (
+              <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
+                <CustomPeriodInput
+                  itemKey={item.id}
+                  tracker={tracker}
+                  resolved={item.resolved}
+                  value={item.value}
+                  onSubmit={actions.onSubmitCustomPeriod}
+                />
+              </AssistantReveal>
+            );
           case "file-upload":
             return (
               <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker} showTyping={false}>
@@ -119,6 +134,7 @@ export function Transcript({
                   requiredReady={item.topic.requiredFiles.every(
                     (file) => state.uploads[file.fileId]?.status === "ready",
                   )}
+                  maxRevealed={state.maxRequiredFilesRevealed}
                   onUpload={actions.onUpload}
                   onAdvanceStatus={actions.onAdvanceStatus}
                   onRemove={actions.onRemoveUpload}
@@ -129,7 +145,7 @@ export function Transcript({
           case "verification":
             return (
               <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
-                <VerificationStep onComplete={actions.onVerificationComplete} />
+                <VerificationStep active={state.phase === "verifying"} onComplete={actions.onVerificationComplete} />
               </AssistantReveal>
             );
           case "result":
@@ -155,7 +171,7 @@ export function Transcript({
               <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
                 <HandoffStep
                   active={state.phase === "handoff"}
-                  canReveal={getTopic(state.selectedTopicId) !== null}
+                  canReveal={item.canReveal}
                   onPreviewReveal={actions.onPreviewReveal}
                 />
               </AssistantReveal>
