@@ -1,26 +1,43 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import {
   advanceToReveal,
   advanceUploadStatus,
+  beginFileValidation,
   beginVerification,
   buildTranscript,
+  chooseFileSource,
+  completePortalFetch,
   completeVerification,
+  continueWithFileIssue,
   createInitialState,
+  flagFileIssue,
   getResolvedTopic,
   openContactForm,
   recordUpload,
   removeUpload,
+  replaceFlaggedFile,
   selectDiscoveryOption,
   selectPeriod,
+  submitChatMessage,
   submitContact,
   submitCustomPeriod,
-  submitDiscoveryFreeText,
+  submitPortalGstin,
+  toggleFilePreview,
 } from "@/lib/chat/engine";
-import { getOrCreateUserId, loadConversation, readPendingHandoff, saveConversation } from "@/lib/chat/storage";
-import type { ConversationState } from "@/lib/chat/types";
+import {
+  getMostRecentConversationForContext,
+  getOrCreateUserId,
+  loadConversation,
+  readPendingHandoff,
+  saveConversation,
+} from "@/lib/chat/storage";
+import type { ConversationState, ConversationSummary } from "@/lib/chat/types";
+import { ChatComposer } from "./ChatComposer";
 import { ChatHeader } from "./ChatHeader";
+import { ContinueConversationModal } from "./ContinueConversationModal";
 import { ConversationsPanel } from "./ConversationsPanel";
 import { FileContextPanel } from "./FileContextPanel";
 import { Transcript, type TranscriptActions } from "./Transcript";
@@ -45,6 +62,29 @@ function loadInitialSnapshot(conversationId: string): ConversationState {
   return initial;
 }
 
+// The "Welcome back" prompt lives entirely inside the chat screen (not the website that launched
+// it) and is keyed to the CTA's own `entryContext`, not "whichever conversation is most recent
+// overall" — clicking the GST CTA must never surface a "Stop the Leakage" conversation. It only
+// ever applies to a genuinely fresh CTA launch: `existing` being absent means this id has never
+// been saved before, and `firstMessage === null` excludes the hero prompt (which always carries
+// its own first message and resolves immediately — nothing to "welcome back" into).
+const resumableCache = new Map<string, ConversationSummary | null>();
+const getResumableServerSnapshot = () => null;
+
+function loadInitialResumable(conversationId: string): ConversationSummary | null {
+  const cached = resumableCache.get(conversationId);
+  if (cached !== undefined) return cached;
+  let resumable: ConversationSummary | null = null;
+  if (!loadConversation(conversationId)) {
+    const pending = readPendingHandoff(conversationId);
+    if (pending && pending.firstMessage === null) {
+      resumable = getMostRecentConversationForContext(pending.entryContext, conversationId);
+    }
+  }
+  resumableCache.set(conversationId, resumable);
+  return resumable;
+}
+
 const FILE_PANEL_PHASES = new Set<ConversationState["phase"]>([
   "files",
   "verifying",
@@ -54,7 +94,14 @@ const FILE_PANEL_PHASES = new Set<ConversationState["phase"]>([
   "reveal",
 ]);
 
+// The composer stays available through the whole normal journey; it's hidden only for the
+// intentional terminal states — the contact form is itself the input there, and handoff/reveal
+// are read-only summary steps, not places to keep chatting. See engine.ts's `submitChatMessage`
+// for how a message typed anywhere else is handled per-phase.
+const COMPOSER_HIDDEN_PHASES = new Set<ConversationState["phase"]>(["contact-form", "handoff", "reveal"]);
+
 export function ChatPageClient({ conversationId }: { conversationId: string }) {
+  const router = useRouter();
   const getSnapshot = useCallback(() => loadInitialSnapshot(conversationId), [conversationId]);
   const initialState = useSyncExternalStore(subscribeNever, getSnapshot, getServerSnapshot);
 
@@ -64,14 +111,28 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
   const state = override ?? initialState;
   const hasState = Boolean(state);
 
+  const getResumableSnapshot = useCallback(() => loadInitialResumable(conversationId), [conversationId]);
+  const resumable = useSyncExternalStore(subscribeNever, getResumableSnapshot, getResumableServerSnapshot);
+  // Once the user has picked either option the prompt stays gone for the rest of this page's
+  // life, even though `resumable` itself (cached per conversationId) would otherwise keep saying
+  // "yes" — "Start a new conversation" means proceed with the fresh one already prepared here.
+  const [welcomeBackDismissed, setWelcomeBackDismissed] = useState(false);
+  const showWelcomeBack = Boolean(resumable) && !welcomeBackDismissed;
+
   const [conversationsOpen, setConversationsOpen] = useState(false);
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
+  // Not saved (and so not shown in the Conversations panel or offered by "Welcome back") until
+  // there's something meaningful to save — an identified reconciliation, or discovery's own
+  // graceful "connect with the team" fallback — so a CTA click or an abandoned first message never
+  // litters the panel with an empty "New conversation" entry. `phase` only ever leaves "discovery"
+  // once one of those has actually happened (see phaseForStatus in engine.ts).
+  const isMeaningful = state?.phase !== "discovery";
   useEffect(() => {
-    if (!state) return;
+    if (!state || !isMeaningful) return;
     saveConversation(state);
-  }, [state]);
+  }, [state, isMeaningful]);
 
   // A ResizeObserver — not a dependency list of state fields — is what actually keeps the latest
   // turn in view: this transcript reveals content progressively (a typing indicator, then the
@@ -172,51 +233,97 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
 
   const actions: TranscriptActions = {
     onSelectDiscoveryOption: (turnId, optionId) => update((prev) => selectDiscoveryOption(prev, turnId, optionId)),
-    onSubmitDiscoveryFreeText: (turnId, text) => update((prev) => submitDiscoveryFreeText(prev, turnId, text)),
     onSelectPeriod: (id) => update((prev) => selectPeriod(prev, id)),
     onSubmitCustomPeriod: (range) => update((prev) => submitCustomPeriod(prev, range)),
     onUpload: (fileId, fileName) => update((prev) => recordUpload(prev, fileId, fileName)),
     onAdvanceStatus: (fileId, status) => update((prev) => advanceUploadStatus(prev, fileId, status)),
     onRemoveUpload: (fileId) => update((prev) => removeUpload(prev, fileId)),
     onContinueFiles: () => update((prev) => beginVerification(prev)),
+    onChooseFileSource: (fileId, source) => update((prev) => chooseFileSource(prev, fileId, source)),
+    onSubmitPortalGstin: (fileId) => update((prev) => submitPortalGstin(prev, fileId)),
+    onPortalFetchComplete: (fileId, fileName) => update((prev) => completePortalFetch(prev, fileId, fileName)),
+    onBeginValidation: (fileId) => update((prev) => beginFileValidation(prev, fileId)),
+    onFlagIssue: (fileId) => update((prev) => flagFileIssue(prev, fileId)),
+    onContinueAnyway: (fileId) => update((prev) => continueWithFileIssue(prev, fileId)),
+    onReplaceFlagged: (fileId) => update((prev) => replaceFlaggedFile(prev, fileId)),
+    onTogglePreview: (fileId) => update((prev) => toggleFilePreview(prev, fileId)),
     onVerificationComplete: () => update((prev) => completeVerification(prev)),
     onConnect: () => update((prev) => openContactForm(prev)),
     onSubmitContact: (contact) => update((prev) => submitContact(prev, contact, getOrCreateUserId())),
     onPreviewReveal: () => update((prev) => advanceToReveal(prev)),
   };
 
+  // Not part of `TranscriptActions` — the composer is rendered directly here, not through
+  // Transcript, since it's a persistent fixture of the page rather than a turn in the transcript.
+  const handleSubmitChatMessage = (text: string) => update((prev) => submitChatMessage(prev, text));
+
   const items = buildTranscript(state);
   const topic = getResolvedTopic(state.discovery.resolvedId);
   const showFilePanel = topic !== null && FILE_PANEL_PHASES.has(state.phase);
+  const showComposer = !COMPOSER_HIDDEN_PHASES.has(state.phase);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <ChatHeader onToggleConversations={() => setConversationsOpen(true)} />
       <div className="flex flex-1">
         <ConversationsPanel
-          current={{ id: state.id, title: state.title, updatedAt: state.updatedAt }}
+          current={
+            isMeaningful
+              ? { id: state.id, title: state.title, updatedAt: state.updatedAt, entryContext: state.entryContext }
+              : null
+          }
           open={conversationsOpen}
           onClose={() => setConversationsOpen(false)}
         />
 
         <div className="flex w-full flex-1 flex-col lg:flex-row">
-          <main className="min-w-0 flex-1">
-            <div ref={transcriptRef} className="mx-auto flex w-full max-w-3xl flex-col px-5 py-8 sm:px-6 sm:py-10">
-              <Transcript items={items} state={state} actions={actions} />
-              <div ref={scrollAnchorRef} />
+          {/* The "main Chat panel": bounded to exactly one viewport's worth of height below the
+              header (`h-[calc(100vh-4rem)]`, matching the Conversations/file panels' own existing
+              `top-16`/`4rem`-header convention) and pinned there with the same `sticky top-16`
+              those panels already use — not a new pattern. Only the conversation region inside it
+              scrolls (`overflow-y-auto`); the composer is a separate, non-scrolling flex sibling
+              below it, so it can never be scrolled past or trail off the bottom of a long
+              conversation the way a `sticky bottom-0` element at the end of an ever-growing page
+              would (that was the actual bug: such an element only "activates" once you scroll all
+              the way to the document's end, so it just kept trailing the conversation downward). */}
+          <main className="flex h-[calc(100vh-4rem)] min-h-0 min-w-0 flex-1 flex-col overflow-hidden sticky top-16">
+            <div className="dt-thin-scroll min-h-0 flex-1 overflow-y-auto">
+              <div ref={transcriptRef} className="mx-auto flex w-full max-w-3xl flex-col px-5 py-8 sm:px-6 sm:py-10">
+                <Transcript items={items} state={state} actions={actions} />
+                {/* `scroll-mb-8`, not a bigger bottom padding on the container above: padding at
+                    the end of a scroll region sits *below* whatever scrollIntoView lands on, so it
+                    doesn't actually show once scrolled all the way to this anchor. scroll-margin is
+                    what scrollIntoView itself respects — it's what actually keeps the latest
+                    response a comfortable distance above the composer instead of flush against it. */}
+                <div ref={scrollAnchorRef} className="scroll-mb-8" />
+              </div>
             </div>
+            {showComposer && <ChatComposer onSubmit={handleSubmitChatMessage} />}
           </main>
 
           <FileContextPanel
             topic={showFilePanel ? topic : null}
             uploads={state.uploads}
             maxRevealed={state.maxRequiredFilesRevealed}
+            fileSource={state.fileSource}
+            fileValidation={state.fileValidation}
+            filePreviewOpen={state.filePreviewOpen}
             onUpload={actions.onUpload}
             onAdvanceStatus={actions.onAdvanceStatus}
             onRemove={actions.onRemoveUpload}
+            onTogglePreview={actions.onTogglePreview}
           />
         </div>
       </div>
+
+      {showWelcomeBack && resumable && (
+        <ContinueConversationModal
+          conversation={resumable}
+          onContinue={() => router.replace(`/chat?cid=${resumable.id}`)}
+          onStartNew={() => setWelcomeBackDismissed(true)}
+          onClose={() => setWelcomeBackDismissed(true)}
+        />
+      )}
     </div>
   );
 }

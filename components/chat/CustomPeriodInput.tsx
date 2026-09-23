@@ -63,91 +63,84 @@ export function CustomPeriodInput({
   };
 
   const selectClass =
-    "h-11 flex-1 rounded-lg border border-navy-hairline bg-white px-3 text-[14px] text-navy focus:border-accent focus:outline-none";
+    "h-9 rounded-lg border border-navy-hairline bg-white px-2.5 text-[13px] text-navy focus:border-accent focus:outline-none";
 
   return (
     <div className="flex flex-col gap-3">
       <MessageTurn speaker="DataTwin" text="Sure — what period should I look at? A start and end month is all I need." />
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-4 rounded-2xl border border-navy-hairline bg-white p-5 shadow-soft"
-      >
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-medium text-navy-muted">Start</span>
-          <div className="flex gap-2.5">
-            <select
-              value={fromMonth}
-              onChange={(event) => setFromMonth(event.target.value)}
-              className={selectClass}
-              aria-label="Start month"
-            >
-              <option value="" disabled>
-                Month
-              </option>
-              {MONTHS.map((month, index) => (
-                <option key={month} value={index + 1}>
-                  {month}
-                </option>
-              ))}
-            </select>
-            <select
-              value={fromYear}
-              onChange={(event) => setFromYear(event.target.value)}
-              className={selectClass}
-              aria-label="Start year"
-            >
-              <option value="" disabled>
-                Year
-              </option>
-              {years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+      {/* A single compact row rather than a bordered card with "Start"/"End" sections — this is a
+          quick conversational pick (four small selects + confirm), not a form. */}
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-2">
+        <select
+          value={fromMonth}
+          onChange={(event) => setFromMonth(event.target.value)}
+          className={selectClass}
+          aria-label="Start month"
+        >
+          <option value="" disabled>
+            Month
+          </option>
+          {MONTHS.map((month, index) => (
+            <option key={month} value={index + 1}>
+              {month}
+            </option>
+          ))}
+        </select>
+        <select
+          value={fromYear}
+          onChange={(event) => setFromYear(event.target.value)}
+          className={selectClass}
+          aria-label="Start year"
+        >
+          <option value="" disabled>
+            Year
+          </option>
+          {years.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-medium text-navy-muted">End</span>
-          <div className="flex gap-2.5">
-            <select
-              value={toMonth}
-              onChange={(event) => setToMonth(event.target.value)}
-              className={selectClass}
-              aria-label="End month"
-            >
-              <option value="" disabled>
-                Month
-              </option>
-              {MONTHS.map((month, index) => (
-                <option key={month} value={index + 1}>
-                  {month}
-                </option>
-              ))}
-            </select>
-            <select
-              value={toYear}
-              onChange={(event) => setToYear(event.target.value)}
-              className={selectClass}
-              aria-label="End year"
-            >
-              <option value="" disabled>
-                Year
-              </option>
-              {years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <span aria-hidden="true" className="px-0.5 text-[13px] text-navy-faint">
+          →
+        </span>
+
+        <select
+          value={toMonth}
+          onChange={(event) => setToMonth(event.target.value)}
+          className={selectClass}
+          aria-label="End month"
+        >
+          <option value="" disabled>
+            Month
+          </option>
+          {MONTHS.map((month, index) => (
+            <option key={month} value={index + 1}>
+              {month}
+            </option>
+          ))}
+        </select>
+        <select
+          value={toYear}
+          onChange={(event) => setToYear(event.target.value)}
+          className={selectClass}
+          aria-label="End year"
+        >
+          <option value="" disabled>
+            Year
+          </option>
+          {years.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
 
         <button
           type="submit"
           disabled={!valid}
-          className="dt-button h-11 w-fit rounded-full bg-navy px-6 text-[14px] text-white transition-colors hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="dt-button h-9 rounded-full bg-navy px-4 text-[13px] text-white transition-colors hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Confirm
         </button>

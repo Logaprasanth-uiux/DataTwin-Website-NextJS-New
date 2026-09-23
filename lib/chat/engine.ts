@@ -1,17 +1,19 @@
 import {
   createInitialDiscovery,
   selectDiscoveryOption as applySelectDiscoveryOption,
-  submitDiscoveryFreeText as applySubmitDiscoveryFreeText,
+  submitFreeMessage as applySubmitFreeMessage,
 } from "./discovery";
 import { buildResolvedTopic } from "./reconciliation";
-import { generateConversationTitle } from "./title";
+import { generateConversationTitle, PLACEHOLDER_TITLE } from "./title";
 import { formatPeriodRange } from "./formatDate";
 import type {
   ContactDetails,
   ConversationState,
   CustomPeriodRange,
+  DiscoveryTurn,
   EntryContext,
   FileRequirement,
+  FileSourceChoice,
   PeriodOptionId,
   ReconciliationTopic,
   TranscriptItem,
@@ -48,14 +50,44 @@ export function createInitialState(
     uploads: {},
     maxRequiredFilesRevealed: 0,
     fileEvents: [],
+    freeMessages: [],
+    fileSource: {},
+    portalFetch: {},
+    fileValidation: {},
+    filePreviewOpen: {},
     contact: null,
     userId: null,
     revealed: false,
   };
 }
 
+function isUserTurn(turn: DiscoveryTurn): turn is Extract<DiscoveryTurn, { kind: "user" }> {
+  return turn.kind === "user";
+}
+
+// A conversation's title starts as "New conversation" (see createInitialState) and only becomes
+// meaningful once there's something to name it after — the identified reconciliation's own
+// business-friendly label, or (discovery ended in the graceful "connect with the team" fallback,
+// with no specific reconciliation matched) whatever the user most recently described, using the
+// same heuristic the hero prompt's own first message already goes through.
+function deriveConversationTitle(state: ConversationState): string {
+  const topic = getResolvedTopic(state.discovery.resolvedId);
+  if (topic) return topic.label;
+
+  const lastUserTurn = [...state.discovery.turns].reverse().find(isUserTurn);
+  if (lastUserTurn) return generateConversationTitle(lastUserTurn.text);
+
+  return state.firstMessage ? generateConversationTitle(state.firstMessage) : state.title;
+}
+
 function touch(state: ConversationState): ConversationState {
-  return { ...state, updatedAt: Date.now() };
+  // Recomputed only while the title is still the generic placeholder (a hero-launched
+  // conversation already has a real, user-phrased title from the moment it's created — that's
+  // left alone even after it resolves). Once it's been replaced with something real, it stays —
+  // no need to keep re-deriving it (rebuilding the resolved topic) on every single action.
+  const needsTitle = state.phase !== "discovery" && state.title === PLACEHOLDER_TITLE;
+  const title = needsTitle ? deriveConversationTitle(state) : state.title;
+  return { ...state, updatedAt: Date.now(), title };
 }
 
 function phaseForStatus(status: "continue" | "resolved" | "fallback"): ConversationState["phase"] {
@@ -69,10 +101,44 @@ export function selectDiscoveryOption(state: ConversationState, turnId: string, 
   return touch({ ...state, discovery, phase: phaseForStatus(status) });
 }
 
-export function submitDiscoveryFreeText(state: ConversationState, turnId: string, text: string): ConversationState {
-  if (!text.trim()) return state;
-  const { discovery, status } = applySubmitDiscoveryFreeText(state.discovery, turnId, text);
-  return touch({ ...state, discovery, phase: phaseForStatus(status) });
+// A short, varied acknowledgement for a composer message sent once a reconciliation is already
+// resolved — templated the same way every other assistant line in this prototype is (see
+// REPLACE_PHRASES/REMOVE_PHRASES below), never a fabricated re-analysis of what was typed.
+const FREE_MESSAGE_REPLIES_WITH_TOPIC = [
+  (label: string) => `Noted — I'll keep that in mind as we continue with ${label}.`,
+  (label: string) => `Got it, thanks — that's useful context for ${label}.`,
+];
+const FREE_MESSAGE_REPLIES_GENERIC = [
+  "Noted — thanks for the extra detail.",
+  "Got it, thanks for sharing that.",
+];
+
+function pickFreeMessageReply(index: number, topicLabel: string | null): string {
+  if (topicLabel) {
+    return FREE_MESSAGE_REPLIES_WITH_TOPIC[index % FREE_MESSAGE_REPLIES_WITH_TOPIC.length](topicLabel);
+  }
+  return FREE_MESSAGE_REPLIES_GENERIC[index % FREE_MESSAGE_REPLIES_GENERIC.length];
+}
+
+// The persistent composer's entry point — a second way to write into the exact same conversation
+// state the quick-actions already use, not a parallel message system. While a reconciliation is
+// still being narrowed down, this routes through the same discovery resolution engine that
+// "Something else" uses (so it can actually resolve/narrow, not just echo). Once a reconciliation
+// is resolved, there's no further identification/period/file logic to re-run here — the message is
+// recorded and acknowledged in place, appended wherever the conversation currently stands.
+export function submitChatMessage(state: ConversationState, text: string): ConversationState {
+  const trimmed = text.trim();
+  if (!trimmed) return state;
+
+  if (state.phase === "discovery") {
+    const { discovery, status } = applySubmitFreeMessage(state.discovery, trimmed);
+    return touch({ ...state, discovery, phase: phaseForStatus(status) });
+  }
+
+  const topic = getResolvedTopic(state.discovery.resolvedId);
+  const reply = pickFreeMessageReply(state.freeMessages.length, topic?.label ?? null);
+  const freeMessages = [...state.freeMessages, { id: `fm${state.freeMessages.length}`, text: trimmed, reply }];
+  return touch({ ...state, freeMessages });
 }
 
 export function selectPeriod(state: ConversationState, periodId: PeriodOptionId): ConversationState {
@@ -130,6 +196,8 @@ export function advanceUploadStatus(
 
 // Removing a file that was already acknowledged gets its own appended event; removing one still
 // mid-upload (never shown in the conversation yet) is just undone with nothing to acknowledge.
+// Also clears any GST-Portal source choice/progress for this file, so removing one goes back to
+// offering the upload-vs-portal choice fresh rather than reopening mid-flow.
 export function removeUpload(state: ConversationState, fileId: string): ConversationState {
   const existing = state.uploads[fileId];
   const wasReady = existing?.status === "ready";
@@ -139,7 +207,72 @@ export function removeUpload(state: ConversationState, fileId: string): Conversa
     wasReady && existing
       ? [...state.fileEvents, { id: nextFileEventId(state), kind: "remove" as const, fileId, fileName: existing.fileName }]
       : state.fileEvents;
-  return touch({ ...state, uploads: next, fileEvents });
+  const fileSource = { ...state.fileSource };
+  delete fileSource[fileId];
+  const portalFetch = { ...state.portalFetch };
+  delete portalFetch[fileId];
+  const fileValidation = { ...state.fileValidation };
+  delete fileValidation[fileId];
+  const filePreviewOpen = { ...state.filePreviewOpen };
+  delete filePreviewOpen[fileId];
+  return touch({ ...state, uploads: next, fileEvents, fileSource, portalFetch, fileValidation, filePreviewOpen });
+}
+
+// --- First-document mock validation (see FileValidationFlow) -----------
+
+export function beginFileValidation(state: ConversationState, fileId: string): ConversationState {
+  if (state.fileValidation[fileId]) return state; // already started — don't restart mid-flow
+  return touch({ ...state, fileValidation: { ...state.fileValidation, [fileId]: "verifying" } });
+}
+
+export function flagFileIssue(state: ConversationState, fileId: string): ConversationState {
+  if (state.fileValidation[fileId] !== "verifying") return state;
+  return touch({ ...state, fileValidation: { ...state.fileValidation, [fileId]: "issue" } });
+}
+
+// The upload still proceeds to "ready" exactly as it would without the mock issue — the same
+// nextFileHint/maxRequiredFilesRevealed side effects apply — this only additionally records that
+// it was continued *despite* a flagged issue, so the acknowledgement that follows can say so (see
+// FileUploadStep).
+export function continueWithFileIssue(state: ConversationState, fileId: string): ConversationState {
+  if (state.fileValidation[fileId] !== "issue") return state;
+  const acknowledged = touch({ ...state, fileValidation: { ...state.fileValidation, [fileId]: "acknowledged" } });
+  return advanceUploadStatus(acknowledged, fileId, "ready");
+}
+
+// Same effect as removing the file (back to the upload prompt) plus clearing its validation state,
+// so a freshly re-uploaded file goes through its own clean verification pass rather than resuming
+// mid-flow.
+export function replaceFlaggedFile(state: ConversationState, fileId: string): ConversationState {
+  return removeUpload(state, fileId);
+}
+
+export function toggleFilePreview(state: ConversationState, fileId: string): ConversationState {
+  return touch({ ...state, filePreviewOpen: { ...state.filePreviewOpen, [fileId]: !state.filePreviewOpen[fileId] } });
+}
+
+// --- GST Portal fetch (see FileSourceChoice/PortalFetchFlow) -----------
+
+export function chooseFileSource(state: ConversationState, fileId: string, source: FileSourceChoice): ConversationState {
+  if (state.fileSource[fileId]) return state; // already chosen — don't reset an in-progress flow
+  const fileSource = { ...state.fileSource, [fileId]: source };
+  const portalFetch =
+    source === "portal" ? { ...state.portalFetch, [fileId]: "gstin" as const } : state.portalFetch;
+  return touch({ ...state, fileSource, portalFetch });
+}
+
+export function submitPortalGstin(state: ConversationState, fileId: string): ConversationState {
+  if (state.portalFetch[fileId] !== "gstin") return state;
+  return touch({ ...state, portalFetch: { ...state.portalFetch, [fileId]: "otp" } });
+}
+
+// The OTP itself is never passed in or stored — by the time this is called, the caller (a local
+// verifying/fetching animation, not persisted state — see PortalFetchFlow) has already confirmed
+// it. This just lands the fetched file exactly where a normal upload would, reusing the same
+// ready-transition (and its nextFileHint/maxRequiredFilesRevealed side effects) unchanged.
+export function completePortalFetch(state: ConversationState, fileId: string, fileName: string): ConversationState {
+  const uploaded = recordUpload(state, fileId, fileName);
+  return advanceUploadStatus(uploaded, fileId, "ready");
 }
 
 export function requiredFilesReady(state: ConversationState): boolean {
@@ -194,6 +327,14 @@ export function advanceToReveal(state: ConversationState): ConversationState {
 export function buildTranscript(state: ConversationState): TranscriptItem[] {
   const items: TranscriptItem[] = [];
   const push = (item: TranscriptItem) => items.push(item);
+  // Composer messages sent once a reconciliation is resolved can happen during ANY of the phases
+  // below (still picking a period, mid-upload, waiting on verification, already at the result) —
+  // appended right before every return, not just the final one, so a message typed before the
+  // conversation has moved past "files" (say) doesn't silently vanish from the transcript.
+  const finish = (): TranscriptItem[] => {
+    appendFreeMessages(items, state);
+    return items;
+  };
 
   if (state.firstMessage) {
     push({ kind: "user-text", id: "first-message", text: state.firstMessage });
@@ -211,18 +352,17 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
         selectedId: turn.selectedId,
         resolved: turn.selectedId !== null,
       });
+    } else if (turn.kind === "freetext") {
+      // No inline input here — the persistent composer (see submitChatMessage/submitFreeMessage)
+      // is the one place to type a reply, so this is just DataTwin's question, same as any other
+      // assistant line. Whatever the user types next shows up as its own appended "user" turn.
+      push({ kind: "assistant-text", id: turn.id, text: turn.prompt });
     } else {
-      push({
-        kind: "discovery-freetext",
-        id: turn.id,
-        prompt: turn.prompt,
-        resolved: turn.value !== null,
-        value: turn.value,
-      });
+      push({ kind: "user-text", id: turn.id, text: turn.text });
     }
   }
 
-  if (state.phase === "discovery") return items;
+  if (state.phase === "discovery") return finish();
 
   const topic = getResolvedTopic(state.discovery.resolvedId);
 
@@ -230,7 +370,7 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
     // Discovery ended without identifying a reconciliation (the graceful "connect with the team"
     // fallback) — skip straight to contact/handoff, there's nothing to upload/verify.
     appendContactAndBeyond(items, state, null);
-    return items;
+    return finish();
   }
 
   push({
@@ -241,7 +381,7 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
     resolved: state.phase !== "period-select",
   });
 
-  if (state.phase === "period-select") return items;
+  if (state.phase === "period-select") return finish();
 
   if (state.selectedPeriodId === "custom") {
     push({
@@ -250,7 +390,7 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
       resolved: state.phase !== "custom-period",
       value: state.customPeriodRange,
     });
-    if (state.phase === "custom-period") return items;
+    if (state.phase === "custom-period") return finish();
     push({
       kind: "assistant-text",
       id: "custom-period-ack",
@@ -262,7 +402,9 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
   push({
     kind: "assistant-text",
     id: "files-ack",
-    text: firstRequired ? `Let's start with your ${firstRequired.name}.` : "Let's see what I have to work with.",
+    text:
+      topic.filesIntro ??
+      (firstRequired ? `Let's start with your ${firstRequired.name}.` : "Let's see what I have to work with."),
   });
   push({
     kind: "file-upload",
@@ -271,17 +413,17 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
     resolved: state.phase !== "files",
   });
 
-  if (state.phase === "files") return items;
+  if (state.phase === "files") return finish();
 
   push({ kind: "verification", id: "verification" });
 
-  if (state.phase === "verifying") return items;
+  if (state.phase === "verifying") return finish();
 
   push({ kind: "result", id: "result", topic });
 
   appendContactAndBeyond(items, state, topic);
   appendFileEvents(items, state, topic);
-  return items;
+  return finish();
 }
 
 const REPLACE_PHRASES = [
@@ -312,6 +454,16 @@ function appendFileEvents(items: TranscriptItem[], state: ConversationState, top
       event.kind === "replace" ? REPLACE_PHRASES[variant](name) : REMOVE_PHRASES[variant](name);
     items.push({ kind: "assistant-text", id: `file-event-${event.id}`, text });
   });
+}
+
+// Composer messages sent after discovery, each rendered as the user's turn immediately followed
+// by DataTwin's acknowledgement — appended wherever the conversation currently stands (see
+// `finish()` above), never rewriting an earlier turn.
+function appendFreeMessages(items: TranscriptItem[], state: ConversationState): void {
+  for (const message of state.freeMessages) {
+    items.push({ kind: "user-text", id: `free-user-${message.id}`, text: message.text });
+    items.push({ kind: "assistant-text", id: `free-reply-${message.id}`, text: message.reply });
+  }
 }
 
 function appendContactAndBeyond(items: TranscriptItem[], state: ConversationState, topic: ReconciliationTopic | null): void {

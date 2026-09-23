@@ -31,21 +31,26 @@ export function ConversationsPanel({
   open,
   onClose,
 }: {
-  current: ConversationSummary;
+  // `null` while the conversation being viewed hasn't become meaningful yet (still in discovery —
+  // see ChatPageClient) — it's left out of the list entirely rather than showing up as a
+  // placeholder "New conversation" entry, but previously-saved conversations still appear as
+  // normal underneath it.
+  current: ConversationSummary | null;
   open: boolean;
   onClose: () => void;
 }) {
   const stored = useSyncExternalStore(subscribeNever, getConversationsSnapshot, getServerSnapshot);
-  const conversations = mergeCurrent(stored, current);
+  const conversations = current ? mergeCurrent(stored, current) : stored;
 
-  if (conversations.length <= 1) return null;
+  if (conversations.length === 0) return null;
+  if (conversations.length === 1 && conversations[0].id === current?.id) return null;
 
   const list = (
     <>
       <p className="dt-eyebrow px-1">Conversations</p>
       <nav className="mt-3 flex flex-col gap-1">
         {conversations.map((c) => {
-          const active = c.id === current.id;
+          const active = c.id === current?.id;
           return (
             <Link
               key={c.id}

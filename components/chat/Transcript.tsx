@@ -5,11 +5,13 @@ import type {
   ContactDetails,
   ConversationState,
   CustomPeriodRange,
+  FileSourceChoice,
   PeriodOptionId,
   TranscriptItem,
   UploadedFile,
 } from "@/lib/chat/types";
 import { PERIOD_OPTIONS } from "@/lib/chat/types";
+import { getCurrentAndPreviousPeriodLabels } from "@/lib/chat/formatDate";
 import { ContactFormStep } from "./ContactFormStep";
 import { CustomPeriodInput } from "./CustomPeriodInput";
 import { FileUploadStep } from "./FileUploadStep";
@@ -19,18 +21,24 @@ import { OptionGroup } from "./OptionGroup";
 import { AssistantReveal, createRevealTracker, UserReveal } from "./reveal";
 import { RevealStep } from "./RevealStep";
 import { ResultStep } from "./ResultStep";
-import { SomethingElseInput } from "./SomethingElseInput";
 import { VerificationStep } from "./VerificationStep";
 
 export interface TranscriptActions {
   onSelectDiscoveryOption: (turnId: string, optionId: string) => void;
-  onSubmitDiscoveryFreeText: (turnId: string, text: string) => void;
   onSelectPeriod: (id: PeriodOptionId) => void;
   onSubmitCustomPeriod: (range: CustomPeriodRange) => void;
   onUpload: (fileId: string, fileName: string) => void;
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemoveUpload: (fileId: string) => void;
   onContinueFiles: () => void;
+  onChooseFileSource: (fileId: string, source: FileSourceChoice) => void;
+  onSubmitPortalGstin: (fileId: string) => void;
+  onPortalFetchComplete: (fileId: string, fileName: string) => void;
+  onBeginValidation: (fileId: string) => void;
+  onFlagIssue: (fileId: string) => void;
+  onContinueAnyway: (fileId: string) => void;
+  onReplaceFlagged: (fileId: string) => void;
+  onTogglePreview: (fileId: string) => void;
   onVerificationComplete: () => void;
   onConnect: () => void;
   onSubmitContact: (contact: ContactDetails) => void;
@@ -54,6 +62,15 @@ export function Transcript({
   useEffect(() => {
     tracker.unfreeze();
   }, [tracker]);
+
+  // Computed fresh from today's real date (never hardcoded) — see getCurrentAndPreviousPeriodLabels.
+  const periodOptions = useMemo(() => {
+    const { current, previous } = getCurrentAndPreviousPeriodLabels();
+    return PERIOD_OPTIONS.map((option) => ({
+      ...option,
+      sublabel: option.id === "current-period" ? current : option.id === "previous-period" ? previous : undefined,
+    }));
+  }, []);
 
   return (
     <div className="flex flex-col gap-7">
@@ -84,19 +101,6 @@ export function Transcript({
                 onSelect={(optionId) => actions.onSelectDiscoveryOption(item.id, optionId)}
               />
             );
-          case "discovery-freetext":
-            return (
-              <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
-                <SomethingElseInput
-                  itemKey={item.id}
-                  tracker={tracker}
-                  prompt={item.prompt}
-                  resolved={item.resolved}
-                  value={item.value}
-                  onSubmit={(text) => actions.onSubmitDiscoveryFreeText(item.id, text)}
-                />
-              </AssistantReveal>
-            );
           case "period-options":
             return (
               <OptionGroup
@@ -104,7 +108,7 @@ export function Transcript({
                 id={item.id}
                 tracker={tracker}
                 prompt={item.prompt}
-                options={PERIOD_OPTIONS}
+                options={periodOptions}
                 selectedId={item.selectedId}
                 resolved={item.resolved}
                 onSelect={(id) => actions.onSelectPeriod(id as PeriodOptionId)}
@@ -135,10 +139,22 @@ export function Transcript({
                     (file) => state.uploads[file.fileId]?.status === "ready",
                   )}
                   maxRevealed={state.maxRequiredFilesRevealed}
+                  fileSource={state.fileSource}
+                  portalFetch={state.portalFetch}
+                  fileValidation={state.fileValidation}
+                  filePreviewOpen={state.filePreviewOpen}
                   onUpload={actions.onUpload}
                   onAdvanceStatus={actions.onAdvanceStatus}
                   onRemove={actions.onRemoveUpload}
                   onContinue={actions.onContinueFiles}
+                  onChooseFileSource={actions.onChooseFileSource}
+                  onSubmitPortalGstin={actions.onSubmitPortalGstin}
+                  onPortalFetchComplete={actions.onPortalFetchComplete}
+                  onBeginValidation={actions.onBeginValidation}
+                  onFlagIssue={actions.onFlagIssue}
+                  onContinueAnyway={actions.onContinueAnyway}
+                  onReplaceFlagged={actions.onReplaceFlagged}
+                  onTogglePreview={actions.onTogglePreview}
                 />
               </AssistantReveal>
             );

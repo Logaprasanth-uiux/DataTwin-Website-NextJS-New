@@ -62,10 +62,18 @@ function writeIndex(index: ConversationSummary[]): void {
   }
 }
 
-export function getMostRecentConversation(): ConversationSummary | null {
-  const index = readIndex();
-  if (index.length === 0) return null;
-  return [...index].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null;
+// Per-CTA history — not "whichever conversation is most recent overall". A later click of the
+// *same* CTA/entry point should offer to resume its own previous conversation, but a different
+// CTA (e.g. the GST journey vs. "Stop the Leakage") must never surface that unrelated one.
+// `excludeId` leaves out the conversation currently being viewed (e.g. a just-created fresh one
+// for this same context, not yet meaningfully different from a blank slate).
+export function getMostRecentConversationForContext(
+  entryContext: EntryContext,
+  excludeId?: string,
+): ConversationSummary | null {
+  const matches = readIndex().filter((entry) => entry.entryContext === entryContext && entry.id !== excludeId);
+  if (matches.length === 0) return null;
+  return [...matches].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null;
 }
 
 /** Every conversation in this browser, most recent first — backs the left-hand conversations panel. */
@@ -107,7 +115,7 @@ export function saveConversation(state: ConversationState): void {
   try {
     window.localStorage.setItem(conversationKey(state.id), JSON.stringify(state));
     const index = readIndex().filter((entry) => entry.id !== state.id);
-    index.push({ id: state.id, title: state.title, updatedAt: state.updatedAt });
+    index.push({ id: state.id, title: state.title, updatedAt: state.updatedAt, entryContext: state.entryContext });
     writeIndex(index);
   } catch {
     // Best-effort only — the conversation still works for the current tab session.

@@ -58,6 +58,25 @@ function buildFileRequirements(entry: CatalogEntry): { required: FileRequirement
   return { required, optional };
 }
 
+// Bespoke walkthrough copy for reconciliations with a scripted journey (currently just "Bill vs
+// GSTR-2B" — see the GST Reconciliation flow). Everything else keeps the generic templated copy
+// built below; this only ever *adds* optional fields onto the topic the generic path already
+// produces, so a reconciliation with no entry here behaves exactly as it did before.
+const RECONCILIATION_SCRIPTS: Record<
+  string,
+  Pick<ReconciliationTopic, "filesIntro" | "fileAckOverrides" | "portalFetchFileIds" | "autoAdvanceMessage">
+> = {
+  "1.2": {
+    filesIntro:
+      "Perfect, let's get your GST reconciliation done! ⚡\nFirst, please upload your Vendor Bill Register.\n\nWhy this helps: This sets your internal purchase baseline so we can identify missing invoices or unrecorded tax credits before filing.",
+    fileAckOverrides: {
+      F05: "Got it! Vendor Register is ready.\n\nNext, share your GSTR-2B Detail.\n\nWhy this helps: We'll cross-check this official statement against your books to highlight claimable ITC, tax mismatches, and portal differences.",
+    },
+    portalFetchFileIds: ["F02"],
+    autoAdvanceMessage: "Both files are ready. Running your reconciliation summary... ⏳",
+  },
+};
+
 // Assembles the shape the existing upload/verification/result/reveal components already expect
 // (`ReconciliationTopic`), on demand from the catalogue + file data once the discovery engine has
 // identified a reconciliation — nothing about those downstream components needs to change.
@@ -72,6 +91,7 @@ export function buildResolvedTopic(reconciliationId: string): ReconciliationTopi
     requiredFiles: required,
     optionalFiles: optional,
     mockResult: generateMockResult(entry.id),
+    ...RECONCILIATION_SCRIPTS[entry.id],
   };
 }
 

@@ -83,6 +83,16 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Browsers (and this Tailwind version's preflight) leave `<button>` at `cursor: default` — only
+   `<a href>` gets a pointer cursor for free. Every clickable control in this app already changes
+   colour/state on hover; this just makes the cursor agree, without touching any of that existing
+   styling. `:not(:disabled)` leaves a real disabled button's cursor alone (several already set
+   their own `disabled:cursor-not-allowed`, which — being a class selector — still wins here). */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 /* Poppins — headlines, display statements, large numbers. Never body copy.
    Poppins is much larger than the face the approved sizes were set in (x-height 0.555em against 0.41em,
    about 36% wider for the same text), so at the same `font-size` it would look far bigger and re-wrap
@@ -150,6 +160,36 @@ body {
 .dt-button {
   font-weight: 600;
   letter-spacing: -0.005em;
+}
+
+/* A thin, low-contrast scrollbar for the Chat conversation viewport specifically — not a global
+   reset, so the page/browser scrollbar and every other scroll region (Conversations panel, file
+   panel) keep their default appearance. Firefox reads `scrollbar-width`/`scrollbar-color`;
+   Chrome/Safari/Edge read the `::-webkit-scrollbar*` pseudo-elements — both are needed for the
+   same effect. Colours are the theme's own ink tokens (not fixed values), so this stays correct
+   in dark mode too. The track is transparent (no visible channel); the thumb is a faint tint of
+   the body ink at rest and only firms up slightly on hover, so it's discoverable without being
+   visually loud. */
+.dt-thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--navy-hairline) transparent;
+}
+
+.dt-thin-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dt-thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dt-thin-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--navy-hairline);
+  border-radius: 9999px;
+}
+
+.dt-thin-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: var(--navy-faint);
 }
 
 /* The rounded section canvas clips its content to the corners. `clip` does that like `hidden` but, unlike

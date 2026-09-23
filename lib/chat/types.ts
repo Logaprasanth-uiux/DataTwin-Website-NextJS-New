@@ -45,9 +45,24 @@ export interface ReconciliationTopic {
   requiredFiles: FileRequirement[];
   optionalFiles: FileRequirement[];
   mockResult: TopicMockResult;
+  /** Overrides the generic "Let's start with your X." lead-in shown right before file collection
+   * begins, for a reconciliation with a bespoke walkthrough script (see reconciliation.ts). */
+  filesIntro?: string;
+  /** Keyed by fileId: overrides the generic "Got it — I've received your X. {why}" (+ next-file
+   * mention) acknowledgement shown once that specific required file reaches "ready". */
+  fileAckOverrides?: Record<string, string>;
+  /** Required-file ids that offer "fetch directly from the GST Portal" as an alternative to
+   * uploading — see FileSourceChoice/PortalFetchFlow. */
+  portalFetchFileIds?: string[];
+  /** Shown once every required file is ready, instead of the generic "Perfect — I have what I
+   * need..." + optional-files offer + manual "Continue to verification" button — and, after a
+   * short beat, automatically continues into verification itself. */
+  autoAdvanceMessage?: string;
 }
 
 export const PERIOD_OPTIONS = [
+  { id: "current-period", label: "Current period" },
+  { id: "previous-period", label: "Previous period" },
   { id: "current-quarter", label: "Current quarter" },
   { id: "current-fy", label: "Current financial year" },
   { id: "previous-fy", label: "Previous financial year" },
@@ -83,6 +98,21 @@ export interface UploadedFile {
 
 export type FileActionKind = "replace" | "remove";
 
+// A required file that offers a "fetch directly from the GST Portal" alternative to uploading
+// (see ReconciliationTopic.portalFetchFileIds) walks through: pick a source -> (if portal) enter
+// GSTIN -> enter OTP -> a brief mock verify/fetch animation -> the file lands in `uploads` as
+// "ready", exactly like a normal upload. Only the two waiting-on-the-user stages are persisted;
+// the verify/fetch animation itself is transient, component-local state (see PortalFetchFlow).
+export type FileSourceChoice = "upload" | "portal";
+export type PortalFetchStage = "gstin" | "otp";
+
+// A brief mock validation pass on the FIRST required file only (see FileValidationFlow) — a
+// staged check, not real parsing: "verifying" -> "issue" (a mock missing-field finding, with a
+// mock highlighted preview available in the file drawer) -> "acknowledged" (user chose to
+// continue anyway; the upload still proceeds to "ready" as normal). Absent entirely for every
+// other file, and for this one too until its upload first reaches "recognised".
+export type FileValidationStage = "verifying" | "issue" | "acknowledged";
+
 // A record of a replace/remove action taken on a file that had already been acknowledged in the
 // conversation — rendered as its own appended message (see buildTranscript), never folded back
 // into the original upload exchange.
@@ -91,6 +121,15 @@ export interface FileActionEvent {
   kind: FileActionKind;
   fileId: string;
   fileName: string;
+}
+
+// A message sent through the persistent composer after a reconciliation is already resolved,
+// paired with DataTwin's (templated, not invented-on-the-fly) acknowledgement — see
+// `submitChatMessage` in engine.ts.
+export interface FreeMessage {
+  id: string;
+  text: string;
+  reply: string;
 }
 
 export type ConversationPhase =
@@ -110,8 +149,17 @@ export interface ContactDetails {
   phone: string;
 }
 
-// How the user entered the chat — shapes the opening message (see lib/chat/discovery.ts).
-export type EntryContext = "hero" | "leakage" | "recovery-cta" | "direct";
+// How the user entered the chat — shapes the opening message (see lib/chat/discovery.ts). One
+// value per distinct site CTA that launches chat, so each can get its own contextual greeting
+// instead of falling back to a generic one.
+export type EntryContext =
+  | "hero"
+  | "leakage"
+  | "recovery-cta"
+  | "situation"
+  | "solutions"
+  | "final-cta"
+  | "direct";
 
 export interface DiscoveryOptionChoice {
   id: string;
@@ -131,7 +179,13 @@ export type DiscoveryTurn =
       options: DiscoveryOptionChoice[];
       selectedId: string | null;
     }
-  | { kind: "freetext"; id: string; prompt: string; value: string | null };
+  // A question DataTwin asked — rendered as a plain message, not an inline form; the answer comes
+  // through the persistent composer as its own "user" turn below, not by filling `value` here.
+  | { kind: "freetext"; id: string; prompt: string; value: string | null }
+  // A message typed into the persistent chat composer rather than filling a specific inline
+  // prompt — see `submitFreeMessage` in discovery.ts. Unlike "freetext" it isn't a reply to a
+  // question DataTwin asked; it's the user proactively speaking up.
+  | { kind: "user"; id: string; text: string };
 
 export interface DiscoveryState {
   turns: DiscoveryTurn[];
@@ -161,6 +215,22 @@ export interface ConversationState {
   maxRequiredFilesRevealed: number;
   /** Append-only log of replace/remove actions on already-acknowledged files — see buildTranscript. */
   fileEvents: FileActionEvent[];
+  /** Keyed by fileId: which source the user picked for a file that offers a GST Portal fetch
+   * alternative (see ReconciliationTopic.portalFetchFileIds). Absent = not yet chosen. */
+  fileSource: Record<string, FileSourceChoice>;
+  /** Keyed by fileId: how far a "portal" file-source choice has progressed. Only ever set for
+   * files present in `fileSource` with value "portal". */
+  portalFetch: Record<string, PortalFetchStage>;
+  /** Keyed by fileId: mock validation stage — see FileValidationStage. Only ever populated for
+   * the first required file of a resolved topic. */
+  fileValidation: Record<string, FileValidationStage>;
+  /** Keyed by fileId: whether the mock "affected data" preview is expanded in the file drawer. */
+  filePreviewOpen: Record<string, boolean>;
+  /** Messages typed into the persistent composer once a reconciliation is already resolved (the
+   * composer routes discovery-phase messages through `discovery.turns` instead — see
+   * `submitChatMessage` in engine.ts). Appended at the end of the transcript, wherever the
+   * conversation currently stands. */
+  freeMessages: FreeMessage[];
   contact: ContactDetails | null;
   /** Mock temporary identifier (e.g. "DT-2026-0001"), minted once contact details are submitted —
    * prototype stand-in for a real account, shared across every conversation in this browser. */
@@ -172,6 +242,9 @@ export interface ConversationSummary {
   id: string;
   title: string;
   updatedAt: number;
+  /** Which CTA/entry point started this conversation — lets a later launch of the *same* CTA find
+   * its own previous conversation instead of whichever one happens to be most recent overall. */
+  entryContext: EntryContext;
 }
 
 // Derived, read-only view of a conversation used purely for rendering. Built fresh from
@@ -187,7 +260,6 @@ export type TranscriptItem =
       selectedId: string | null;
       resolved: boolean;
     }
-  | { kind: "discovery-freetext"; id: string; prompt: string; resolved: boolean; value: string | null }
   | {
       kind: "period-options";
       id: string;

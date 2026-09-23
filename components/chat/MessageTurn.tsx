@@ -2,13 +2,18 @@
 // presentation (the AI as the conversational guide); the user's own turns are right-aligned in a
 // solid navy bubble, so the two sides read apart at a glance without becoming a generic chat
 // bubble-and-avatar template.
+//
+// `whitespace-pre-line` on both paragraphs: most copy in this app is single-line and unaffected,
+// but some assistant messages are genuinely multi-paragraph (e.g. a "why this helps" callout), and
+// the composer already lets a user enter their own line breaks with Shift+Enter — without this,
+// both were being silently collapsed onto one line.
 export function MessageTurn({ speaker, text }: { speaker: "You" | "DataTwin"; text: string }) {
   if (speaker === "You") {
     return (
       <div className="flex justify-end">
         <div className="flex max-w-[85%] flex-col items-end gap-1.5 sm:max-w-[70%]">
           <span className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">You</span>
-          <p className="rounded-2xl rounded-br-md bg-navy px-4 py-2.5 text-[14.5px] leading-relaxed text-white">
+          <p className="rounded-2xl rounded-br-md bg-navy px-4 py-2.5 text-[14.5px] leading-relaxed whitespace-pre-line text-white">
             {text}
           </p>
         </div>
@@ -22,7 +27,7 @@ export function MessageTurn({ speaker, text }: { speaker: "You" | "DataTwin"; te
         <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" />
         DataTwin
       </span>
-      <p className="max-w-2xl text-[15.5px] leading-relaxed text-navy-body">{text}</p>
+      <p className="max-w-2xl text-[15.5px] leading-relaxed whitespace-pre-line text-navy-body">{text}</p>
     </div>
   );
 }

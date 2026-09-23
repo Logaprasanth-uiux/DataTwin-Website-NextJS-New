@@ -13,3 +13,16 @@ function formatMonthYear(value: string): string {
 export function formatPeriodRange(range: CustomPeriodRange): string {
   return `${formatMonthYear(range.from)} to ${formatMonthYear(range.to)}`;
 }
+
+// Short, uppercase "AUG 2026"-style labels for the "Current period" / "Previous period" quick
+// options — computed from the real current date (never hardcoded), so they always match whatever
+// month it actually is when the user is asked.
+const SHORT_MONTH_YEAR_FORMATTER = new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric" });
+
+export function getCurrentAndPreviousPeriodLabels(now: Date = new Date()): { current: string; previous: string } {
+  const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return {
+    current: SHORT_MONTH_YEAR_FORMATTER.format(now).toUpperCase(),
+    previous: SHORT_MONTH_YEAR_FORMATTER.format(previousMonth).toUpperCase(),
+  };
+}

@@ -1,7 +1,7 @@
 import "@/components/solutions/solutions.css";
 import { Container } from "@/components/layout/Container";
 import { Section } from "@/components/layout/Section";
-import { CtaLink } from "@/components/ui/CtaLink";
+import { RecoveryCtaButton } from "@/components/chat/RecoveryCtaButton";
 import { LongSectionContextLabel } from "@/components/ui/LongSectionContextLabel";
 import { MORE_USE_CASES } from "@/components/solutions/solutions-data";
 import { SolutionsNetwork } from "@/components/solutions/SolutionsNetwork";
@@ -54,7 +54,7 @@ export function SolutionsSection() {
           </p>
 
           <div className="mt-10 flex justify-center">
-            <CtaLink href="#contact">+ Tell us Yours</CtaLink>
+            <RecoveryCtaButton entryContext="solutions">+ Tell us Yours</RecoveryCtaButton>
           </div>
         </div>
       </Container>

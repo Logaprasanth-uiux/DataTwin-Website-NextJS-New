@@ -18,13 +18,18 @@ const NOUN_ENDING = /\b(issue|problem|mismatch|gap|reconciliation|difference)s?$
 
 const MAX_TITLE_LENGTH = 48;
 
+// The placeholder title a conversation starts with until there's something real to call it —
+// used elsewhere (engine.ts) to know whether a title still needs deriving from an identified
+// topic, so it's exported rather than duplicated as a string literal.
+export const PLACEHOLDER_TITLE = "New conversation";
+
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 export function generateConversationTitle(firstMessage: string | null | undefined): string {
   const trimmed = firstMessage?.trim();
-  if (!trimmed) return "New conversation";
+  if (!trimmed) return PLACEHOLDER_TITLE;
 
   let text = trimmed.replace(/[.?!]+$/, "");
   for (const pattern of LEADING_FILLERS) {
@@ -35,7 +40,7 @@ export function generateConversationTitle(firstMessage: string | null | undefine
   }
 
   text = text.trim();
-  if (!text) return "New conversation";
+  if (!text) return PLACEHOLDER_TITLE;
 
   const words = text.split(/\s+/);
   if (words.length > 8) {

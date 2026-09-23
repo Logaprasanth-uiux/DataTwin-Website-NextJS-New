@@ -1,6 +1,6 @@
 import { Container } from "@/components/layout/Container";
 import { Section } from "@/components/layout/Section";
-import { CtaLink } from "@/components/ui/CtaLink";
+import { RecoveryCtaButton } from "@/components/chat/RecoveryCtaButton";
 import { LongSectionContextLabel } from "@/components/ui/LongSectionContextLabel";
 
 const PROBLEMS = [
@@ -99,9 +99,9 @@ export function SituationSection() {
                 everything that should agree with it <em className="font-semibold text-navy not-italic">before</em>{" "}
                 it becomes a number you have to defend.
               </p>
-              <CtaLink href="#contact" className="mt-6">
+              <RecoveryCtaButton entryContext="situation" className="mt-6">
                 See how analysis comes first
-              </CtaLink>
+              </RecoveryCtaButton>
             </div>
           </div>
         </Container>

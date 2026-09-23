@@ -7,6 +7,9 @@ import { TypingIndicator, UserReveal, useMountReveal, type RevealTracker } from 
 interface Option {
   id: string;
   label: string;
+  /** A small contextual line under the label — e.g. "AUG 2026" under "Current period" — so a
+   * relative option still shows the concrete period it actually means. */
+  sublabel?: string;
 }
 
 const TYPING_MS = 550;
@@ -83,6 +86,11 @@ export function OptionGroup({
               className="rounded-xl border border-navy-hairline bg-white px-4 py-2.5 text-left text-[14px] font-medium text-navy shadow-soft transition-colors hover:border-accent hover:bg-accent/[0.05]"
             >
               {option.label}
+              {option.sublabel && (
+                <span className="mt-0.5 block text-[11px] font-normal tracking-[0.02em] text-navy-faint uppercase">
+                  {option.sublabel}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -90,7 +98,10 @@ export function OptionGroup({
 
       {resolved && selected && (
         <UserReveal itemKey={`${id}:selected`} tracker={tracker}>
-          <MessageTurn speaker="You" text={selected.label} />
+          <MessageTurn
+            speaker="You"
+            text={selected.sublabel ? `${selected.label} — ${selected.sublabel}` : selected.label}
+          />
         </UserReveal>
       )}
     </div>

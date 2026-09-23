@@ -24,15 +24,20 @@ export function FileRequirementCard({
   onUpload,
   onAdvanceStatus,
   onRemove,
+  holdAtRecognised = false,
 }: {
   requirement: FileRequirement;
   upload: UploadedFile | undefined;
   onUpload: (fileId: string, fileName: string) => void;
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemove: (fileId: string) => void;
+  /** Stops the mock checklist at "Structure recognised" instead of auto-advancing to "ready" —
+   * used only for the first required file, which the caller then takes over from (a mock
+   * validation pass) rather than declaring ready silently. */
+  holdAtRecognised?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  useMockFileValidation(upload, requirement.fileId, onAdvanceStatus);
+  useMockFileValidation(upload, requirement.fileId, onAdvanceStatus, holdAtRecognised);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files?.[0];

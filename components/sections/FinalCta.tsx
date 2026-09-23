@@ -1,4 +1,5 @@
 import { CtaLink } from "@/components/ui/CtaLink";
+import { RecoveryCtaButton } from "@/components/chat/RecoveryCtaButton";
 import { CONTACT_MAILTO } from "@/components/layout/footer-data";
 
 // The homepage's closing call to action. It has no background of its own: it is passed to <Footer> as
@@ -20,9 +21,9 @@ export function FinalCta() {
         you know you’re safe.
       </p>
       <div className="dt-reveal mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-        <CtaLink href="#contact" variant="solid">
+        <RecoveryCtaButton entryContext="final-cta" variant="solid">
           Tell us your problem
-        </CtaLink>
+        </RecoveryCtaButton>
         <CtaLink href={CONTACT_MAILTO} variant="outline">
           Email us instead
         </CtaLink>

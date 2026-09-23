@@ -11,8 +11,28 @@ import type { DiscoveryState, DiscoveryTurn, EntryContext } from "./types";
 export const SOMETHING_ELSE_ID = "something-else";
 const MAX_ATTEMPTS = 3;
 
+// One tailored opening line per site CTA that launches chat — each already ends in its own
+// invitation to respond, so (unlike GENERIC_GREETING) none of these need a separate follow-up
+// prompt tacked on. Wording matches what each CTA itself is about, not a one-size-fits-all line.
 const LEAKAGE_GREETING =
-  "Let's find out where your organisation may be losing money and what could be recovered.";
+  "Let's find where value is leaking from your financial processes. What would you like to investigate first?";
+const RECOVERY_CTA_GREETING =
+  "Let's find your recoverable number. What are you seeing — unclaimed tax credits, duplicate or overpaid vendor payments, misstated balances, or something else?";
+const SITUATION_GREETING =
+  "Let's run the analysis before anything gets recorded. What's not reconciling in your books right now?";
+const SOLUTIONS_GREETING =
+  "Tell us yours — describe the reconciliation, agreement or process you're dealing with, and I'll help you see what's recoverable.";
+const FINAL_CTA_GREETING =
+  "Tell us your problem, and we'll tell you what's recoverable. What's the situation you're dealing with?";
+
+const CONTEXTUAL_GREETINGS: Partial<Record<EntryContext, string>> = {
+  leakage: LEAKAGE_GREETING,
+  "recovery-cta": RECOVERY_CTA_GREETING,
+  situation: SITUATION_GREETING,
+  solutions: SOLUTIONS_GREETING,
+  "final-cta": FINAL_CTA_GREETING,
+};
+
 const GENERIC_GREETING = "Hi, I'm here to help you find what's recoverable.";
 const FREE_TEXT_INVITE =
   "Tell me a little about what you're trying to recover, reconcile, or investigate, and I'll help narrow it down.";
@@ -77,13 +97,18 @@ export interface DiscoveryOutcome {
   status: "continue" | "resolved" | "fallback";
 }
 
-/** Scores free text (from the hero message or any later discovery round) and decides what happens
- * next. `discovery` is the state *before* this submission is counted. */
-function applyFreeText(discovery: DiscoveryState, text: string): DiscoveryOutcome {
-  const turns = [...discovery.turns];
-  const round = discovery.attempts; // rounds already completed before this one
-  const attempts = discovery.attempts + 1;
-
+/** Scores free text and appends DataTwin's reply turn(s) — shared by `applyFreeText` (the
+ * marketing-site hero message, with no user turn of its own to add) and `submitFreeMessage` (the
+ * persistent composer; the caller has already pushed a `"user"` turn onto `turns` for what was
+ * typed). `turns` is the array to keep appending to, `round`/`attempts` are computed by the caller
+ * from `discovery.attempts` before this submission is counted. */
+function continueFreeText(
+  turns: DiscoveryTurn[],
+  discovery: DiscoveryState,
+  text: string,
+  attempts: number,
+  round: number,
+): DiscoveryOutcome {
   const askAgainOrFallback = (prompts: readonly string[]): DiscoveryOutcome => {
     if (attempts >= MAX_ATTEMPTS) {
       turns.push(makeMessage(turns, FALLBACK_TEXT));
@@ -134,6 +159,29 @@ function applyFreeText(discovery: DiscoveryState, text: string): DiscoveryOutcom
   return askAgainOrFallback(CLARIFY_PROMPTS);
 }
 
+/** The opening hero message a user can type on the marketing site before the chat interface (and
+ * its persistent composer) even exists yet — the only caller left once discovery is under way
+ * always goes through `submitFreeMessage` instead. `discovery` is the state *before* this
+ * submission; this only appends DataTwin's reply, there's no user turn of its own to add here. */
+function applyFreeText(discovery: DiscoveryState, text: string): DiscoveryOutcome {
+  const turns = [...discovery.turns];
+  const round = discovery.attempts; // rounds already completed before this one
+  const attempts = discovery.attempts + 1;
+  return continueFreeText(turns, discovery, text, attempts, round);
+}
+
+/** A message typed into the persistent chat composer — not tied to any specific inline prompt, so
+ * (unlike `applyFreeText`) it pushes its own `"user"` turn before running the same resolution
+ * logic "Something else" already uses. Lets the composer be a genuine second way to write into
+ * discovery, not a parallel, less-capable input. */
+export function submitFreeMessage(discovery: DiscoveryState, text: string): DiscoveryOutcome {
+  const trimmed = text.trim();
+  const turns = [...discovery.turns, { kind: "user" as const, id: `d${discovery.turns.length}`, text: trimmed }];
+  const round = discovery.attempts;
+  const attempts = discovery.attempts + 1;
+  return continueFreeText(turns, discovery, trimmed, attempts, round);
+}
+
 /** Builds the opening turn(s) for a brand-new conversation, shaped by how the user entered. */
 export function createInitialDiscovery(firstMessage: string | null, entryContext: EntryContext): DiscoveryOutcome {
   const empty: DiscoveryState = { turns: [], resolvedId: null, attempts: 0, shownIds: [] };
@@ -145,8 +193,15 @@ export function createInitialDiscovery(firstMessage: string | null, entryContext
     return applyFreeText(empty, firstMessage);
   }
 
-  const greeting = entryContext === "leakage" ? LEAKAGE_GREETING : GENERIC_GREETING;
-  const turns = [makeMessage(empty.turns, greeting)];
+  const contextualGreeting = CONTEXTUAL_GREETINGS[entryContext];
+  if (contextualGreeting) {
+    // Already ends with its own invitation to respond — appending FREE_TEXT_INVITE here would
+    // just ask the same thing again in blander words.
+    const turns = [makeMessage(empty.turns, contextualGreeting)];
+    return { discovery: { ...empty, turns }, status: "continue" };
+  }
+
+  const turns = [makeMessage(empty.turns, GENERIC_GREETING)];
   turns.push(makeFreeText(turns, FREE_TEXT_INVITE));
   return { discovery: { ...empty, turns }, status: "continue" };
 }
@@ -172,13 +227,4 @@ export function selectDiscoveryOption(discovery: DiscoveryState, turnId: string,
   }
   turns.push(makeFreeText(turns, pickRound(SOMETHING_ELSE_PROMPTS, round)));
   return { discovery: { ...discovery, turns }, status: "continue" };
-}
-
-/** The user submitted free text for an existing "freetext" turn. */
-export function submitDiscoveryFreeText(discovery: DiscoveryState, turnId: string, text: string): DiscoveryOutcome {
-  const trimmed = text.trim();
-  const turns = discovery.turns.map((turn) =>
-    turn.id === turnId && turn.kind === "freetext" ? { ...turn, value: trimmed } : turn,
-  );
-  return applyFreeText({ ...discovery, turns }, trimmed);
 }

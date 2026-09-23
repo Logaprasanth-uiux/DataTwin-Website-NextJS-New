@@ -116,6 +116,23 @@ const CAPABILITY_PATTERN = /what can you|what do you do|who are you|help me find
 
 export type OpenerKind = "greeting" | "capability" | null;
 
+// "Bill vs GSTR-2B" (1.2) has a bespoke scripted walkthrough (see reconciliation.ts's
+// RECONCILIATION_SCRIPTS) whose trigger phrase needs to resolve unambiguously — but the generic
+// score-highest-then-check-its-own-name-coverage approach below can rank a same-family entry that
+// merely *shares* words (e.g. "Vendor Bill vs Vendor Ledger", via "vendor"/"bill") above it, since
+// that scoring has no notion of "this phrase is really about entry X specifically". Rather than
+// changing how ranking works in general — which could shift other borderline resolutions in ways
+// this one fix can't fully verify — this checks for the one combination of tokens that's genuinely
+// unambiguous for this entry: an explicit "GSTR-2B" mention alongside "bill", with no "GSTR-2A"
+// mention (which would more likely mean the related 2A/2B consolidated entry, 1.4, instead).
+const GSTR_2B_SCRIPTED_ENTRY_ID = "1.2";
+
+function matchesGstr2bScriptedTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
+  if (!userTokens.has("gstr-2b") || !userTokens.has("bill")) return null;
+  if (userTokens.has("gstr-2a") || userTokens.has("2a")) return null;
+  return INDEX.find((i) => i.entry.id === GSTR_2B_SCRIPTED_ENTRY_ID)?.entry ?? null;
+}
+
 /** Distinguishes a genuine greeting or "what can you do" question from an actual attempt at
  * describing a problem — so the reply can answer *that*, rather than treating every message as a
  * failed reconciliation match and reusing the same clarifying prompt regardless of what was said.
@@ -135,8 +152,13 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
     return { confidence: "low", top: null, candidates: [] };
   }
   const userTokenSet = new Set(userTokens);
-
   const excluded = new Set(excludeIds);
+
+  const scriptedMatch = matchesGstr2bScriptedTrigger(userTokenSet);
+  if (scriptedMatch && !excluded.has(scriptedMatch.id)) {
+    return { confidence: "high", top: scriptedMatch, candidates: [] };
+  }
+
   const scored = INDEX.filter((i) => !excluded.has(i.entry.id))
     .map((i) => ({ entry: i.entry, score: scoreEntry(userTokens, i), coverage: nameCoverage(userTokenSet, i) }))
     .filter((s) => s.score > 0)
