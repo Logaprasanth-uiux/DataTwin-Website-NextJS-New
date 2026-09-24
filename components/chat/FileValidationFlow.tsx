@@ -103,16 +103,16 @@ export function FileValidationFlow({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onTogglePreview(requirement.fileId)}
-          className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-accent transition-colors hover:text-navy"
-        >
-          <EyeIcon className="h-3.5 w-3.5" />
-          {previewOpen ? "Hide affected data" : "View affected data in Files panel"}
-        </button>
-
         <div className="flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            onClick={() => onTogglePreview(requirement.fileId)}
+            aria-pressed={previewOpen}
+            className="dt-button inline-flex h-10 items-center gap-1.5 rounded-full border border-accent/40 px-4 text-[13px] font-medium text-accent transition-colors hover:border-accent hover:bg-accent/[0.06]"
+          >
+            <EyeIcon className="h-3.5 w-3.5" />
+            {previewOpen ? "Hide affected data" : "View affected data"}
+          </button>
           <button
             type="button"
             onClick={() => onContinueAnyway(requirement.fileId)}

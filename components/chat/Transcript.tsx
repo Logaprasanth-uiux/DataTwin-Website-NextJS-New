@@ -11,7 +11,11 @@ import type {
   UploadedFile,
 } from "@/lib/chat/types";
 import { PERIOD_OPTIONS } from "@/lib/chat/types";
-import { getCurrentAndPreviousPeriodLabels } from "@/lib/chat/formatDate";
+import {
+  getCurrentAndPreviousFinancialYearLabels,
+  getCurrentAndPreviousPeriodLabels,
+  getCurrentQuarterLabel,
+} from "@/lib/chat/formatDate";
 import { ContactFormStep } from "./ContactFormStep";
 import { CustomPeriodInput } from "./CustomPeriodInput";
 import { FileUploadStep } from "./FileUploadStep";
@@ -63,13 +67,19 @@ export function Transcript({
     tracker.unfreeze();
   }, [tracker]);
 
-  // Computed fresh from today's real date (never hardcoded) — see getCurrentAndPreviousPeriodLabels.
+  // Computed fresh from today's real date (never hardcoded) — every period option gets a
+  // contextual sublabel except "Custom period", which has no fixed range to summarise.
   const periodOptions = useMemo(() => {
     const { current, previous } = getCurrentAndPreviousPeriodLabels();
-    return PERIOD_OPTIONS.map((option) => ({
-      ...option,
-      sublabel: option.id === "current-period" ? current : option.id === "previous-period" ? previous : undefined,
-    }));
+    const { current: currentFY, previous: previousFY } = getCurrentAndPreviousFinancialYearLabels();
+    const sublabels: Partial<Record<PeriodOptionId, string>> = {
+      "current-period": current,
+      "previous-period": previous,
+      "current-quarter": getCurrentQuarterLabel(),
+      "current-fy": currentFY,
+      "previous-fy": previousFY,
+    };
+    return PERIOD_OPTIONS.map((option) => ({ ...option, sublabel: sublabels[option.id] }));
   }, []);
 
   return (
@@ -188,6 +198,7 @@ export function Transcript({
                 <HandoffStep
                   active={state.phase === "handoff"}
                   canReveal={item.canReveal}
+                  revealed={state.revealed}
                   onPreviewReveal={actions.onPreviewReveal}
                 />
               </AssistantReveal>

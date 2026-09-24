@@ -1,18 +1,19 @@
 const PROCESS_STEPS = ["Verification", "Review with DataTwin Team", "Commercial / contract discussion", "Detailed recovery analysis"];
 
-// "Verification" is always the current stage the moment a user lands on this screen — the rest
-// are upcoming. There's no later state to advance to within this prototype.
-const ACTIVE_STEP_INDEX = 0;
-
 export function HandoffStep({
   active,
   canReveal,
+  revealed,
   onPreviewReveal,
 }: {
   active: boolean;
   canReveal: boolean;
+  /** True once the (demo) recovery analysis has been unlocked — advances the stepper past
+   * "Verification" and marks it done instead of leaving it pinned as the current stage. */
+  revealed: boolean;
   onPreviewReveal: () => void;
 }) {
+  const activeStepIndex = revealed ? 1 : 0;
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1.5">
@@ -31,58 +32,66 @@ export function HandoffStep({
         {/* Desktop: one connected horizontal stepper — a hairline runs behind every circle, with
             the segment leading into the active step picked out in accent. */}
         <ol className="hidden sm:grid sm:grid-cols-4 sm:gap-2">
-          {PROCESS_STEPS.map((step, index) => (
-            <li key={step} className="relative flex flex-col items-center gap-2.5 text-center">
-              {index > 0 && (
+          {PROCESS_STEPS.map((step, index) => {
+            const done = index < activeStepIndex;
+            const isCurrent = index === activeStepIndex;
+            return (
+              <li key={step} className="relative flex flex-col items-center gap-2.5 text-center">
+                {index > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute top-3 -left-1/2 h-px w-full ${index <= activeStepIndex ? "bg-accent" : "bg-navy-hairline"}`}
+                  />
+                )}
                 <span
-                  aria-hidden="true"
-                  className={`absolute top-3 -left-1/2 h-px w-full ${index <= ACTIVE_STEP_INDEX ? "bg-accent" : "bg-navy-hairline"}`}
-                />
-              )}
-              <span
-                className={`relative z-10 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-                  index === ACTIVE_STEP_INDEX
-                    ? "bg-accent text-navy"
-                    : "border border-navy-hairline bg-white text-navy-faint"
-                }`}
-              >
-                {index + 1}
-              </span>
-              <span
-                className={`text-[12px] leading-snug font-medium ${index === ACTIVE_STEP_INDEX ? "text-navy" : "text-navy-faint"}`}
-              >
-                {step}
-              </span>
-            </li>
-          ))}
+                  className={`relative z-10 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                    done
+                      ? "bg-accent/15 text-accent"
+                      : isCurrent
+                        ? "bg-accent text-navy"
+                        : "border border-navy-hairline bg-white text-navy-faint"
+                  }`}
+                >
+                  {done ? <CheckIcon className="h-3 w-3" /> : index + 1}
+                </span>
+                <span className={`text-[12px] leading-snug font-medium ${done || isCurrent ? "text-navy" : "text-navy-faint"}`}>
+                  {step}
+                </span>
+              </li>
+            );
+          })}
         </ol>
 
         {/* Mobile: the same relationship, stacked — a vertical connector runs down the left edge. */}
         <ol className="flex flex-col sm:hidden">
-          {PROCESS_STEPS.map((step, index) => (
-            <li key={step} className="relative flex gap-3 pb-5 last:pb-0">
-              {index < PROCESS_STEPS.length - 1 && (
+          {PROCESS_STEPS.map((step, index) => {
+            const done = index < activeStepIndex;
+            const isCurrent = index === activeStepIndex;
+            return (
+              <li key={step} className="relative flex gap-3 pb-5 last:pb-0">
+                {index < PROCESS_STEPS.length - 1 && (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute top-6 left-3 h-full w-px -translate-x-1/2 ${index < activeStepIndex ? "bg-accent" : "bg-navy-hairline"}`}
+                  />
+                )}
                 <span
-                  aria-hidden="true"
-                  className={`absolute top-6 left-3 h-full w-px -translate-x-1/2 ${index < ACTIVE_STEP_INDEX ? "bg-accent" : "bg-navy-hairline"}`}
-                />
-              )}
-              <span
-                className={`relative z-10 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-                  index === ACTIVE_STEP_INDEX
-                    ? "bg-accent text-navy"
-                    : "border border-navy-hairline bg-white text-navy-faint"
-                }`}
-              >
-                {index + 1}
-              </span>
-              <span
-                className={`pt-0.5 text-[13px] font-medium ${index === ACTIVE_STEP_INDEX ? "text-navy" : "text-navy-faint"}`}
-              >
-                {step}
-              </span>
-            </li>
-          ))}
+                  className={`relative z-10 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                    done
+                      ? "bg-accent/15 text-accent"
+                      : isCurrent
+                        ? "bg-accent text-navy"
+                        : "border border-navy-hairline bg-white text-navy-faint"
+                  }`}
+                >
+                  {done ? <CheckIcon className="h-3 w-3" /> : index + 1}
+                </span>
+                <span className={`pt-0.5 text-[13px] font-medium ${done || isCurrent ? "text-navy" : "text-navy-faint"}`}>
+                  {step}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       </div>
 
@@ -109,5 +118,13 @@ export function HandoffStep({
         </p>
       )}
     </div>
+  );
+}
+
+function CheckIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+      <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
