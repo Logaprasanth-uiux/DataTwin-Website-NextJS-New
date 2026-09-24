@@ -173,6 +173,12 @@ button:not(:disabled),
 .dt-thin-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--navy-hairline) transparent;
+  /* The chat transcript manages its own "stay near the latest message" scroll position in JS
+     (see ChatPageClient's auto-scroll effect). Leaving the browser's default scroll anchoring on
+     lets it silently re-adjust scrollTop of its own accord whenever content is inserted above the
+     viewport — fighting the programmatic scroll it's layered on top of instead of leaving it as
+     the single source of truth. */
+  overflow-anchor: none;
 }
 
 .dt-thin-scroll::-webkit-scrollbar {

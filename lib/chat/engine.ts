@@ -58,6 +58,8 @@ export function createInitialState(
     contact: null,
     userId: null,
     revealed: false,
+    summaryContact: null,
+    summaryVerified: false,
   };
 }
 
@@ -263,7 +265,25 @@ export function chooseFileSource(state: ConversationState, fileId: string, sourc
 
 export function submitPortalGstin(state: ConversationState, fileId: string): ConversationState {
   if (state.portalFetch[fileId] !== "gstin") return state;
+  return touch({ ...state, portalFetch: { ...state.portalFetch, [fileId]: "consent" } });
+}
+
+// The user explicitly agrees to the GSTIN/OTP-authorised portal access before OTP verification is
+// ever triggered (see PortalFetchFlow's consent modal) — only then does the flow proceed to "otp".
+export function agreePortalConsent(state: ConversationState, fileId: string): ConversationState {
+  if (state.portalFetch[fileId] !== "consent") return state;
   return touch({ ...state, portalFetch: { ...state.portalFetch, [fileId]: "otp" } });
+}
+
+// Declining consent backs all the way out of the portal path — clearing `fileSource` re-offers the
+// upload-vs-portal choice fresh (see FileSourceChoice), rather than leaving the user stuck mid-flow
+// or silently dropping them into OTP anyway.
+export function cancelPortalConsent(state: ConversationState, fileId: string): ConversationState {
+  const fileSource = { ...state.fileSource };
+  delete fileSource[fileId];
+  const portalFetch = { ...state.portalFetch };
+  delete portalFetch[fileId];
+  return touch({ ...state, fileSource, portalFetch });
 }
 
 // The OTP itself is never passed in or stored — by the time this is called, the caller (a local
@@ -320,6 +340,17 @@ export function submitContact(
 
 export function advanceToReveal(state: ConversationState): ConversationState {
   return touch({ ...state, phase: "reveal", revealed: true });
+}
+
+// --- Executive Summary access gate (see ResultStep/SummaryAccessGate) --
+
+export function submitSummaryContact(state: ConversationState, contact: ContactDetails): ConversationState {
+  return touch({ ...state, summaryContact: contact });
+}
+
+export function verifySummaryOtp(state: ConversationState): ConversationState {
+  if (!state.summaryContact) return state; // no contact on file yet — nothing to verify
+  return touch({ ...state, summaryVerified: true });
 }
 
 // --- Transcript ---------------------------------------------------------

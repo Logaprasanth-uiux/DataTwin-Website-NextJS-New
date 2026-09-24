@@ -104,7 +104,7 @@ export type FileActionKind = "replace" | "remove";
 // "ready", exactly like a normal upload. Only the two waiting-on-the-user stages are persisted;
 // the verify/fetch animation itself is transient, component-local state (see PortalFetchFlow).
 export type FileSourceChoice = "upload" | "portal";
-export type PortalFetchStage = "gstin" | "otp";
+export type PortalFetchStage = "gstin" | "consent" | "otp";
 
 // A brief mock validation pass on the FIRST required file only (see FileValidationFlow) — a
 // staged check, not real parsing: "verifying" -> "issue" (a mock missing-field finding, with a
@@ -236,6 +236,15 @@ export interface ConversationState {
    * prototype stand-in for a real account, shared across every conversation in this browser. */
   userId: string | null;
   revealed: boolean;
+  /** Name/work email/phone submitted to the lightweight gate shown over the Executive Summary
+   * (see ResultStep/SummaryAccessGate) — separate from `contact`, which belongs to the later,
+   * fuller "connect with the DataTwin Team" step that unlocks the detailed findings. `null` until
+   * submitted. */
+  summaryContact: ContactDetails | null;
+  /** True once that gate's mock OTP step has been completed — only then is the Executive Summary
+   * shown unblurred. The OTP itself is never persisted (see PortalFetchFlow's own OTP for the same
+   * convention) — this flag is the only trace that verification happened. */
+  summaryVerified: boolean;
 }
 
 export interface ConversationSummary {

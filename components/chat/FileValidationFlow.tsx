@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { describeMockFileIssue } from "@/lib/chat/mockFileIssue";
 import type { FileRequirement, FileValidationStage, UploadedFile } from "@/lib/chat/types";
 import { FileRequirementCard } from "./FileRequirementCard";
 import { MessageTurn } from "./MessageTurn";
@@ -102,6 +103,8 @@ export function FileValidationFlow({
             Issue found
           </span>
         </div>
+
+        <p className="text-[12.5px] leading-relaxed text-crimson">{describeMockFileIssue()}</p>
 
         <div className="flex flex-wrap gap-2.5">
           <button

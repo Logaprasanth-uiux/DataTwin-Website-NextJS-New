@@ -23,7 +23,7 @@ export function BlurredInsightPreview({
 
   return (
     <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft">
-      <p className="text-[13.5px] font-medium text-navy">Where is the recovery sitting?</p>
+      <p className="text-[13.5px] font-medium text-navy">Where is the recovery coming from?</p>
 
       <div className="mt-4 flex flex-col divide-y divide-navy-divider">
         {rows.map((row, index) => (

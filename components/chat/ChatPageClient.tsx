@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   advanceToReveal,
   advanceUploadStatus,
+  agreePortalConsent,
   beginFileValidation,
   beginVerification,
   buildTranscript,
+  cancelPortalConsent,
   chooseFileSource,
   completePortalFetch,
   completeVerification,
@@ -25,7 +27,9 @@ import {
   submitContact,
   submitCustomPeriod,
   submitPortalGstin,
+  submitSummaryContact,
   toggleFilePreview,
+  verifySummaryOtp,
 } from "@/lib/chat/engine";
 import {
   getMostRecentConversationForContext,
@@ -40,6 +44,7 @@ import { ChatHeader } from "./ChatHeader";
 import { ContinueConversationModal } from "./ContinueConversationModal";
 import { ConversationsPanel } from "./ConversationsPanel";
 import { FileContextPanel } from "./FileContextPanel";
+import { PortalConsentModal } from "./PortalFetchFlow";
 import { Transcript, type TranscriptActions } from "./Transcript";
 
 // localStorage (the "external system" here) genuinely differs between the server render and the
@@ -122,6 +127,22 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
   const [conversationsOpen, setConversationsOpen] = useState(false);
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLElement>(null);
+
+  // The GST-portal consent decision (see PortalConsentModal) is the one place this app asks for an
+  // explicit yes/no on sharing access — while it's up, the rest of the chat should read as
+  // genuinely paused, not just visually dimmed behind it. At most one file is ever mid-consent at a
+  // time, so a simple lookup is enough to know whether to freeze.
+  const pendingConsentFileId = state
+    ? (Object.keys(state.portalFetch).find((fileId) => state.portalFetch[fileId] === "consent") ?? null)
+    : null;
+  const frozen = Boolean(pendingConsentFileId);
+  // Read inside the scroll effect below (set up once, see its own comment) — a plain boolean
+  // dependency would be stale inside that closure, so the latest value lives in a ref instead.
+  const frozenRef = useRef(frozen);
+  useEffect(() => {
+    frozenRef.current = frozen;
+  }, [frozen]);
 
   // Not saved (and so not shown in the Conversations panel or offered by "Welcome back") until
   // there's something meaningful to save — an identified reconciliation, or discovery's own
@@ -196,8 +217,13 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     // indefinitely for anyone not actively looking at it at that exact moment.
     const SETTLE_MS = 80;
     const scheduleScroll = () => {
+      // Frozen (the GST-portal consent modal is up) — skip entirely, including the debounce
+      // timer itself, so nothing moves behind the modal and no stale scroll fires the moment it
+      // closes either; the next genuine content change once unfrozen schedules its own pass.
+      if (frozenRef.current) return;
       window.clearTimeout(debounceTimer);
       debounceTimer = window.setTimeout(() => {
+        if (frozenRef.current) return;
         const height = container.scrollHeight;
         if (height === lastScrolledHeight) return;
         lastScrolledHeight = height;
@@ -207,6 +233,16 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
 
     const observer = new ResizeObserver(scheduleScroll);
     observer.observe(container);
+    // Also watch the composer itself, not just the transcript above it: typing a multi-line
+    // message grows the composer, which — inside the fixed-height `<main>` — shrinks the
+    // conversation's own scrollable viewport by exactly that much (flex redistributing the space
+    // between them), and shrinks back the moment the message is sent. That's a change to how much
+    // of the *existing* content is visible, not a change in the transcript's own content height, so
+    // it never reached this effect before: the transcript-only observer could stay completely
+    // silent across an entire type-and-send round trip, leaving the newly sent message (and
+    // whatever arrives after it) exactly as far below the fold as the composer's now-collapsed
+    // height, with nothing left to trigger a re-chase.
+    if (composerRef.current) observer.observe(composerRef.current);
     scheduleScroll();
     return () => {
       window.clearTimeout(debounceTimer);
@@ -251,11 +287,22 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     onConnect: () => update((prev) => openContactForm(prev)),
     onSubmitContact: (contact) => update((prev) => submitContact(prev, contact, getOrCreateUserId())),
     onPreviewReveal: () => update((prev) => advanceToReveal(prev)),
+    onSubmitSummaryContact: (contact) => update((prev) => submitSummaryContact(prev, contact)),
+    onVerifySummaryOtp: () => update((prev) => verifySummaryOtp(prev)),
   };
 
   // Not part of `TranscriptActions` — the composer is rendered directly here, not through
   // Transcript, since it's a persistent fixture of the page rather than a turn in the transcript.
   const handleSubmitChatMessage = (text: string) => update((prev) => submitChatMessage(prev, text));
+
+  // Also not part of `TranscriptActions`: the consent modal itself now renders at this top level
+  // (see `frozen`/`pendingConsentFileId` above), not nested inside the transcript.
+  const handleAgreePortalConsent = () => {
+    if (pendingConsentFileId) update((prev) => agreePortalConsent(prev, pendingConsentFileId));
+  };
+  const handleCancelPortalConsent = () => {
+    if (pendingConsentFileId) update((prev) => cancelPortalConsent(prev, pendingConsentFileId));
+  };
 
   const items = buildTranscript(state);
   const topic = getResolvedTopic(state.discovery.resolvedId);
@@ -263,56 +310,66 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
   const showComposer = !COMPOSER_HIDDEN_PHASES.has(state.phase);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <ChatHeader onToggleConversations={() => setConversationsOpen(true)} />
-      <div className="flex flex-1">
-        <ConversationsPanel
-          current={
-            isMeaningful
-              ? { id: state.id, title: state.title, updatedAt: state.updatedAt, entryContext: state.entryContext }
-              : null
-          }
-          open={conversationsOpen}
-          onClose={() => setConversationsOpen(false)}
-        />
-
-        <div className="flex w-full flex-1 flex-col lg:flex-row">
-          {/* The "main Chat panel": bounded to exactly one viewport's worth of height below the
-              header (`h-[calc(100vh-4rem)]`, matching the Conversations/file panels' own existing
-              `top-16`/`4rem`-header convention) and pinned there with the same `sticky top-16`
-              those panels already use — not a new pattern. Only the conversation region inside it
-              scrolls (`overflow-y-auto`); the composer is a separate, non-scrolling flex sibling
-              below it, so it can never be scrolled past or trail off the bottom of a long
-              conversation the way a `sticky bottom-0` element at the end of an ever-growing page
-              would (that was the actual bug: such an element only "activates" once you scroll all
-              the way to the document's end, so it just kept trailing the conversation downward). */}
-          <main className="flex h-[calc(100vh-4rem)] min-h-0 min-w-0 flex-1 flex-col overflow-hidden sticky top-16">
-            <div className="dt-thin-scroll min-h-0 flex-1 overflow-y-auto">
-              <div ref={transcriptRef} className="mx-auto flex w-full max-w-3xl flex-col px-5 py-8 sm:px-6 sm:py-10">
-                <Transcript items={items} state={state} actions={actions} />
-                {/* `scroll-mb-8`, not a bigger bottom padding on the container above: padding at
-                    the end of a scroll region sits *below* whatever scrollIntoView lands on, so it
-                    doesn't actually show once scrolled all the way to this anchor. scroll-margin is
-                    what scrollIntoView itself respects — it's what actually keeps the latest
-                    response a comfortable distance above the composer instead of flush against it. */}
-                <div ref={scrollAnchorRef} className="scroll-mb-8" />
-              </div>
-            </div>
-            {showComposer && <ChatComposer onSubmit={handleSubmitChatMessage} />}
-          </main>
-
-          <FileContextPanel
-            topic={showFilePanel ? topic : null}
-            uploads={state.uploads}
-            maxRevealed={state.maxRequiredFilesRevealed}
-            fileSource={state.fileSource}
-            fileValidation={state.fileValidation}
-            filePreviewOpen={state.filePreviewOpen}
-            onUpload={actions.onUpload}
-            onAdvanceStatus={actions.onAdvanceStatus}
-            onRemove={actions.onRemoveUpload}
-            onTogglePreview={actions.onTogglePreview}
+    <>
+      <div
+        className="flex min-h-screen flex-col bg-background"
+        // Freezes the entire chat — header, panels, transcript, composer — behind the GST-portal
+        // consent modal: no focus, no clicks, no scroll-into-view targeting, and hidden from
+        // assistive tech, all from one native attribute rather than threading a "disabled" flag
+        // through every interactive element individually. Both modals render as true siblings
+        // below, outside this wrapper, so neither is affected by its own or the other's freeze.
+        inert={frozen}
+      >
+        <ChatHeader onToggleConversations={() => setConversationsOpen(true)} />
+        <div className="flex flex-1">
+          <ConversationsPanel
+            current={
+              isMeaningful
+                ? { id: state.id, title: state.title, updatedAt: state.updatedAt, entryContext: state.entryContext }
+                : null
+            }
+            open={conversationsOpen}
+            onClose={() => setConversationsOpen(false)}
           />
+
+          <div className="flex w-full flex-1 flex-col lg:flex-row">
+            {/* The "main Chat panel": bounded to exactly one viewport's worth of height below the
+                header (`h-[calc(100vh-4rem)]`, matching the Conversations/file panels' own existing
+                `top-16`/`4rem`-header convention) and pinned there with the same `sticky top-16`
+                those panels already use — not a new pattern. Only the conversation region inside it
+                scrolls (`overflow-y-auto`); the composer is a separate, non-scrolling flex sibling
+                below it, so it can never be scrolled past or trail off the bottom of a long
+                conversation the way a `sticky bottom-0` element at the end of an ever-growing page
+                would (that was the actual bug: such an element only "activates" once you scroll all
+                the way to the document's end, so it just kept trailing the conversation downward). */}
+            <main className="flex h-[calc(100vh-4rem)] min-h-0 min-w-0 flex-1 flex-col overflow-hidden sticky top-16">
+              <div className="dt-thin-scroll min-h-0 flex-1 overflow-y-auto">
+                <div ref={transcriptRef} className="mx-auto flex w-full max-w-3xl flex-col px-5 py-8 sm:px-6 sm:py-10">
+                  <Transcript items={items} state={state} actions={actions} />
+                  {/* `scroll-mb-8`, not a bigger bottom padding on the container above: padding at
+                      the end of a scroll region sits *below* whatever scrollIntoView lands on, so it
+                      doesn't actually show once scrolled all the way to this anchor. scroll-margin is
+                      what scrollIntoView itself respects — it's what actually keeps the latest
+                      response a comfortable distance above the composer instead of flush against it. */}
+                  <div ref={scrollAnchorRef} className="scroll-mb-8" />
+                </div>
+              </div>
+              {showComposer && <ChatComposer ref={composerRef} onSubmit={handleSubmitChatMessage} />}
+            </main>
+
+            <FileContextPanel
+              topic={showFilePanel ? topic : null}
+              uploads={state.uploads}
+              maxRevealed={state.maxRequiredFilesRevealed}
+              fileSource={state.fileSource}
+              fileValidation={state.fileValidation}
+              filePreviewOpen={state.filePreviewOpen}
+              onUpload={actions.onUpload}
+              onAdvanceStatus={actions.onAdvanceStatus}
+              onRemove={actions.onRemoveUpload}
+              onTogglePreview={actions.onTogglePreview}
+            />
+          </div>
         </div>
       </div>
 
@@ -324,6 +381,10 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
           onClose={() => setWelcomeBackDismissed(true)}
         />
       )}
-    </div>
+
+      {pendingConsentFileId && (
+        <PortalConsentModal onAgree={handleAgreePortalConsent} onCancel={handleCancelPortalConsent} />
+      )}
+    </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react";
+import { forwardRef, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react";
 
 // The persistent prompt bar at the bottom of the main Chat panel — a second way to write into the
 // exact same conversation state the quick-actions (options, "Something else", file cards) already
@@ -12,7 +12,16 @@ import { useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent 
 // (no `sticky`/`fixed`, no border separating it from the messages above: it's meant to read as
 // part of the same panel, not a distinct footer). Its own `max-w-3xl mx-auto` below matches the
 // transcript's, so both align to the same content column.
-export function ChatComposer({ onSubmit }: { onSubmit: (text: string) => void }) {
+// Forwards a ref to the root `<footer>` — ChatPageClient's auto-scroll effect observes this
+// element's own size alongside the transcript's, so a message long enough to grow (and, on send,
+// shrink back) the composer itself also re-triggers the "chase the bottom" check, not just growth
+// of the transcript content above it. See ChatPageClient for why that gap mattered: the composer's
+// height directly changes how much of the fixed-height panel is left for the scrollable
+// conversation, independent of whether the transcript's own content grew.
+export const ChatComposer = forwardRef<HTMLElement, { onSubmit: (text: string) => void }>(function ChatComposer(
+  { onSubmit },
+  ref,
+) {
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -56,7 +65,7 @@ export function ChatComposer({ onSubmit }: { onSubmit: (text: string) => void })
   };
 
   return (
-    <footer className="w-full flex-shrink-0 bg-background">
+    <footer ref={ref} className="w-full flex-shrink-0 bg-background">
       <div className="mx-auto w-full max-w-3xl px-5 pt-2 pb-5 sm:px-6">
         <form onSubmit={handleSubmit} className="flex items-center gap-2.5">
           <textarea
@@ -82,7 +91,7 @@ export function ChatComposer({ onSubmit }: { onSubmit: (text: string) => void })
       </div>
     </footer>
   );
-}
+});
 
 function SendIcon({ className = "" }: { className?: string }) {
   return (

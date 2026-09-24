@@ -1,24 +1,52 @@
-import type { ReconciliationTopic } from "@/lib/chat/types";
+import type { ContactDetails, ReconciliationTopic } from "@/lib/chat/types";
 import { BlurredInsightPreview } from "./BlurredInsightPreview";
-import { RecoveryResultCard } from "./RecoveryResultCard";
+import { ExecutiveSummary } from "./ExecutiveSummary";
+import { SummaryAccessGate } from "./SummaryAccessGate";
 
+// New results sequence: contact verification -> Executive Summary -> detailed findings.
+// Until `summaryVerified`, the Executive Summary renders blurred behind SummaryAccessGate's
+// name/work-email/phone + OTP form (a lighter-weight gate than the one below, just to view the
+// summary teaser). Once verified, the summary is fully visible and the detailed line-item findings
+// appear beneath it — still blurred, unlocked only by the app's existing, separate "connect with
+// the DataTwin Team" -> contact form -> handoff -> reveal chain (unchanged).
 export function ResultStep({
   topic,
   active,
+  summaryContact,
+  summaryVerified,
+  onSubmitSummaryContact,
+  onVerifySummaryOtp,
   onConnect,
 }: {
   topic: ReconciliationTopic;
   active: boolean;
+  summaryContact: ContactDetails | null;
+  summaryVerified: boolean;
+  onSubmitSummaryContact: (contact: ContactDetails) => void;
+  onVerifySummaryOtp: () => void;
   onConnect: () => void;
 }) {
+  if (!summaryVerified) {
+    return (
+      <div className="relative flex flex-col">
+        <div aria-hidden="true" className="pointer-events-none blur-md select-none">
+          <ExecutiveSummary result={topic.mockResult} />
+        </div>
+        <div className="absolute inset-0 flex items-start justify-center pt-2 sm:items-center sm:pt-0">
+          <SummaryAccessGate contact={summaryContact} onSubmitContact={onSubmitSummaryContact} onVerifyOtp={onVerifySummaryOtp} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      <RecoveryResultCard result={topic.mockResult} />
+      <ExecutiveSummary result={topic.mockResult} />
       <BlurredInsightPreview rows={topic.mockResult.previewRows} revealed={false} />
 
       {active && (
         <div className="rounded-2xl border border-navy-hairline bg-navy/[0.02] p-6">
-          <p className="text-[15px] font-medium text-navy">Want to see exactly where the recovery is sitting?</p>
+          <p className="text-[15px] font-medium text-navy">Want to see exactly where the recovery is coming from?</p>
           <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-navy-body">
             Connect with the DataTwin Team to unlock the detailed recovery analysis and next steps.
           </p>

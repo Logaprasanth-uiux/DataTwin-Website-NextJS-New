@@ -109,8 +109,21 @@ export function PortalFetchFlow({
     );
   }
 
-  // stage === "otp" — GSTIN already submitted (never shown), acknowledged with a masked "You"
-  // turn rather than the real value.
+  // stage === "consent" | "otp" — GSTIN already submitted (never shown), acknowledged with a
+  // masked "You" turn rather than the real value. The consent decision itself is a true modal,
+  // rendered at the page root (see ChatPageClient/PortalConsentModal) rather than inline here, so
+  // it can freeze the rest of the chat behind it — nothing more to show in this slot while it's up.
+  if (stage === "consent") {
+    return (
+      <div className="flex flex-col gap-3">
+        <UserReveal itemKey={`${itemKey}:gstin-submitted`} tracker={tracker}>
+          <MessageTurn speaker="You" text="GSTIN submitted" />
+        </UserReveal>
+        <MessageTurn speaker="DataTwin" text="Got it — your GSTIN has been received." />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <UserReveal itemKey={`${itemKey}:gstin-submitted`} tracker={tracker}>
@@ -171,6 +184,72 @@ export function PortalFetchFlow({
           text="Verified! ⚡ Fetching your official GSTR-2B statement directly from the portal now..."
         />
       )}
+    </div>
+  );
+}
+
+// Blocks the OTP flow from ever starting without an explicit, affirmative choice — modeled on
+// ContinueConversationModal's own overlay/focus/Escape pattern, the one other place this app asks
+// for a yes/no decision this consequential. Rendered by ChatPageClient at the page root (not
+// nested here inside the transcript) so the rest of the chat can be marked `inert` behind it
+// without also disabling the modal itself.
+export function PortalConsentModal({ onAgree, onCancel }: { onAgree: () => void; onCancel: () => void }) {
+  const agreeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    agreeRef.current?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-navy/40 px-6 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="portal-consent-title"
+      onClick={onCancel}
+    >
+      <div
+        className="dt-fade-up w-full max-w-md rounded-2xl border border-navy-hairline bg-white p-7 shadow-soft sm:p-8"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <p className="dt-eyebrow dt-eyebrow-accent">Consent required</p>
+        <h2 id="portal-consent-title" className="dt-display mt-3 text-2xl font-semibold tracking-[-0.01em] text-navy">
+          Allow secure GST Portal access?
+        </h2>
+
+        <div className="mt-4 flex flex-col gap-2.5 text-[13.5px] leading-relaxed text-navy-body">
+          <p>
+            DataTwin will use your GSTIN and OTP-authorised access solely to retrieve your GSTR-2B statement from
+            the GST Portal.
+          </p>
+          <p>This data is used only for the GST reconciliation you&apos;re currently running.</p>
+          <p>No credentials are stored — access is limited to this one-time retrieval.</p>
+          <p className="font-medium text-navy">Proceeding means you consent to this secure, limited-purpose access.</p>
+        </div>
+
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row-reverse">
+          <button
+            ref={agreeRef}
+            type="button"
+            onClick={onAgree}
+            className="dt-button h-12 flex-1 rounded-full bg-navy px-5 text-[14px] text-white transition-colors hover:bg-navy/90"
+          >
+            Agree and Proceed
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="dt-button h-12 flex-1 rounded-full border border-navy-hairline px-5 text-[14px] text-navy transition-colors hover:border-accent"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

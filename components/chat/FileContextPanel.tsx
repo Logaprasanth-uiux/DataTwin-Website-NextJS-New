@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { visibleRequiredFiles } from "@/lib/chat/engine";
+import { MOCK_ISSUE_MISSING_COUNT, MOCK_ISSUE_ROWS } from "@/lib/chat/mockFileIssue";
 import type {
   FileRequirement,
   FileSourceChoice as FileSourceChoiceValue,
@@ -16,24 +17,6 @@ const STATUS_LABEL: Record<UploadedFile["status"], string> = {
   recognised: "Checking…",
   ready: "Uploaded",
 };
-
-// Mock affected-data rows for the file drawer's "issue" preview (see FileValidationFlow) — never
-// real file contents, just plausible-looking placeholder data with the flagged column called out.
-// A fuller set than a 3-4 row snippet, so the drawer reads as a real (if illustrative) document
-// preview rather than a tiny excerpt.
-const MOCK_PREVIEW_ROWS = [
-  { invoice: "INV-2231", vendor: "Orion Traders", gstin: "27AAECA1234F1Z8", amount: "₹84,200" },
-  { invoice: "INV-2232", vendor: "Blue Harbor Pvt Ltd", gstin: "", amount: "₹1,12,500" },
-  { invoice: "INV-2233", vendor: "Nexa Components", gstin: "24AAKCS5678D1Z3", amount: "₹46,900" },
-  { invoice: "INV-2234", vendor: "Ridgeline Supplies", gstin: "", amount: "₹67,300" },
-  { invoice: "INV-2235", vendor: "Solaris Freight Co", gstin: "29AABCU9988E1Z6", amount: "₹38,150" },
-  { invoice: "INV-2236", vendor: "Meridian Textiles", gstin: "", amount: "₹1,54,000" },
-  { invoice: "INV-2237", vendor: "Crestpoint Logistics", gstin: "07AACCK4432P1Z1", amount: "₹22,600" },
-  { invoice: "INV-2238", vendor: "Harborline Packaging", gstin: "19AADCM7711Q1Z4", amount: "₹91,750" },
-  { invoice: "INV-2239", vendor: "Vantage Industrial Co", gstin: "", amount: "₹58,900" },
-  { invoice: "INV-2240", vendor: "Silverline Traders", gstin: "33AAACB2266R1Z9", amount: "₹1,05,300" },
-];
-const MOCK_PREVIEW_MISSING_COUNT = MOCK_PREVIEW_ROWS.filter((row) => !row.gstin).length;
 
 function CompactFileCard({
   requirement,
@@ -223,7 +206,7 @@ function FileIssueDrawer({ requirement, onClose }: { requirement: FileRequiremen
                 </tr>
               </thead>
               <tbody className="text-navy-body">
-                {MOCK_PREVIEW_ROWS.map((row) => (
+                {MOCK_ISSUE_ROWS.map((row) => (
                   <tr key={row.invoice} className="border-b border-navy-hairline last:border-0">
                     <td className="px-3 py-2 whitespace-nowrap">{row.invoice}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{row.vendor}</td>
@@ -240,7 +223,7 @@ function FileIssueDrawer({ requirement, onClose }: { requirement: FileRequiremen
           </div>
           <p className="mt-4 text-[13px] leading-relaxed text-navy-body">
             The highlighted <span className="font-medium text-navy">GSTIN</span> column is missing for{" "}
-            {MOCK_PREVIEW_MISSING_COUNT} of {MOCK_PREVIEW_ROWS.length} rows — without it, those rows can&apos;t be
+            {MOCK_ISSUE_MISSING_COUNT} of {MOCK_ISSUE_ROWS.length} rows — without it, those rows can&apos;t be
             confidently matched during reconciliation.
           </p>
         </div>
@@ -279,7 +262,15 @@ export function FileContextPanel({
   if (!topic) return null;
   const visibleRequired = visibleRequiredFiles(topic, uploads, maxRevealed);
   const requiredReady = topic.requiredFiles.every((f) => uploads[f.fileId]?.status === "ready");
-  const files = requiredReady ? [...visibleRequired, ...topic.optionalFiles] : visibleRequired;
+  // Optional/conditional files only ever get introduced in the conversation once the required
+  // files are ready AND the topic doesn't skip straight to verification via autoAdvanceMessage
+  // (see FileUploadStep, which gates its own optional-file offer the same way) — mirror that here
+  // so the panel never lists a document with "+ Add file" before the chat has actually asked for
+  // it. One already uploaded stays visible regardless (nothing to hide once it's part of the
+  // conversation).
+  const optionalFilesIntroduced = requiredReady && !topic.autoAdvanceMessage;
+  const visibleOptional = topic.optionalFiles.filter((f) => optionalFilesIntroduced || uploads[f.fileId]);
+  const files = [...visibleRequired, ...visibleOptional];
   const flaggedFile = files.find(
     (f) => fileValidation[f.fileId] === "issue" || fileValidation[f.fileId] === "acknowledged",
   );

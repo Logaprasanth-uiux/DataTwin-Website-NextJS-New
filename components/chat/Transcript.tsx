@@ -47,6 +47,8 @@ export interface TranscriptActions {
   onConnect: () => void;
   onSubmitContact: (contact: ContactDetails) => void;
   onPreviewReveal: () => void;
+  onSubmitSummaryContact: (contact: ContactDetails) => void;
+  onVerifySummaryOtp: () => void;
 }
 
 export function Transcript({
@@ -177,7 +179,15 @@ export function Transcript({
           case "result":
             return (
               <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
-                <ResultStep topic={item.topic} active={state.phase === "result"} onConnect={actions.onConnect} />
+                <ResultStep
+                  topic={item.topic}
+                  active={state.phase === "result"}
+                  summaryContact={state.summaryContact}
+                  summaryVerified={state.summaryVerified}
+                  onSubmitSummaryContact={actions.onSubmitSummaryContact}
+                  onVerifySummaryOtp={actions.onVerifySummaryOtp}
+                  onConnect={actions.onConnect}
+                />
               </AssistantReveal>
             );
           case "contact-form":

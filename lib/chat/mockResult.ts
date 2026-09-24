@@ -69,31 +69,54 @@ const ACTION_TEMPLATES: Record<RecoveryBucket, string[]> = {
   ],
 };
 
+const ALL_OUTPUTS = Object.values(RECOVERY_OUTPUT_DEFS);
+
+// Deterministic Fisher-Yates using the same seeded PRNG, so the fill-in order (and therefore the
+// full 10-15 row set) is stable per reconciliation rather than reshuffling every render.
+function shuffled<T>(items: T[], random: () => number): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export function generateMockResult(reconciliationId: string): TopicMockResult {
   const random = mulberry32(hashString(reconciliationId));
   const potentialNow = round10k(800_000 + random() * 5_200_000);
   const exposureQuarter = round10k(potentialNow * (1.25 + random() * 0.25));
   const exposureYear = round10k(exposureQuarter * (1.1 + random() * 0.25));
 
-  const outputs = outputsFor(reconciliationId).slice(0, 3);
-  const rowCount = Math.max(2, Math.min(3, outputs.length || 2));
-
-  const previewRows: RecoveryPreviewRow[] = [];
-  let remaining = potentialNow;
-  for (let i = 0; i < rowCount; i++) {
-    const output = outputs[i];
-    const isLast = i === rowCount - 1;
-    const share = isLast ? remaining : round10k(remaining * (0.35 + random() * 0.35));
-    remaining -= share;
-    previewRows.push({
-      classification: output?.classification ?? "Potential Recovery",
-      bucket: output?.bucket ?? "recovery",
-      detail: output?.meaning ?? "Difference identified during the initial reconciliation",
-      amount: Math.max(share, 10_000),
-    });
+  // The reconciliation's own directly-detected findings come first (also what `nextActions` below
+  // is grounded in), then enough additional real findings from the wider 69-entry recovery-output
+  // catalogue — deterministically shuffled, never repeating one already included — to read as a
+  // substantial, varied analysis (~10-15 rows) rather than a 2-3 row sample. Every row is still a
+  // real catalogue entry (classification/bucket/meaning), never invented text, and nothing here
+  // renders the internal `id`.
+  const primaryOutputs = outputsFor(reconciliationId);
+  const targetRowCount = 10 + Math.floor(random() * 6); // 10-15
+  const selected: RecoveryOutputDef[] = [...primaryOutputs];
+  const usedIds = new Set(selected.map((o) => o.id));
+  for (const output of shuffled(ALL_OUTPUTS, random)) {
+    if (selected.length >= targetRowCount) break;
+    if (usedIds.has(output.id)) continue;
+    usedIds.add(output.id);
+    selected.push(output);
   }
 
-  const buckets = new Set(outputs.map((o) => o.bucket));
+  // Split potentialNow across every row with a randomized-but-normalized weight — reads as
+  // plausible individual line items (still blurred until unlocked) rather than even slices.
+  const weights = selected.map(() => 0.4 + random());
+  const weightTotal = weights.reduce((sum, w) => sum + w, 0);
+  const previewRows: RecoveryPreviewRow[] = selected.map((output, index) => ({
+    classification: output.classification,
+    bucket: output.bucket,
+    detail: output.meaning,
+    amount: Math.max(round10k((potentialNow * weights[index]) / weightTotal), 10_000),
+  }));
+
+  const buckets = new Set(primaryOutputs.map((o) => o.bucket));
   if (buckets.size === 0) buckets.add("recovery");
   const nextActions: string[] = [];
   for (const bucket of buckets) {

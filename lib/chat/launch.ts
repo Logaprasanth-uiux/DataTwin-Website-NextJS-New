@@ -11,8 +11,12 @@ import type { EntryContext } from "./types";
 // back" decision belongs entirely to the chat screen itself (see ChatPageClient), not the website,
 // so every CTA lands the user in chat first and the prompt (if any) appears there.
 
+// Deliberately *not* `noopener`/`noreferrer`: this is a same-origin, same-app tab (the chat
+// screen), not a link to an external site, so there's no reverse-tabnabbing risk in keeping
+// `window.opener` — and ChatHeader's "Back to DataTwin" relies on that reference to refocus this
+// exact tab (rather than opening a duplicate) when the chat tab closes itself.
 function openChatTab(id: string): void {
-  window.open(`/chat?cid=${id}`, "_blank", "noopener,noreferrer");
+  window.open(`/chat?cid=${id}`, "_blank");
 }
 
 /** Hero prompt "Enter" — always starts a fresh conversation, no resumable-conversation check. */
