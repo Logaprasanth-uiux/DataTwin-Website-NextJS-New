@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
-  advanceToReveal,
   advanceUploadStatus,
   agreePortalConsent,
   beginFileValidation,
@@ -17,14 +16,14 @@ import {
   createInitialState,
   flagFileIssue,
   getResolvedTopic,
-  openContactForm,
+  openSchedule,
   recordUpload,
   removeUpload,
   replaceFlaggedFile,
+  scheduleMeeting,
   selectDiscoveryOption,
   selectPeriod,
   submitChatMessage,
-  submitContact,
   submitCustomPeriod,
   submitPortalGstin,
   submitSummaryContact,
@@ -90,20 +89,13 @@ function loadInitialResumable(conversationId: string): ConversationSummary | nul
   return resumable;
 }
 
-const FILE_PANEL_PHASES = new Set<ConversationState["phase"]>([
-  "files",
-  "verifying",
-  "result",
-  "contact-form",
-  "handoff",
-  "reveal",
-]);
+const FILE_PANEL_PHASES = new Set<ConversationState["phase"]>(["files", "verifying", "result", "schedule", "reveal"]);
 
 // The composer stays available through the whole normal journey; it's hidden only for the
-// intentional terminal states — the contact form is itself the input there, and handoff/reveal
-// are read-only summary steps, not places to keep chatting. See engine.ts's `submitChatMessage`
-// for how a message typed anywhere else is handled per-phase.
-const COMPOSER_HIDDEN_PHASES = new Set<ConversationState["phase"]>(["contact-form", "handoff", "reveal"]);
+// intentional terminal states — the scheduling form is itself the input there, and reveal is a
+// read-only summary step, not a place to keep chatting. See engine.ts's `submitChatMessage` for
+// how a message typed anywhere else is handled per-phase.
+const COMPOSER_HIDDEN_PHASES = new Set<ConversationState["phase"]>(["schedule", "reveal"]);
 
 export function ChatPageClient({ conversationId }: { conversationId: string }) {
   const router = useRouter();
@@ -143,6 +135,24 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
   useEffect(() => {
     frozenRef.current = frozen;
   }, [frozen]);
+
+  // Composer sends get a deterministic, immediate "chase the bottom" of their own — set by
+  // `handleSubmitChatMessage` below, read the moment the resulting state change actually commits —
+  // rather than relying solely on the ResizeObserver below noticing the new content had grown.
+  // Quick-action turns already scroll reliably off that passive observer alone (their trigger
+  // element is itself inside the observed transcript, so its own removal/change is part of what
+  // gets observed); the composer sits outside that region entirely, one layer removed, which left
+  // it more exposed to any timing slop in the passive path. This closes that gap for the one case
+  // that needs it, without changing how quick actions already work. It also means a message sent
+  // after scrolling back up to re-read earlier turns still snaps straight back to the bottom,
+  // regardless of where the observer's own debounce happens to be at that moment.
+  const pendingComposerScrollRef = useRef(false);
+  useEffect(() => {
+    if (!pendingComposerScrollRef.current) return;
+    pendingComposerScrollRef.current = false;
+    if (frozenRef.current) return;
+    scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [state]);
 
   // Not saved (and so not shown in the Conversations panel or offered by "Welcome back") until
   // there's something meaningful to save — an identified reconciliation, or discovery's own
@@ -284,16 +294,18 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     onReplaceFlagged: (fileId) => update((prev) => replaceFlaggedFile(prev, fileId)),
     onTogglePreview: (fileId) => update((prev) => toggleFilePreview(prev, fileId)),
     onVerificationComplete: () => update((prev) => completeVerification(prev)),
-    onConnect: () => update((prev) => openContactForm(prev)),
-    onSubmitContact: (contact) => update((prev) => submitContact(prev, contact, getOrCreateUserId())),
-    onPreviewReveal: () => update((prev) => advanceToReveal(prev)),
+    onOpenSchedule: () => update((prev) => openSchedule(prev)),
+    onScheduleMeeting: (contact, meeting) => update((prev) => scheduleMeeting(prev, contact, meeting, getOrCreateUserId())),
     onSubmitSummaryContact: (contact) => update((prev) => submitSummaryContact(prev, contact)),
     onVerifySummaryOtp: () => update((prev) => verifySummaryOtp(prev)),
   };
 
   // Not part of `TranscriptActions` — the composer is rendered directly here, not through
   // Transcript, since it's a persistent fixture of the page rather than a turn in the transcript.
-  const handleSubmitChatMessage = (text: string) => update((prev) => submitChatMessage(prev, text));
+  const handleSubmitChatMessage = (text: string) => {
+    pendingComposerScrollRef.current = true;
+    update((prev) => submitChatMessage(prev, text));
+  };
 
   // Also not part of `TranscriptActions`: the consent modal itself now renders at this top level
   // (see `frozen`/`pendingConsentFileId` above), not nested inside the transcript.

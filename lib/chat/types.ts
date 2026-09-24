@@ -139,14 +139,20 @@ export type ConversationPhase =
   | "files"
   | "verifying"
   | "result"
-  | "contact-form"
-  | "handoff"
+  | "schedule"
   | "reveal";
 
 export interface ContactDetails {
   name: string;
   email: string;
   phone: string;
+}
+
+// A (mock) meeting time picked in ScheduleMeetingStep — paired with `ConversationState.contact`
+// (name/email/phone) rather than duplicating them, since scheduling reuses/edits that same record.
+export interface ScheduledMeeting {
+  date: string;
+  time: string;
 }
 
 // How the user entered the chat — shapes the opening message (see lib/chat/discovery.ts). One
@@ -245,6 +251,10 @@ export interface ConversationState {
    * shown unblurred. The OTP itself is never persisted (see PortalFetchFlow's own OTP for the same
    * convention) — this flag is the only trace that verification happened. */
   summaryVerified: boolean;
+  /** Set once ScheduleMeetingStep is submitted — `contact` above holds the name/email/phone used
+   * for that booking (pre-filled from `summaryContact`, editable), this just holds the chosen
+   * date/time. `null` until scheduled. */
+  scheduledMeeting: ScheduledMeeting | null;
 }
 
 export interface ConversationSummary {
@@ -280,6 +290,5 @@ export type TranscriptItem =
   | { kind: "file-upload"; id: string; topic: ReconciliationTopic; resolved: boolean }
   | { kind: "verification"; id: string }
   | { kind: "result"; id: string; topic: ReconciliationTopic }
-  | { kind: "contact-form"; id: string; resolved: boolean }
-  | { kind: "handoff"; id: string; canReveal: boolean }
+  | { kind: "schedule"; id: string; resolved: boolean }
   | { kind: "reveal"; id: string; topic: ReconciliationTopic };

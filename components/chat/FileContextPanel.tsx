@@ -163,6 +163,25 @@ function FileIssueDrawer({ requirement, onClose }: { requirement: FileRequiremen
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
 
+  // Downloads the same mock table shown below as a CSV — there's no real document behind this
+  // (see mockFileIssue.ts), so this hands back the identical illustrative data rather than
+  // fabricating a second, inconsistent mock on the way out.
+  const handleDownload = () => {
+    const csvField = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const header = ["Invoice No.", "Vendor", "GSTIN", "Amount"].map(csvField).join(",");
+    const rows = MOCK_ISSUE_ROWS.map((row) => [row.invoice, row.vendor, row.gstin || "Missing", row.amount].map(csvField).join(","));
+    const csv = [header, ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${requirement.name.replace(/[^a-z0-9]+/gi, "_")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <div
@@ -183,15 +202,26 @@ function FileIssueDrawer({ requirement, onClose }: { requirement: FileRequiremen
             <p className="text-[10.5px] font-semibold tracking-[0.06em] text-crimson uppercase">Affected data</p>
             <h3 className="mt-1 text-[15px] font-semibold text-navy">{requirement.name}</h3>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            title="Close"
-            aria-label="Close"
-            className="rounded-md p-1.5 text-navy-muted transition-colors hover:bg-navy/[0.06] hover:text-navy"
-          >
-            <CloseIcon className="h-4 w-4" />
-          </button>
+          <div className="flex flex-shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={handleDownload}
+              title="Download"
+              aria-label={`Download ${requirement.name}`}
+              className="rounded-md p-1.5 text-navy-muted transition-colors hover:bg-navy/[0.06] hover:text-navy"
+            >
+              <DownloadIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close"
+              aria-label="Close"
+              className="rounded-md p-1.5 text-navy-muted transition-colors hover:bg-navy/[0.06] hover:text-navy"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="dt-thin-scroll flex-1 overflow-y-auto p-5">
@@ -348,6 +378,20 @@ function CloseIcon({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
       <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DownloadIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M8 2.5v7M8 9.5L5 6.5M8 9.5l3-3M3 11.5v1.5A1.5 1.5 0 004.5 14.5h7a1.5 1.5 0 001.5-1.5v-1.5"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

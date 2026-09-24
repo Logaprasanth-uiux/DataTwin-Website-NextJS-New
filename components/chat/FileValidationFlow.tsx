@@ -111,7 +111,7 @@ export function FileValidationFlow({
             type="button"
             onClick={() => onTogglePreview(requirement.fileId)}
             aria-pressed={previewOpen}
-            className="dt-button inline-flex h-10 items-center gap-1.5 rounded-full border border-accent/40 px-4 text-[13px] font-medium text-accent transition-colors hover:border-accent hover:bg-accent/[0.06]"
+            className="dt-button inline-flex h-10 items-center gap-1.5 rounded-full border border-crimson/40 px-4 text-[13px] font-medium text-crimson transition-colors hover:border-crimson hover:bg-crimson/[0.06]"
           >
             <EyeIcon className="h-3.5 w-3.5" />
             {previewOpen ? "Hide affected data" : "View affected data"}

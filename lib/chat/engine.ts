@@ -16,6 +16,7 @@ import type {
   FileSourceChoice,
   PeriodOptionId,
   ReconciliationTopic,
+  ScheduledMeeting,
   TranscriptItem,
   UploadedFile,
 } from "./types";
@@ -43,7 +44,7 @@ export function createInitialState(
     updatedAt: now,
     firstMessage,
     entryContext,
-    phase: status === "resolved" ? "period-select" : status === "fallback" ? "contact-form" : "discovery",
+    phase: status === "resolved" ? "period-select" : status === "fallback" ? "schedule" : "discovery",
     discovery,
     selectedPeriodId: null,
     customPeriodRange: null,
@@ -60,6 +61,7 @@ export function createInitialState(
     revealed: false,
     summaryContact: null,
     summaryVerified: false,
+    scheduledMeeting: null,
   };
 }
 
@@ -94,7 +96,7 @@ function touch(state: ConversationState): ConversationState {
 
 function phaseForStatus(status: "continue" | "resolved" | "fallback"): ConversationState["phase"] {
   if (status === "resolved") return "period-select";
-  if (status === "fallback") return "contact-form";
+  if (status === "fallback") return "schedule";
   return "discovery";
 }
 
@@ -326,20 +328,29 @@ export function completeVerification(state: ConversationState): ConversationStat
   return touch({ ...state, phase: "result" });
 }
 
-export function openContactForm(state: ConversationState): ConversationState {
-  return touch({ ...state, phase: "contact-form" });
+export function openSchedule(state: ConversationState): ConversationState {
+  return touch({ ...state, phase: "schedule" });
 }
 
-export function submitContact(
+// The contact details are already on file from the Executive Summary gate (see
+// SummaryAccessGate) — this isn't re-asking for them, it's the same record, pre-filled and left
+// editable in ScheduleMeetingStep. Scheduling no longer auto-unlocks the detailed findings below —
+// the AI confirmation + meeting details are the deliberate end of this step; the findings stay
+// blurred until an actual unlock exists. `phase` stays "schedule" (its `resolved` state is now
+// driven by `scheduledMeeting` — see buildTranscript — not by a phase transition), so this only
+// ever records the booking.
+export function scheduleMeeting(
   state: ConversationState,
   contact: ContactDetails,
+  meeting: ScheduledMeeting,
   userId: string,
 ): ConversationState {
-  return touch({ ...state, contact, userId: userId || state.userId, phase: "handoff" });
-}
-
-export function advanceToReveal(state: ConversationState): ConversationState {
-  return touch({ ...state, phase: "reveal", revealed: true });
+  return touch({
+    ...state,
+    contact,
+    userId: userId || state.userId,
+    scheduledMeeting: meeting,
+  });
 }
 
 // --- Executive Summary access gate (see ResultStep/SummaryAccessGate) --
@@ -399,7 +410,7 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
 
   if (!topic) {
     // Discovery ended without identifying a reconciliation (the graceful "connect with the team"
-    // fallback) — skip straight to contact/handoff, there's nothing to upload/verify.
+    // fallback) — skip straight to scheduling, there's nothing to upload/verify.
     appendContactAndBeyond(items, state, null);
     return finish();
   }
@@ -498,18 +509,11 @@ function appendFreeMessages(items: TranscriptItem[], state: ConversationState): 
 }
 
 function appendContactAndBeyond(items: TranscriptItem[], state: ConversationState, topic: ReconciliationTopic | null): void {
-  if (state.phase === "result" || state.phase === "contact-form" || state.phase === "handoff" || state.phase === "reveal") {
-    if (state.phase !== "result") {
-      items.push({
-        kind: "contact-form",
-        id: "contact-form",
-        resolved: state.phase !== "contact-form",
-      });
-    }
-  }
-
-  if (state.phase === "handoff" || state.phase === "reveal") {
-    items.push({ kind: "handoff", id: "handoff", canReveal: topic !== null });
+  if (state.phase === "schedule" || state.phase === "reveal") {
+    // "Resolved" now tracks whether a meeting has actually been booked, not a phase transition —
+    // scheduling no longer moves `phase` on to "reveal" (see scheduleMeeting), so a phase
+    // comparison alone could never flip this back to true.
+    items.push({ kind: "schedule", id: "schedule", resolved: state.scheduledMeeting !== null });
   }
 
   if (state.phase === "reveal" && topic) {

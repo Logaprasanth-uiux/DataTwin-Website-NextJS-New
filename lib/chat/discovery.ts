@@ -92,7 +92,7 @@ function makeFreeText(turns: DiscoveryTurn[], prompt: string): DiscoveryTurn {
 
 export interface DiscoveryOutcome {
   discovery: DiscoveryState;
-  /** "resolved" -> caller moves to period-select; "fallback" -> caller moves to contact-form;
+  /** "resolved" -> caller moves to period-select; "fallback" -> caller moves to scheduling;
    * "continue" -> stay in discovery. */
   status: "continue" | "resolved" | "fallback";
 }

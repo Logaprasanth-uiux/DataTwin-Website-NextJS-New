@@ -103,3 +103,50 @@ export function createCurrencyFormatter(key: string): Intl.NumberFormat {
     return new Intl.NumberFormat("en-US", options);
   }
 }
+
+export interface CompactAmountFormatter {
+  format: (amount: number) => string;
+}
+
+const LAKH = 100_000;
+const CRORE = 1_00_00_000;
+
+// "28.9", never "28.90" or "29.0" — one decimal place, dropped entirely once it's a round number.
+function trimToOneDecimal(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+// Indian lakh/crore notation for large recovery figures — "₹28.9 lakh" / "₹1.2 Cr" instead of a
+// fully-expanded "₹28,90,000.00". Only meaningful for INR; anything below ₹1 lakh (some individual
+// finding amounts dip that low) falls back to a plain grouped whole-number amount, since neither
+// notation applies yet and the trailing ".00" a currency formatter would add isn't useful here.
+export function createCompactIndianFormatter(currencySymbol = "₹"): CompactAmountFormatter {
+  return {
+    format(amount: number): string {
+      const sign = amount < 0 ? "-" : "";
+      const abs = Math.abs(amount);
+      if (abs >= CRORE) return `${sign}${currencySymbol}${trimToOneDecimal(abs / CRORE)} Cr`;
+      if (abs >= LAKH) return `${sign}${currencySymbol}${trimToOneDecimal(abs / LAKH)} lakh`;
+      return `${sign}${currencySymbol}${Math.round(abs).toLocaleString("en-IN")}`;
+    },
+  };
+}
+
+// Same compact treatment for non-INR currencies: no lakh/crore (that notation is India-specific),
+// just the existing locale-appropriate grouping and symbol without the unnecessary ".00" on
+// whole-currency recovery figures.
+export function createCompactCurrencyFormatter(key: string): CompactAmountFormatter {
+  const [locale, currency] = key.split("|");
+  const options: Intl.NumberFormatOptions = {
+    style: "currency",
+    currency,
+    currencyDisplay: "narrowSymbol",
+    maximumFractionDigits: 0,
+  };
+  try {
+    return new Intl.NumberFormat(locale, options);
+  } catch {
+    return new Intl.NumberFormat("en-US", options);
+  }
+}

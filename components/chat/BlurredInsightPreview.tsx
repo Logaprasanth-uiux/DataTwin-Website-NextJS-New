@@ -1,6 +1,6 @@
 "use client";
 
-import { useCurrencyFormatter } from "@/lib/chat/useCurrency";
+import { useRecoveryFormatter } from "@/lib/chat/useCurrency";
 import type { RecoveryBucket, RecoveryPreviewRow } from "@/lib/chat/types";
 
 // Styled by `bucket` (a small internal grouping), not by the raw classification text — the real
@@ -19,7 +19,7 @@ export function BlurredInsightPreview({
   rows: readonly RecoveryPreviewRow[];
   revealed: boolean;
 }) {
-  const { formatter, ready } = useCurrencyFormatter();
+  const { formatter, ready } = useRecoveryFormatter();
 
   return (
     <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft">
@@ -56,7 +56,7 @@ export function BlurredInsightPreview({
       {!revealed && (
         <p className="mt-3 flex items-center gap-1.5 text-[12px] text-navy-faint">
           <LockIcon className="h-3 w-3" />
-          Full detail unlocks after connecting with the DataTwin Team
+          Full detail unlocks after scheduling a conversation with the DataTwin Team
         </p>
       )}
     </div>

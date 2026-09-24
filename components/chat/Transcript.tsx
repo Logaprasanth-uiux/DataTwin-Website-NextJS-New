@@ -7,6 +7,7 @@ import type {
   CustomPeriodRange,
   FileSourceChoice,
   PeriodOptionId,
+  ScheduledMeeting,
   TranscriptItem,
   UploadedFile,
 } from "@/lib/chat/types";
@@ -16,15 +17,14 @@ import {
   getCurrentAndPreviousPeriodLabels,
   getCurrentQuarterLabel,
 } from "@/lib/chat/formatDate";
-import { ContactFormStep } from "./ContactFormStep";
 import { CustomPeriodInput } from "./CustomPeriodInput";
 import { FileUploadStep } from "./FileUploadStep";
-import { HandoffStep } from "./HandoffStep";
 import { MessageTurn } from "./MessageTurn";
 import { OptionGroup } from "./OptionGroup";
 import { AssistantReveal, createRevealTracker, UserReveal } from "./reveal";
 import { RevealStep } from "./RevealStep";
 import { ResultStep } from "./ResultStep";
+import { ScheduleMeetingStep } from "./ScheduleMeetingStep";
 import { VerificationStep } from "./VerificationStep";
 
 export interface TranscriptActions {
@@ -44,9 +44,8 @@ export interface TranscriptActions {
   onReplaceFlagged: (fileId: string) => void;
   onTogglePreview: (fileId: string) => void;
   onVerificationComplete: () => void;
-  onConnect: () => void;
-  onSubmitContact: (contact: ContactDetails) => void;
-  onPreviewReveal: () => void;
+  onOpenSchedule: () => void;
+  onScheduleMeeting: (contact: ContactDetails, meeting: ScheduledMeeting) => void;
   onSubmitSummaryContact: (contact: ContactDetails) => void;
   onVerifySummaryOtp: () => void;
 }
@@ -186,30 +185,20 @@ export function Transcript({
                   summaryVerified={state.summaryVerified}
                   onSubmitSummaryContact={actions.onSubmitSummaryContact}
                   onVerifySummaryOtp={actions.onVerifySummaryOtp}
-                  onConnect={actions.onConnect}
+                  onOpenSchedule={actions.onOpenSchedule}
                 />
               </AssistantReveal>
             );
-          case "contact-form":
+          case "schedule":
             return (
               <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
-                <ContactFormStep
+                <ScheduleMeetingStep
                   itemKey={item.id}
                   tracker={tracker}
                   resolved={item.resolved}
-                  submitted={state.contact}
-                  onSubmit={actions.onSubmitContact}
-                />
-              </AssistantReveal>
-            );
-          case "handoff":
-            return (
-              <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
-                <HandoffStep
-                  active={state.phase === "handoff"}
-                  canReveal={item.canReveal}
-                  revealed={state.revealed}
-                  onPreviewReveal={actions.onPreviewReveal}
+                  prefill={state.summaryContact}
+                  submitted={state.contact && state.scheduledMeeting ? { contact: state.contact, meeting: state.scheduledMeeting } : null}
+                  onSubmit={actions.onScheduleMeeting}
                 />
               </AssistantReveal>
             );
