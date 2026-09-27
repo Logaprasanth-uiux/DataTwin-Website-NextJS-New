@@ -54,7 +54,7 @@ export function SolutionsSection() {
           </p>
 
           <div className="mt-10 flex justify-center">
-            <RecoveryCtaButton entryContext="solutions">+ Tell us Yours</RecoveryCtaButton>
+            <RecoveryCtaButton entryContext="solutions">+ Add Yours</RecoveryCtaButton>
           </div>
         </div>
       </Container>
