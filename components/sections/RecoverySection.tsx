@@ -12,26 +12,30 @@ import {
 const RECOVERY_AREAS = [
   {
     title: "Cash recoverable",
-    description: "Duplicate payments, paid above contract, discounts never taken, many more.",
+    description: "Duplicate payments, paid above contract, discounts never taken.",
+    testCount: "42",
     outcome: "Money back to the bank",
     Visual: MoneyToBankVisual,
   },
   {
     title: "Tax recoverable",
-    description: "Unclaimed input credit, rate mismatches, sales return mismatches, many more.",
+    description: "Unclaimed input credit, rate mismatches, sales return mismatches.",
+    testCount: "36",
     outcome: "Credit or Refund",
     Visual: CreditRefundVisual,
   },
   {
-    title: "Misstated",
-    description: "GR not accrued, prepaids not amortised, provisions never released & so on.",
+    title: "Misstatement",
+    description: "GR not accrued, prepaids not amortised, provisions never released.",
+    testCount: "28",
     outcome: "Audit readiness",
     Visual: AuditReadyVisual,
   },
   {
     title: "Control weakness",
-    description: "Duplicate vendors, invoices just under approval limits, self-approval & others.",
-    outcome: "Why failures repeat?",
+    description: "Duplicate vendors, invoices just under approval limits, self-approval.",
+    testCount: "24",
+    outcome: "Control gaps closed.",
     Visual: RepeatLoopVisual,
   },
 ] as const;
@@ -66,7 +70,10 @@ export function RecoverySection() {
               <h3 className="dt-display mt-5 text-[1.75rem] leading-tight font-semibold tracking-[-0.01em] text-navy sm:text-[2rem]">
                 {area.title}
               </h3>
-              <p className="mt-3 max-w-md text-[16px] leading-[1.65] text-navy-body">{area.description}</p>
+              <p className="mt-3 max-w-md text-[16px] leading-[1.65] text-navy-body">
+                {area.description}{" "}
+                <span className="font-semibold text-accent">{area.testCount} tests.</span>
+              </p>
               <div className="mt-8 flex items-center justify-between gap-4 md:mt-auto md:pt-10">
                 <p className="flex items-center gap-3 text-[13.5px] font-semibold text-navy">
                   <span

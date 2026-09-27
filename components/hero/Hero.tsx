@@ -26,9 +26,9 @@ export function Hero() {
         </h1>
 
         <p className="dt-body mt-6 max-w-2xl">
-          We find what you have already lost &amp; get it back. Then use the
-          same rules to check every transaction in real-time to ensure you
-          don&apos;t lose anymore.
+          Discover what&apos;s wrong. Recover what&apos;s gone. Then the same
+          rules check every transaction as it lands, so it doesn&apos;t
+          happen anymore.
         </p>
 
         <div className="relative mt-12 w-full max-w-[34rem] text-left xl:mt-14">
