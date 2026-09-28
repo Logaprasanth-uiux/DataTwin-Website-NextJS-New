@@ -1,6 +1,6 @@
 /* What happens next: the four-step engagement journey.
 
-   Drawn for the dark DataTwin canvas: light linework, orange accent. The base styles ARE the completed
+   Drawn for the white "What happens next" canvas: navy linework, orange accent. The base styles ARE the completed
    static picture (used with reduced motion, without JS, or before the journey scrolls into view): every icon complete, every line drawn in orange, the final stage
    resolved. Motion is layered on only when the ViewGate wrapper has set `data-sv` AND the user has
    not asked for reduced motion.
@@ -139,10 +139,10 @@
 }
 
 @keyframes jn-node-1 {
-  0% { border-color: rgb(255 255 255 / 0.2); }
+  0% { border-color: var(--navy-hairline); }
   2.5% { border-color: var(--accent); }
   15.625% { border-color: var(--accent); }
-  19.375%, 100% { border-color: rgb(255 255 255 / 0.2); }
+  19.375%, 100% { border-color: var(--navy-hairline); }
 }
 
 @keyframes jn-draw-2 {
@@ -169,10 +169,10 @@
 }
 
 @keyframes jn-node-2 {
-  0%, 21.25% { border-color: rgb(255 255 255 / 0.2); }
+  0%, 21.25% { border-color: var(--navy-hairline); }
   23.75% { border-color: var(--accent); }
   36.875% { border-color: var(--accent); }
-  40.625%, 100% { border-color: rgb(255 255 255 / 0.2); }
+  40.625%, 100% { border-color: var(--navy-hairline); }
 }
 
 @keyframes jn-draw-3 {
@@ -199,10 +199,10 @@
 }
 
 @keyframes jn-node-3 {
-  0%, 42.5% { border-color: rgb(255 255 255 / 0.2); }
+  0%, 42.5% { border-color: var(--navy-hairline); }
   45% { border-color: var(--accent); }
   58.125% { border-color: var(--accent); }
-  61.875%, 100% { border-color: rgb(255 255 255 / 0.2); }
+  61.875%, 100% { border-color: var(--navy-hairline); }
 }
 
 @keyframes jn-draw-4 {
@@ -229,10 +229,10 @@
 }
 
 @keyframes jn-node-4 {
-  0%, 63.75% { border-color: rgb(255 255 255 / 0.2); }
+  0%, 63.75% { border-color: var(--navy-hairline); }
   66.25% { border-color: var(--accent); }
   85% { border-color: var(--accent); }
-  91.25%, 100% { border-color: rgb(255 255 255 / 0.2); }
+  91.25%, 100% { border-color: var(--navy-hairline); }
 }
 
 @keyframes jn-fill-1-x {

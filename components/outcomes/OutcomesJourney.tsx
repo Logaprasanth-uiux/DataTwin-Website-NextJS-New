@@ -29,8 +29,9 @@ import { ViewGate } from "@/components/solutions/ViewGate";
 
 const EYEBROW = "text-[11px] leading-[1.6] font-medium tracking-[0.14em] uppercase sm:text-[12px]";
 
-// The spine: a left border, with the content indented from it (32px, 64px from md).
-const SPINE = "relative border-l border-navy-hairline pl-8 md:pl-16";
+// The spine: a left border, with the content indented from it (32px, 64px from md). Drawn for the
+// navy Outcomes canvas: light linework rather than the navy-token defaults.
+const SPINE = "relative border-l border-white/15 pl-8 md:pl-16";
 
 // The orange progress laid over the spine, and the signal riding its end. `n` picks its keyframes.
 function SpineFill({ n }: { n: 1 | 2 }) {
@@ -51,8 +52,8 @@ function PhaseLabel({ children, live = false }: { children: string; live?: boole
     <div className="-ml-[calc(2rem+5px)] flex items-center md:-ml-[calc(4rem+5px)]">
       <span aria-hidden="true" className="h-[9px] w-[9px] flex-shrink-0 rounded-full bg-accent" />
       <span aria-hidden="true" className="mr-2 h-px w-5 flex-shrink-0 bg-accent md:w-[52px]" />
-      <p className={`${EYEBROW} ${live ? "text-accent" : "text-navy-muted"}`}>{children}</p>
-      <span aria-hidden="true" className="ml-4 h-px flex-1 bg-navy-divider" />
+      <p className={`${EYEBROW} ${live ? "text-accent" : "text-white/60"}`}>{children}</p>
+      <span aria-hidden="true" className="ml-4 h-px flex-1 bg-white/15" />
     </div>
   );
 }
@@ -70,11 +71,11 @@ function OutcomeRow({ outcome, stage }: { outcome: Outcome; stage: number }) {
         {outcome.number}
       </span>
 
-      <h3 className="dt-display mt-2 text-[1.625rem] leading-[1.1] font-semibold tracking-[-0.01em] text-navy sm:text-[1.75rem] md:col-start-2 md:row-start-2 md:mt-3 lg:text-[2rem]">
+      <h3 className="dt-display mt-2 text-[1.625rem] leading-[1.1] font-semibold tracking-[-0.01em] text-white sm:text-[1.75rem] md:col-start-2 md:row-start-2 md:mt-3 lg:text-[2rem]">
         {outcome.title}
       </h3>
 
-      <p className="mt-3 max-w-md text-[16px] leading-[1.65] text-navy-body md:col-start-3 md:row-start-2 md:mt-3 md:max-w-none md:pt-[3px]">
+      <p className="mt-3 max-w-md text-[16px] leading-[1.65] text-white/70 md:col-start-3 md:row-start-2 md:mt-3 md:max-w-none md:pt-[3px]">
         {outcome.description}
       </p>
     </li>

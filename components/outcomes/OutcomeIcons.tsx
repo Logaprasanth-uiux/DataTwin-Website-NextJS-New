@@ -2,9 +2,11 @@ import type { CSSProperties, ReactNode } from "react";
 import type { OutcomeKey } from "./outcomes-data";
 
 // One small line illustration per outcome, in the same language as the Recovery, Solutions and journey
-// icons: navy structure (currentColor), orange for the value that moves and the confirmation. Strokes
-// are 1.33: the on-screen weight of the "What can be recovered?" icons (1.5 in this 72x44 box, shown
-// there at 64x40; these are shown at 72x44). Each is written in its complete state, so it reads
+// icons: light structure (currentColor, set by the dark Outcomes canvas), orange for the value that
+// moves and the confirmation. The small "confirmed" badges are cut out in the canvas's own navy
+// (var(--canvas)), the same trick the journey icons use, so they read as holes rather than bright dots.
+// Strokes are 1.33: the on-screen weight of the "What can be recovered?" icons (1.5 in this 72x44 box,
+// shown there at 64x40; these are shown at 72x44). Each is written in its complete state, so it reads
 // correctly with no animation. Motion lives in outcomes.css: the stage class (oc-s1..oc-s6) on the
 // parent says when this outcome's turn is, and each animated part's stagger within that turn is `d()`.
 // The stagger is also written as a class (oc-dNNN) because the stylesheet bakes each part's timing into
@@ -15,7 +17,7 @@ const d = (ms: number, extra: Record<string, string> = {}) =>
 
 function Frame({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex h-11 w-[72px] flex-shrink-0 text-navy">
+    <span className="inline-flex h-11 w-[72px] flex-shrink-0 text-white">
       <svg
         viewBox="0 0 72 44"
         fill="none"
@@ -44,14 +46,14 @@ function CashIcon() {
       <Draw delay={150} d="M10 22H16" strokeOpacity="0.5" />
       <path d="M22 22H36" strokeOpacity="0.3" />
       <g className="text-accent">
-        <circle className="oc-run oc-d350" style={d(350, { "--rx": "16px" })} cx="23" cy="22" r="2.4" fill="white" stroke="currentColor" />
+        <circle className="oc-run oc-d350" style={d(350, { "--rx": "16px" })} cx="23" cy="22" r="2.4" fill="var(--canvas)" stroke="currentColor" />
       </g>
       <Draw delay={700} d="M40 18L54 9L68 18Z" />
       <Draw delay={850} d="M45 21V30M54 21V30M63 21V30" />
       <Draw delay={1000} d="M40 34H68" />
       <g className="text-accent">
         <g className="oc-fade oc-d1200" style={d(1200)}>
-          <circle cx="67" cy="9" r="6" fill="white" stroke="currentColor" />
+          <circle cx="67" cy="9" r="6" fill="var(--canvas)" stroke="currentColor" />
         </g>
         <Draw delay={1400} d="M64 9.3L66.2 11.5L70 6.8" stroke="currentColor" />
       </g>
@@ -76,7 +78,7 @@ function TaxIcon() {
       <g className="text-accent">
         <Draw delay={1000} d="M48 11A10 10 0 0 1 58 21" stroke="currentColor" />
         <g className="oc-fade oc-d1200" style={d(1200)}>
-          <circle cx="62" cy="35" r="6.5" fill="white" stroke="currentColor" />
+          <circle cx="62" cy="35" r="6.5" fill="var(--canvas)" stroke="currentColor" />
         </g>
         <Draw delay={1400} d="M59 35.3L61.2 37.5L65.4 32.6" stroke="currentColor" />
       </g>
@@ -115,7 +117,7 @@ function LeakIcon() {
       </g>
       <path d="M23 22H36" strokeOpacity="0.3" />
       <g className="text-accent">
-        <circle className="oc-run oc-d350" style={d(350, { "--rx": "13px" })} cx="24" cy="22" r="2.4" fill="white" stroke="currentColor" />
+        <circle className="oc-run oc-d350" style={d(350, { "--rx": "13px" })} cx="24" cy="22" r="2.4" fill="var(--canvas)" stroke="currentColor" />
       </g>
       <Draw delay={700} d="M40 8V36" />
       <Draw delay={800} d="M37 8H43M37 36H43" />
@@ -165,7 +167,7 @@ function CloseIcon() {
       <Draw delay={1040} d="M46 33H60" />
       <g className="text-accent">
         <g className="oc-fade oc-d1200" style={d(1200)}>
-          <circle cx="66" cy="22" r="5.5" fill="white" stroke="currentColor" />
+          <circle cx="66" cy="22" r="5.5" fill="var(--canvas)" stroke="currentColor" />
         </g>
         <Draw delay={1350} d="M63.4 22.3L65.4 24.3L69 19.8" stroke="currentColor" />
       </g>

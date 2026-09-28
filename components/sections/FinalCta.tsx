@@ -2,13 +2,17 @@ import { CtaLink } from "@/components/ui/CtaLink";
 import { RecoveryCtaButton } from "@/components/chat/RecoveryCtaButton";
 import { CONTACT_MAILTO } from "@/components/layout/footer-data";
 
-// The homepage's closing call to action. It has no background of its own: it is passed to <Footer> as
-// its children, so it sits at the top of the same continuous gradient canvas as the footer beneath it.
+// The homepage's closing call to action. It is passed to <Footer> as its children, so it sits at the
+// top of the same continuous gradient canvas as the footer beneath it, set off from that canvas as its
+// own outlined, lightly-shaded panel rather than sitting flush on the bare background.
 // (`id="contact"` is where the header's and footer's "Contact" links land.)
 
 export function FinalCta() {
   return (
-    <div id="contact" className="scroll-mt-28 text-center">
+    <div
+      id="contact"
+      className="scroll-mt-28 rounded-[28px] border border-navy-hairline bg-white/[0.04] px-6 py-14 text-center sm:px-12 sm:py-16 lg:py-20"
+    >
       <p className="dt-eyebrow dt-eyebrow-accent dt-reveal">Get started</p>
       <h2 className="dt-display dt-reveal mt-5 text-[2.5rem] leading-[1.04] font-semibold tracking-[-0.02em] text-balance sm:text-6xl lg:text-[4.5rem]">
         <span className="block text-navy">Start with one process.</span>

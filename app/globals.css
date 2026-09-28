@@ -250,7 +250,7 @@ button:not(:disabled),
 }
 
 .dt-hero-gradient {
-  background: linear-gradient(to bottom, #ffffff, var(--cream-50), var(--cream-100), var(--cream-200));
+  background: linear-gradient(to bottom, var(--cream-200), var(--cream-100), var(--cream-50), #ffffff);
 }
 
 /* Restrained entrance motion. Base styles are the final state, so reduced-motion needs no override beyond disabling the animation. */

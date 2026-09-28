@@ -2,7 +2,6 @@ import { Container } from "@/components/layout/Container";
 import { Section } from "@/components/layout/Section";
 import { DarpEngine } from "@/components/darp/DarpEngine";
 import { DarpExplanation } from "@/components/darp/DarpExplanation";
-import { TrustedTicker } from "@/components/darp/TrustedTicker";
 import { LongSectionContextLabel } from "@/components/ui/LongSectionContextLabel";
 
 export function DarpSection() {
@@ -23,7 +22,6 @@ export function DarpSection() {
           </div>
 
           <DarpExplanation />
-          <TrustedTicker />
         </Container>
       </Section>
     </div>

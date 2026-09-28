@@ -51,11 +51,11 @@ const CELL_DIVIDERS = [
 export function RecoverySection() {
   return (
     <Section id="recovery" background="white" contained={false} className="py-24 sm:py-28 lg:py-36">
-      <LongSectionContextLabel label="What can be recovered?" headingId="recovery-title" />
+      <LongSectionContextLabel label="What Discover comes back with" headingId="recovery-title" />
       <Container className="px-6 sm:px-8 lg:px-10">
         <p className="dt-eyebrow dt-eyebrow-accent dt-reveal text-center">Quantified in about two minutes</p>
         <h2 id="recovery-title" className="dt-display dt-reveal mt-5 text-center text-4xl leading-[1.05] font-semibold tracking-[-0.02em] text-navy sm:text-5xl lg:text-[3.5rem]">
-          What can be recovered?
+          What Discover comes back with
         </h2>
 
         <div className="mt-14 grid border-y border-navy-divider sm:mt-16 md:grid-cols-2 lg:mt-20">

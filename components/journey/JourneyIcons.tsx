@@ -1,10 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
 
 // One small line illustration per stage, in the same language as the Recovery and Solutions icons:
-// light structure (currentColor, set by the dark ring), orange for the signal and the confirmation,
-// 1.33px strokes. Discs that must hide the lines behind them are filled with the ring's navy. Each is written in
-// its complete state, so it reads correctly with no animation. Motion lives in journey.css: the
-// stage class (jn-s1..jn-s4) says when the signal reaches this stage, and `d()` staggers a part
+// navy structure (currentColor, set by the white ring), orange for the signal and the confirmation,
+// 1.33px strokes. Discs that must hide the lines behind them are filled with the ring's white. Each is
+// written in its complete state, so it reads correctly with no animation. Motion lives in journey.css:
+// the stage class (jn-s1..jn-s4) says when the signal reaches this stage, and `d()` staggers a part
 // within that arrival.
 
 const d = (ms: number, extra: Record<string, string> = {}) =>
@@ -44,7 +44,7 @@ function DescribeIcon() {
       </g>
       <path d="M34 24H37" strokeOpacity="0.3" />
       <g className="text-accent">
-        <circle className="jn-run" style={d(350, { "--rx": "8px" })} cx="34" cy="24" r="1.9" fill="var(--navy)" stroke="currentColor" />
+        <circle className="jn-run" style={d(350, { "--rx": "8px" })} cx="34" cy="24" r="1.9" fill="white" stroke="currentColor" />
       </g>
       <circle className="jn-draw" pathLength={1} style={d(600)} cx="42" cy="24" r="5" />
       <g className="text-accent">
@@ -67,7 +67,7 @@ function IdentityIcon() {
       </g>
       <g className="text-accent">
         <g className="jn-fade" style={d(700)}>
-          <circle cx="31" cy="36" r="6.5" fill="var(--navy)" stroke="currentColor" />
+          <circle cx="31" cy="36" r="6.5" fill="white" stroke="currentColor" />
         </g>
         <Draw delay={900} d="M27.8 36.3L30 38.5L34.4 33.6" stroke="currentColor" />
       </g>
@@ -117,7 +117,7 @@ function MeetingIcon() {
       <g className="text-accent">
         <rect className="jn-draw" pathLength={1} style={d(450)} x="25" y="30" width="10" height="8" rx="2" stroke="currentColor" />
         <g className="jn-fade" style={d(800)}>
-          <circle cx="38" cy="38" r="7" fill="var(--navy)" stroke="currentColor" />
+          <circle cx="38" cy="38" r="7" fill="white" stroke="currentColor" />
         </g>
         <Draw delay={1000} d="M34.6 38.4L37 40.8L41.6 35.4" stroke="currentColor" />
       </g>
