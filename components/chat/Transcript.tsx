@@ -17,7 +17,8 @@ import {
   getCurrentAndPreviousPeriodLabels,
   getCurrentQuarterLabel,
 } from "@/lib/chat/formatDate";
-import { getRemainingCheckpoints } from "@/lib/chat/engine";
+import { getAccuracyOffer } from "@/lib/chat/engine";
+import { AccuracyBoostCard } from "./AccuracyBoostCard";
 import { CustomPeriodInput } from "./CustomPeriodInput";
 import { FileUploadStep } from "./FileUploadStep";
 import { MessageTurn } from "./MessageTurn";
@@ -47,7 +48,8 @@ export interface TranscriptActions {
   onVerificationComplete: () => void;
   onDeclineCheckpoint: () => void;
   onOpenSchedule: () => void;
-  onImproveAccuracy: () => void;
+  onRefreshAccuracy: () => void;
+  onDismissAccuracy: () => void;
   onScheduleMeeting: (contact: ContactDetails, meeting: ScheduledMeeting) => void;
   onSubmitSummaryContact: (contact: ContactDetails) => void;
   onVerifySummaryOtp: () => void;
@@ -192,11 +194,31 @@ export function Transcript({
                   onSubmitSummaryContact={actions.onSubmitSummaryContact}
                   onVerifySummaryOtp={actions.onVerifySummaryOtp}
                   onOpenSchedule={actions.onOpenSchedule}
-                  providedFileNames={item.topic.requiredFiles.filter((file) => file.fileId !== "F17").map((file) => file.name)}
-                  missingDocuments={getRemainingCheckpoints(state).flatMap((checkpoint) =>
-                    checkpoint.files.map((file) => ({ name: file.name, benefit: checkpoint.accuracyBenefit ?? file.why })),
-                  )}
-                  onImproveAccuracy={actions.onImproveAccuracy}
+                  accuracyOffer={(() => {
+                    const offer = getAccuracyOffer(state);
+                    if (state.accuracyDismissed || (offer.remaining.length === 0 && offer.appliedCount === 0)) return null;
+                    return (
+                      <AccuracyBoostCard
+                        itemKey={`${item.id}:accuracy`}
+                        tracker={tracker}
+                        providedFileNames={item.topic.requiredFiles.filter((file) => file.fileId !== "F17").map((file) => file.name)}
+                        remaining={offer.remaining}
+                        pending={offer.pending}
+                        appliedCount={offer.appliedCount}
+                        uploads={state.uploads}
+                        fileSource={state.fileSource}
+                        portalFetch={state.portalFetch}
+                        onUpload={actions.onUpload}
+                        onAdvanceStatus={actions.onAdvanceStatus}
+                        onRemove={actions.onRemoveUpload}
+                        onChooseFileSource={actions.onChooseFileSource}
+                        onSubmitPortalGstin={actions.onSubmitPortalGstin}
+                        onPortalFetchComplete={actions.onPortalFetchComplete}
+                        onRefresh={actions.onRefreshAccuracy}
+                        onDismiss={actions.onDismissAccuracy}
+                      />
+                    );
+                  })()}
                 />
               </AssistantReveal>
             );

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { ContactDetails, ReconciliationTopic } from "@/lib/chat/types";
 import { BlurredInsightPreview } from "./BlurredInsightPreview";
 import { ExecutiveSummary, ExecutiveSummaryBody, ExecutiveSummaryHeader } from "./ExecutiveSummary";
@@ -16,61 +17,6 @@ import { SummaryAccessGate } from "./SummaryAccessGate";
 // with these documents alone" decision happens earlier, right after each round's own verification
 // (see the "checkpoint-decision" TranscriptItem / Transcript.tsx), so by the time this component
 // ever renders, there's nothing further to offer here.
-export interface MissingDocument {
-  name: string;
-  benefit: string;
-}
-
-// Shown between the (unlocked) summary and the schedule CTA for a scripted multi-round
-// reconciliation that stopped short of its full document set. Optional by design: the schedule
-// CTA below it is never hidden or gated on this.
-function AccuracyBoostCard({
-  providedFileNames,
-  missingDocuments,
-  onImproveAccuracy,
-}: {
-  providedFileNames: string[];
-  missingDocuments: MissingDocument[];
-  onImproveAccuracy: () => void;
-}) {
-  const provided =
-    providedFileNames.length > 1
-      ? `${providedFileNames.slice(0, -1).join(", ")} and ${providedFileNames[providedFileNames.length - 1]}`
-      : providedFileNames[0];
-  return (
-    <div className="rounded-2xl border border-navy-hairline p-6">
-      <p className="dt-eyebrow dt-eyebrow-accent">Optional</p>
-      <p className="mt-2 text-[15px] font-medium text-navy">Want a sharper number?</p>
-      <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-navy-body">
-        This result reconciles your sales against {provided}. Adding the {missingDocuments.length === 1 ? "document" : "documents"} below
-        narrows the gap between what your books show and what the GST returns say, so the figure you act on is closer to what an
-        auditor would land on.
-      </p>
-      <ul className="mt-4 flex flex-col gap-3">
-        {missingDocuments.map((doc) => (
-          <li key={doc.name} className="flex gap-3">
-            <span aria-hidden="true" className="mt-[7px] h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent" />
-            <div>
-              <p className="text-[13.5px] font-medium text-navy">{doc.name}</p>
-              <p className="text-[13px] leading-relaxed text-navy-body">{doc.benefit}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        onClick={onImproveAccuracy}
-        className="dt-button mt-5 inline-flex h-11 items-center rounded-full border border-navy-hairline px-5 text-[14px] text-navy transition-colors hover:border-accent focus-visible:border-accent"
-      >
-        Add {missingDocuments[0].name}
-      </button>
-      <p className="mt-3 text-[12.5px] text-navy-faint">
-        You can skip this. Scheduling a conversation below works with what you&apos;ve already shared.
-      </p>
-    </div>
-  );
-}
-
 export function ResultStep({
   topic,
   active,
@@ -79,9 +25,7 @@ export function ResultStep({
   onSubmitSummaryContact,
   onVerifySummaryOtp,
   onOpenSchedule,
-  providedFileNames,
-  missingDocuments,
-  onImproveAccuracy,
+  accuracyOffer,
 }: {
   topic: ReconciliationTopic;
   active: boolean;
@@ -90,9 +34,8 @@ export function ResultStep({
   onSubmitSummaryContact: (contact: ContactDetails) => void;
   onVerifySummaryOtp: () => void;
   onOpenSchedule: () => void;
-  providedFileNames: string[];
-  missingDocuments: MissingDocument[];
-  onImproveAccuracy: () => void;
+  /** The "improve accuracy" card, already wired up by the caller (Transcript); null when there is nothing to offer. */
+  accuracyOffer: ReactNode;
 }) {
   // `data-scroll-target="result"` lives on this outer wrapper — not on anything inside either
   // branch — so ChatPageClient's "land on this phase" scroll always brings the *whole* thing
@@ -128,13 +71,7 @@ export function ResultStep({
       <ExecutiveSummary result={topic.mockResult} />
       <BlurredInsightPreview rows={topic.mockResult.previewRows} revealed={false} />
 
-      {active && missingDocuments.length > 0 && (
-        <AccuracyBoostCard
-          providedFileNames={providedFileNames}
-          missingDocuments={missingDocuments}
-          onImproveAccuracy={onImproveAccuracy}
-        />
-      )}
+      {active && accuracyOffer}
 
       {active && (
         <div className="rounded-2xl border border-navy-hairline bg-navy/[0.02] p-6">

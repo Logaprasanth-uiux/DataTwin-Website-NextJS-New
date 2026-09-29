@@ -17,8 +17,9 @@ import {
   declineRemainingCheckpoints,
   flagFileIssue,
   getEffectiveTopic,
+  applyAccuracyExtras,
+  dismissAccuracyOffer,
   openSchedule,
-  resumeCheckpoints,
   recordUpload,
   removeUpload,
   replaceFlaggedFile,
@@ -155,6 +156,26 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     if (frozenRef.current) return;
     scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [state]);
+
+  // "Refresh my result" on the improve-accuracy card changes the figures but not the phase, so the
+  // once-per-phase "land on the result" scroll below never fires for it — the refreshed result
+  // would update out of sight above the card. Bring it back to the top of the viewport whenever
+  // another document gets folded in. A conversation resumed with extras already applied is not a
+  // refresh, so the first value seen is only recorded.
+  const accuracyExtrasCount = state?.accuracyExtras?.length ?? 0;
+  const previousExtrasCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!hasState) return;
+    const previous = previousExtrasCountRef.current;
+    previousExtrasCountRef.current = accuracyExtrasCount;
+    if (previous === null || accuracyExtrasCount <= previous) return;
+    const id = window.setTimeout(() => {
+      transcriptRef.current
+        ?.querySelector<HTMLElement>('[data-scroll-target="result"]')
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => window.clearTimeout(id);
+  }, [accuracyExtrasCount, hasState]);
 
   // Not saved (and so not shown in the Conversations panel or offered by "Welcome back") until
   // there's something meaningful to save — an identified reconciliation, or discovery's own
@@ -298,7 +319,8 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     onVerificationComplete: () => update((prev) => completeVerification(prev)),
     onDeclineCheckpoint: () => update((prev) => declineRemainingCheckpoints(prev)),
     onOpenSchedule: () => update((prev) => openSchedule(prev)),
-    onImproveAccuracy: () => update((prev) => resumeCheckpoints(prev)),
+    onRefreshAccuracy: () => update((prev) => applyAccuracyExtras(prev)),
+    onDismissAccuracy: () => update((prev) => dismissAccuracyOffer(prev)),
     onScheduleMeeting: (contact, meeting) => update((prev) => scheduleMeeting(prev, contact, meeting, getOrCreateUserId())),
     onSubmitSummaryContact: (contact) => update((prev) => submitSummaryContact(prev, contact)),
     onVerifySummaryOtp: () => update((prev) => verifySummaryOtp(prev)),

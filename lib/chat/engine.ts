@@ -102,6 +102,9 @@ export function createInitialState(
     summaryContact: null,
     summaryVerified: false,
     scheduledMeeting: null,
+    portalSessionExpiresAt: null,
+    accuracyExtras: [],
+    accuracyDismissed: false,
   };
 }
 
@@ -300,8 +303,12 @@ export function toggleFilePreview(state: ConversationState, fileId: string): Con
 export function chooseFileSource(state: ConversationState, fileId: string, source: FileSourceChoice): ConversationState {
   if (state.fileSource[fileId]) return state; // already chosen — don't reset an in-progress flow
   const fileSource = { ...state.fileSource, [fileId]: source };
+  // An earlier OTP verification still inside its window is reused: no GSTIN/consent/OTP again.
+  const sessionActive = (state.portalSessionExpiresAt ?? 0) > Date.now();
   const portalFetch =
-    source === "portal" ? { ...state.portalFetch, [fileId]: "gstin" as const } : state.portalFetch;
+    source === "portal"
+      ? { ...state.portalFetch, [fileId]: sessionActive ? ("session" as const) : ("gstin" as const) }
+      : state.portalFetch;
   return touch({ ...state, fileSource, portalFetch });
 }
 
@@ -334,7 +341,9 @@ export function cancelPortalConsent(state: ConversationState, fileId: string): C
 // ready-transition (and its nextFileHint/maxRequiredFilesRevealed side effects) unchanged.
 export function completePortalFetch(state: ConversationState, fileId: string, fileName: string): ConversationState {
   const uploaded = recordUpload(state, fileId, fileName);
-  return advanceUploadStatus(uploaded, fileId, "ready");
+  const ready = advanceUploadStatus(uploaded, fileId, "ready");
+  // The verification behind this fetch stays reusable for a while (see chooseFileSource).
+  return { ...ready, portalSessionExpiresAt: Date.now() + PORTAL_SESSION_MS };
 }
 
 export function requiredFilesReady(state: ConversationState): boolean {
@@ -395,22 +404,60 @@ export function declineRemainingCheckpoints(state: ConversationState): Conversat
   return touch({ ...state, checkpointIndex: checkpointIndex - 1, phase: "result" });
 }
 
-// The checkpoint rounds the conversation stopped short of — the documents a user who declined (or
-// simply reached the end of what they wanted to add) hasn't provided yet. Rounds run strictly in
-// order, so what's remaining is always everything from the current checkpoint on. Empty for a
-// topic with no further checkpoints, or once every document has been provided.
-export function getRemainingCheckpoints(state: ConversationState): ReconciliationCheckpoint[] {
-  const topic = getResolvedTopic(state.discovery.resolvedId);
-  if (!topic) return [];
-  return (topic.furtherCheckpoints ?? []).slice(state.checkpointIndex ?? 0);
+// --- "Improve accuracy" card (see ResultStep) ---------------------------------------------------
+
+export interface AccuracyOffer {
+  /** Checkpoint rounds whose documents haven't been folded into the current result yet. */
+  remaining: { index: number; checkpoint: ReconciliationCheckpoint }[];
+  /** The subset of `remaining` whose documents are already uploaded/fetched and ready — added to
+   * the result by "Refresh my result". */
+  pending: number[];
+  /** How many documents were folded in via the card so far. */
+  appliedCount: number;
 }
 
-// The "improve accuracy" card's way back into the checkpoint rounds from the result: steps forward
-// into the next round's file-upload turn, exactly as completeVerification does after a round —
-// so the same offer, upload, verification and decline-back-to-result behaviour applies unchanged.
-export function resumeCheckpoints(state: ConversationState): ConversationState {
-  if (state.phase !== "result" || getRemainingCheckpoints(state).length === 0) return state;
-  return touch({ ...state, checkpointIndex: (state.checkpointIndex ?? 0) + 1, phase: "files" });
+const PORTAL_SESSION_MS = 12 * 60 * 60 * 1000;
+
+// Rounds normally run strictly in order, so before the card is used everything from
+// `checkpointIndex` on is missing; documents added from the card (in any order) are tracked in
+// `accuracyExtras` and drop out of `remaining` once refreshed into the result.
+export function getAccuracyOffer(state: ConversationState): AccuracyOffer {
+  const topic = getResolvedTopic(state.discovery.resolvedId);
+  const checkpoints = topic?.furtherCheckpoints ?? [];
+  const used = new Set([...checkpoints.keys()].filter((i) => i < (state.checkpointIndex ?? 0)));
+  (state.accuracyExtras ?? []).forEach((i) => used.add(i));
+  const remaining = checkpoints.map((checkpoint, index) => ({ index, checkpoint })).filter(({ index }) => !used.has(index));
+  const pending = remaining
+    .filter(({ checkpoint }) => checkpoint.files.every((f) => state.uploads[f.fileId]?.status === "ready"))
+    .map(({ index }) => index);
+  return { remaining, pending, appliedCount: (state.accuracyExtras ?? []).length };
+}
+
+// Folds every ready-but-not-yet-applied document from the card into the result.
+export function applyAccuracyExtras(state: ConversationState): ConversationState {
+  if (state.phase !== "result") return state;
+  const { pending } = getAccuracyOffer(state);
+  if (pending.length === 0) return state;
+  return touch({ ...state, accuracyExtras: [...(state.accuracyExtras ?? []), ...pending] });
+}
+
+export function dismissAccuracyOffer(state: ConversationState): ConversationState {
+  return touch({ ...state, accuracyDismissed: true });
+}
+
+// The result topic with any card-added documents folded in: their files count as provided and the
+// refreshed figures are those of the furthest round the documents cover (a mock — more documents,
+// tighter number — same as the round-by-round flow).
+function withAccuracyExtras(topic: ReconciliationTopic, effective: ReconciliationTopic, state: ConversationState): ReconciliationTopic {
+  const extras = state.accuracyExtras ?? [];
+  const checkpoints = topic.furtherCheckpoints ?? [];
+  if (extras.length === 0) return effective;
+  const covered = (state.checkpointIndex ?? 0) + extras.length;
+  return {
+    ...effective,
+    requiredFiles: [...effective.requiredFiles, ...extras.flatMap((i) => checkpoints[i]?.files ?? [])],
+    mockResult: checkpoints[covered - 1]?.mockResult ?? effective.mockResult,
+  };
 }
 
 export function openSchedule(state: ConversationState): ConversationState {
@@ -579,8 +626,9 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
     // next one — nothing further to show for it.
     if (!isCurrentRound) continue;
 
-    push({ kind: "result", id: "result", topic: effectiveTopic, active: state.phase === "result" });
-    appendContactAndBeyond(items, state, effectiveTopic);
+    const resultTopic = withAccuracyExtras(topic, effectiveTopic, state);
+    push({ kind: "result", id: "result", topic: resultTopic, active: state.phase === "result" });
+    appendContactAndBeyond(items, state, resultTopic);
     appendFileEvents(items, state, effectiveTopic);
     return finish();
   }

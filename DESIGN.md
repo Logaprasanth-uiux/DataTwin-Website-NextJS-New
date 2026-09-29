@@ -194,7 +194,9 @@ Guided conversational flow launched from the Hero prompt. Components live in `co
 
 **Sales Register vs GST Reconciliation** runs in rounds: Sales Register + GSTR-1, then GSTR-1A, credit/debit notes (upload only, no GST Portal fetch) and GSTR-3B summary. Each round can be skipped.
 
-**Improve-accuracy card:** after the summary is unlocked and above the schedule CTA, if any of those documents were not provided, a bordered card ("Optional" eyebrow, "Want a sharper number?") lists only the missing documents, each with a one-line business benefit, and a button to add the first missing one (rounds stay in fixed order, and each can still be skipped). It is hidden once every document is provided. The schedule CTA is never hidden or gated by it.
+**Improve-accuracy card:** after the summary is unlocked and above the schedule CTA, if any of those documents were not provided, an "Optional" block ("Want a sharper number?") sits inline in the result. Each missing document is its own card with a one-line business benefit and its own Upload button (plus "Fetch from GST Portal" where offered), in any order. Once at least one is ready, a "Refresh my result with ..." button folds them into a refreshed result; the block then reads "Updated. Want it even sharper?", lists what is still missing, and offers "Continue without ...". It is hidden once every document is provided or the user continues without. The schedule CTA is never hidden or gated by it.
+
+**GST Portal session:** after one successful GSTIN + OTP fetch, later portal fetches in the same conversation (GSTR-1A, GSTR-3B, etc.) skip the GSTIN, consent and OTP steps and go straight to fetching, for 12 hours. The window is not shown to the user.
 
 Transcript entrance animations and scrollbar are in §7–8.
 

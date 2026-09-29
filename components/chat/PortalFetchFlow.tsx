@@ -36,7 +36,10 @@ export function PortalFetchFlow({
 }) {
   const [gstin, setGstin] = useState("");
   const [otp, setOtp] = useState("");
-  const [localPhase, setLocalPhase] = useState<LocalPhase>("idle");
+  const [localPhase, setLocalPhase] = useState<LocalPhase>(
+    // A fetch that reuses an earlier verification skips straight to fetching.
+    stage === "session" ? "fetching" : "idle",
+  );
 
   const onFetchCompleteRef = useRef(onFetchComplete);
   useEffect(() => {
@@ -68,6 +71,10 @@ export function PortalFetchFlow({
     if (!otpValid) return;
     setLocalPhase("verifying");
   };
+
+  if (stage === "session") {
+    return <MessageTurn speaker="DataTwin" text={`Fetching your official ${file.name} directly from the portal now...`} />;
+  }
 
   if (stage === "gstin") {
     return (

@@ -150,7 +150,9 @@ export type FileActionKind = "replace" | "remove";
 // "ready", exactly like a normal upload. Only the two waiting-on-the-user stages are persisted;
 // the verify/fetch animation itself is transient, component-local state (see PortalFetchFlow).
 export type FileSourceChoice = "upload" | "portal";
-export type PortalFetchStage = "gstin" | "consent" | "otp";
+// "session" is a fetch started while an earlier OTP verification is still within its window (see
+// ConversationState.portalSessionExpiresAt): no GSTIN/consent/OTP asked again, straight to fetching.
+export type PortalFetchStage = "gstin" | "consent" | "otp" | "session";
 
 // A brief mock validation pass on the FIRST required file only (see FileValidationFlow) — a
 // staged check, not real parsing: "verifying" -> "issue" (a mock missing-field finding, with a
@@ -305,6 +307,16 @@ export interface ConversationState {
    * for that booking (pre-filled from `summaryContact`, editable), this just holds the chosen
    * date/time. `null` until scheduled. */
   scheduledMeeting: ScheduledMeeting | null;
+  /** When the GST Portal verification (GSTIN + OTP) done for an earlier portal fetch stops being
+   * reusable — a later fetch before then skips straight to fetching. Never shown to the user.
+   * Absent/null until a first portal fetch completes. */
+  portalSessionExpiresAt?: number | null;
+  /** Indices into `furtherCheckpoints` whose documents were added from the result's "improve
+   * accuracy" card (see ResultStep) and folded into the refreshed result — as opposed to the
+   * checkpoints before `checkpointIndex`, which were collected in the normal round-by-round flow. */
+  accuracyExtras?: number[];
+  /** True once the user chose "continue without" on the accuracy card — it stays hidden. */
+  accuracyDismissed?: boolean;
 }
 
 export interface ConversationSummary {
