@@ -99,6 +99,9 @@ export interface ReconciliationCheckpoint {
   fileAckOverrides?: Record<string, string>;
   portalFetchFileIds?: string[];
   autoAdvanceMessage?: string;
+  /** One business-specific line on what adding this round's document improves, shown on the
+   * "improve accuracy" card after the result (see ResultStep) if this round was skipped. */
+  accuracyBenefit?: string;
   /** This round's own refreshed result, shown once its files are all ready and verified. */
   mockResult: TopicMockResult;
 }

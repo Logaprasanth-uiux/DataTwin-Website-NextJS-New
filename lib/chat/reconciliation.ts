@@ -118,6 +118,8 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
           },
         ],
         portalFetchFileIds: ["SG-GSTR1A"],
+        accuracyBenefit:
+          "Picks up amendments, cancellations and rate corrections filed after your GSTR-1, so corrected invoices stop showing up as false mismatches.",
         autoAdvanceMessage: "GSTR-1A is in. Refreshing your reconciliation with the amendments included... ⏳",
         mockResult: generateMockResult("10.1::checkpoint-1"),
       },
@@ -132,7 +134,10 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
             why: FILE_DEFS.F31.why,
           },
         ],
-        portalFetchFileIds: ["F31"],
+        // No portal-fetch alternative here: credit/debit notes come from the company's own books,
+        // not from a GST Portal download, so this round is upload-only.
+        accuracyBenefit:
+          "Ties every outward credit/debit note back to its original invoice, so returns and price adjustments correctly reduce what you've billed and what's recoverable.",
         autoAdvanceMessage: "Credit/debit notes received. Recalculating with the full adjustment trail... ⏳",
         mockResult: generateMockResult("10.1::checkpoint-2"),
       },
@@ -148,6 +153,8 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
           },
         ],
         portalFetchFileIds: ["SG-GSTR3B"],
+        accuracyBenefit:
+          "Checks the tax you actually declared in GSTR-3B against what your sales support, which is where short-paid or over-paid output tax shows up, and gives you the audit-ready number.",
         autoAdvanceMessage: "All documents are in. Running your final Sales Register vs GST reconciliation... ⏳",
         mockResult: generateMockResult("10.1::checkpoint-3"),
       },

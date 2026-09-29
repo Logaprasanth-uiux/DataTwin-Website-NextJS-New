@@ -17,6 +17,7 @@ import {
   getCurrentAndPreviousPeriodLabels,
   getCurrentQuarterLabel,
 } from "@/lib/chat/formatDate";
+import { getRemainingCheckpoints } from "@/lib/chat/engine";
 import { CustomPeriodInput } from "./CustomPeriodInput";
 import { FileUploadStep } from "./FileUploadStep";
 import { MessageTurn } from "./MessageTurn";
@@ -46,6 +47,7 @@ export interface TranscriptActions {
   onVerificationComplete: () => void;
   onDeclineCheckpoint: () => void;
   onOpenSchedule: () => void;
+  onImproveAccuracy: () => void;
   onScheduleMeeting: (contact: ContactDetails, meeting: ScheduledMeeting) => void;
   onSubmitSummaryContact: (contact: ContactDetails) => void;
   onVerifySummaryOtp: () => void;
@@ -190,6 +192,11 @@ export function Transcript({
                   onSubmitSummaryContact={actions.onSubmitSummaryContact}
                   onVerifySummaryOtp={actions.onVerifySummaryOtp}
                   onOpenSchedule={actions.onOpenSchedule}
+                  providedFileNames={item.topic.requiredFiles.filter((file) => file.fileId !== "F17").map((file) => file.name)}
+                  missingDocuments={getRemainingCheckpoints(state).flatMap((checkpoint) =>
+                    checkpoint.files.map((file) => ({ name: file.name, benefit: checkpoint.accuracyBenefit ?? file.why })),
+                  )}
+                  onImproveAccuracy={actions.onImproveAccuracy}
                 />
               </AssistantReveal>
             );

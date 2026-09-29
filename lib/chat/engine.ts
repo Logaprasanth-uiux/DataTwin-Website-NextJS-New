@@ -15,6 +15,7 @@ import type {
   FileRequirement,
   FileSourceChoice,
   PeriodOptionId,
+  ReconciliationCheckpoint,
   ReconciliationTopic,
   ScheduledMeeting,
   TranscriptItem,
@@ -392,6 +393,24 @@ export function declineRemainingCheckpoints(state: ConversationState): Conversat
   const checkpointIndex = state.checkpointIndex ?? 0;
   if (checkpointIndex === 0) return state;
   return touch({ ...state, checkpointIndex: checkpointIndex - 1, phase: "result" });
+}
+
+// The checkpoint rounds the conversation stopped short of — the documents a user who declined (or
+// simply reached the end of what they wanted to add) hasn't provided yet. Rounds run strictly in
+// order, so what's remaining is always everything from the current checkpoint on. Empty for a
+// topic with no further checkpoints, or once every document has been provided.
+export function getRemainingCheckpoints(state: ConversationState): ReconciliationCheckpoint[] {
+  const topic = getResolvedTopic(state.discovery.resolvedId);
+  if (!topic) return [];
+  return (topic.furtherCheckpoints ?? []).slice(state.checkpointIndex ?? 0);
+}
+
+// The "improve accuracy" card's way back into the checkpoint rounds from the result: steps forward
+// into the next round's file-upload turn, exactly as completeVerification does after a round —
+// so the same offer, upload, verification and decline-back-to-result behaviour applies unchanged.
+export function resumeCheckpoints(state: ConversationState): ConversationState {
+  if (state.phase !== "result" || getRemainingCheckpoints(state).length === 0) return state;
+  return touch({ ...state, checkpointIndex: (state.checkpointIndex ?? 0) + 1, phase: "files" });
 }
 
 export function openSchedule(state: ConversationState): ConversationState {
