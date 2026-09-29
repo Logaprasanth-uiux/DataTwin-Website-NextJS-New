@@ -25,6 +25,7 @@ export function FileRequirementCard({
   onAdvanceStatus,
   onRemove,
   holdAtRecognised = false,
+  onChoosePortal,
 }: {
   requirement: FileRequirement;
   upload: UploadedFile | undefined;
@@ -35,6 +36,11 @@ export function FileRequirementCard({
    * used only for the first required file, which the caller then takes over from (a mock
    * validation pass) rather than declaring ready silently. */
   holdAtRecognised?: boolean;
+  /** Offers "fetch directly from the GST Portal" as a second way to satisfy this requirement,
+   * alongside the ever-present "Upload file" — the SAME card either way (see
+   * ReconciliationTopic.portalFetchFileIds), rather than a differently-styled choice step ahead of
+   * it. Switches the caller over to PortalFetchFlow; this card plays no further part once chosen. */
+  onChoosePortal?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   useMockFileValidation(upload, requirement.fileId, onAdvanceStatus, holdAtRecognised);
@@ -72,14 +78,26 @@ export function FileRequirementCard({
       />
 
       {!upload && (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="mt-1 inline-flex w-fit items-center gap-2 rounded-full border border-navy-hairline px-4 py-2 text-[13px] font-medium text-navy transition-colors hover:border-accent"
-        >
-          <UploadIcon className="h-3.5 w-3.5 text-accent" />
-          Upload file
-        </button>
+        <div className="mt-1 flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-navy-hairline px-4 py-2 text-[13px] font-medium text-navy transition-colors hover:border-accent"
+          >
+            <UploadIcon className="h-3.5 w-3.5 text-accent" />
+            Upload file
+          </button>
+          {onChoosePortal && (
+            <button
+              type="button"
+              onClick={onChoosePortal}
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-navy-hairline px-4 py-2 text-[13px] font-medium text-navy transition-colors hover:border-accent"
+            >
+              <PortalIcon className="h-3.5 w-3.5 text-accent" />
+              Fetch from GST Portal
+            </button>
+          )}
+        </div>
       )}
 
       {upload && (
@@ -138,6 +156,20 @@ function UploadIcon({ className = "" }: { className?: string }) {
     <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
       <path
         d="M8 10.5V2.5M8 2.5L5 5.5M8 2.5l3 3M3 11v1.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V11"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function PortalIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M7 3.5H4.5a1 1 0 00-1 1v7a1 1 0 001 1h7a1 1 0 001-1V9M10.5 2.5H13.5V5.5M13 3L8.5 7.5"
         stroke="currentColor"
         strokeWidth="1.25"
         strokeLinecap="round"

@@ -10,6 +10,12 @@ import { SummaryAccessGate } from "./SummaryAccessGate";
 // appear beneath it — still blurred, unlocked only by scheduling a conversation with the DataTwin
 // Team (see ScheduleMeetingStep/RevealStep) — the same contact record from the gate above, never
 // asked for a second time.
+//
+// A multi-checkpoint scripted reconciliation (see ReconciliationTopic.furtherCheckpoints) still
+// only ever shows ONE result for the whole conversation — the "add one more document, or continue
+// with these documents alone" decision happens earlier, right after each round's own verification
+// (see the "checkpoint-decision" TranscriptItem / Transcript.tsx), so by the time this component
+// ever renders, there's nothing further to offer here.
 export function ResultStep({
   topic,
   active,

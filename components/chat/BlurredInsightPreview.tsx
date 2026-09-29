@@ -42,12 +42,12 @@ export function BlurredInsightPreview({
               </span>
             </div>
             <span
-              className={`flex-shrink-0 tabular-nums text-[13.5px] font-medium text-navy ${
-                revealed ? "" : "blur-[6px] select-none"
-              }`}
+              className={`flex-shrink-0 tabular-nums text-[13.5px] font-medium ${
+                row.sign === "negative" ? "text-loss" : "text-navy"
+              } ${revealed ? "" : "blur-[6px] select-none"}`}
               aria-hidden={!revealed}
             >
-              {ready ? formatter.format(row.amount) : ""}
+              {ready ? `${row.sign === "negative" ? "−" : ""}${formatter.format(row.amount)}` : ""}
             </span>
           </div>
         ))}

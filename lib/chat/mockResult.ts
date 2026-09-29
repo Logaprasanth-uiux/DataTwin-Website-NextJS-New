@@ -82,10 +82,30 @@ function shuffled<T>(items: T[], random: () => number): T[] {
   return copy;
 }
 
+// Splits `total` across `count` rows with a randomized-but-normalized weight each — reads as
+// plausible individual line items (still blurred until unlocked) rather than even slices.
+function splitAmount(count: number, total: number, random: () => number): number[] {
+  if (count === 0) return [];
+  const weights = Array.from({ length: count }, () => 0.4 + random());
+  const weightTotal = weights.reduce((sum, w) => sum + w, 0);
+  return weights.map((w) => Math.max(round10k((total * w) / weightTotal), 10_000));
+}
+
 export function generateMockResult(reconciliationId: string): TopicMockResult {
   const random = mulberry32(hashString(reconciliationId));
-  const potentialNow = round10k(800_000 + random() * 5_200_000);
-  const exposureQuarter = round10k(potentialNow * (1.25 + random() * 0.25));
+
+  // A reconciliation nets two real, opposite-direction findings against each other: money coming
+  // back (overpaid, over-reported) and tax that turns out to be short-paid/under-reported — a
+  // genuine liability, not a recoverable amount. `potentialNow` (the headline figure quoted
+  // everywhere a single number is needed) is what's left once one is set against the other — it
+  // can end up modest even when both gross sides are substantial, which is exactly why both are
+  // shown explicitly (see ExecutiveSummary) rather than only ever surfacing the net. Exposure
+  // growth is projected off the gross recoverable side, not the net, so it stays meaningful even
+  // when the net itself is small.
+  const grossPositive = round10k(800_000 + random() * 5_200_000);
+  const grossNegative = round10k(grossPositive * (0.15 + random() * 0.55));
+  const potentialNow = Math.max(grossPositive - grossNegative, 0);
+  const exposureQuarter = round10k(grossPositive * (1.25 + random() * 0.25));
   const exposureYear = round10k(exposureQuarter * (1.1 + random() * 0.25));
 
   // The reconciliation's own directly-detected findings come first (also what `nextActions` below
@@ -105,16 +125,28 @@ export function generateMockResult(reconciliationId: string): TopicMockResult {
     selected.push(output);
   }
 
-  // Split potentialNow across every row with a randomized-but-normalized weight — reads as
-  // plausible individual line items (still blurred until unlocked) rather than even slices.
-  const weights = selected.map(() => 0.4 + random());
-  const weightTotal = weights.reduce((sum, w) => sum + w, 0);
-  const previewRows: RecoveryPreviewRow[] = selected.map((output, index) => ({
-    classification: output.classification,
-    bucket: output.bucket,
-    detail: output.meaning,
-    amount: Math.max(round10k((potentialNow * weights[index]) / weightTotal), 10_000),
-  }));
+  // Which rows land on which side of the net: a fixed, illustrative split (not itself drawn from
+  // the underlying bucket taxonomy, which isn't a statement of sign) — roughly two-thirds
+  // positive, the rest negative, nudged so a short row set never comes out one-sided despite both
+  // gross figures above being real, non-zero numbers.
+  const signs: Array<"positive" | "negative"> = selected.map(() => (random() < 0.68 ? "positive" : "negative"));
+  if (selected.length >= 3) {
+    if (!signs.includes("negative")) signs[signs.length - 1] = "negative";
+    if (!signs.includes("positive")) signs[0] = "positive";
+  }
+  const positiveIndexes = signs.reduce<number[]>((acc, sign, i) => (sign === "positive" ? [...acc, i] : acc), []);
+  const negativeIndexes = signs.reduce<number[]>((acc, sign, i) => (sign === "negative" ? [...acc, i] : acc), []);
+  const positiveAmounts = splitAmount(positiveIndexes.length, grossPositive, random);
+  const negativeAmounts = splitAmount(negativeIndexes.length, grossNegative, random);
+
+  const previewRows: RecoveryPreviewRow[] = selected.map((output, index) => {
+    const sign = signs[index];
+    const amount =
+      sign === "positive"
+        ? positiveAmounts[positiveIndexes.indexOf(index)]
+        : negativeAmounts[negativeIndexes.indexOf(index)];
+    return { classification: output.classification, bucket: output.bucket, detail: output.meaning, amount, sign };
+  });
 
   const buckets = new Set(primaryOutputs.map((o) => o.bucket));
   if (buckets.size === 0) buckets.add("recovery");
@@ -126,6 +158,8 @@ export function generateMockResult(reconciliationId: string): TopicMockResult {
 
   return {
     potentialNow,
+    grossPositive,
+    grossNegative,
     exposureQuarter,
     exposureYear,
     previewRows,

@@ -74,9 +74,7 @@ export function PortalFetchFlow({
       <div className="flex flex-col gap-3">
         <MessageTurn
           speaker="DataTwin"
-          text={
-            "Smart choice! Let's pull your GSTR-2B directly from the portal so you don't have to download anything manually.\n\nPlease enter your 15-digit GST Number (GSTIN) below to get started:"
-          }
+          text={`Smart choice! Let's pull your ${file.name} directly from the portal so you don't have to download anything manually.\n\nPlease enter your 15-digit GST Number (GSTIN) below to get started:`}
         />
         <form
           onSubmit={handleGstinSubmit}
@@ -181,7 +179,7 @@ export function PortalFetchFlow({
       {localPhase === "fetching" && (
         <MessageTurn
           speaker="DataTwin"
-          text="Verified! ⚡ Fetching your official GSTR-2B statement directly from the portal now..."
+          text={`Verified! ⚡ Fetching your official ${file.name} directly from the portal now...`}
         />
       )}
     </div>
@@ -193,7 +191,15 @@ export function PortalFetchFlow({
 // for a yes/no decision this consequential. Rendered by ChatPageClient at the page root (not
 // nested here inside the transcript) so the rest of the chat can be marked `inert` behind it
 // without also disabling the modal itself.
-export function PortalConsentModal({ onAgree, onCancel }: { onAgree: () => void; onCancel: () => void }) {
+export function PortalConsentModal({
+  fileName,
+  onAgree,
+  onCancel,
+}: {
+  fileName: string;
+  onAgree: () => void;
+  onCancel: () => void;
+}) {
   const agreeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -224,8 +230,8 @@ export function PortalConsentModal({ onAgree, onCancel }: { onAgree: () => void;
 
         <div className="mt-4 flex flex-col gap-2.5 text-[13.5px] leading-relaxed text-navy-body">
           <p>
-            DataTwin will use your GSTIN and OTP-authorised access solely to retrieve your GSTR-2B statement from
-            the GST Portal.
+            DataTwin will use your GSTIN and OTP-authorised access solely to retrieve your {fileName} from the GST
+            Portal.
           </p>
           <p>This data is used only for the GST reconciliation you&apos;re currently running.</p>
           <p>No credentials are stored — access is limited to this one-time retrieval.</p>

@@ -1,7 +1,7 @@
 import { RECONCILIATION_CATALOG, type CatalogEntry } from "./data/catalog";
 import { FILE_DEFS } from "./data/files";
 import { generateMockResult } from "./mockResult";
-import type { FileRequirement, ReconciliationTopic } from "./types";
+import type { FileRequirement, ReconciliationCheckpoint, ReconciliationTopic } from "./types";
 
 export function getCatalogEntry(id: string | null): CatalogEntry | null {
   if (!id) return null;
@@ -58,22 +58,100 @@ function buildFileRequirements(entry: CatalogEntry): { required: FileRequirement
   return { required, optional };
 }
 
-// Bespoke walkthrough copy for reconciliations with a scripted journey (currently just "Bill vs
-// GSTR-2B" — see the GST Reconciliation flow). Everything else keeps the generic templated copy
-// built below; this only ever *adds* optional fields onto the topic the generic path already
-// produces, so a reconciliation with no entry here behaves exactly as it did before.
-const RECONCILIATION_SCRIPTS: Record<
-  string,
-  Pick<ReconciliationTopic, "filesIntro" | "fileAckOverrides" | "portalFetchFileIds" | "autoAdvanceMessage">
-> = {
+// A scripted flow's base round can also relabel one of the generically-derived required files —
+// e.g. entry 10.1's own File_Requirements name for F18 is "GSTR-1 GSTR-1A Annual" (the portal
+// export genuinely bundles both), but "Sales Register vs GST Reconciliation" asks for GSTR-1A
+// separately as its own later checkpoint, so the base round's card needs to read as plain "GSTR-1"
+// or the two asks read as duplicates of each other.
+type ReconciliationScript = Pick<
+  ReconciliationTopic,
+  "filesIntro" | "fileAckOverrides" | "portalFetchFileIds" | "autoAdvanceMessage" | "furtherCheckpoints"
+> & {
+  requiredFileNameOverrides?: Record<string, string>;
+};
+
+// Bespoke walkthrough copy for reconciliations with a scripted journey. Everything else keeps the
+// generic templated copy built below; this only ever *adds* optional fields onto the topic the
+// generic path already produces, so a reconciliation with no entry here behaves exactly as it did
+// before.
+const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
   "1.2": {
     filesIntro:
-      "Perfect, let's get your GST reconciliation done! ⚡\nFirst, please upload your Vendor Bill Register.\n\nWhy this helps: This sets your internal purchase baseline so we can identify missing invoices or unrecorded tax credits before filing.",
+      "Let's get started — please upload your Vendor Bill Register.\n\nWhy this helps: Sets your purchase baseline.",
     fileAckOverrides: {
-      F05: "Got it! Vendor Register is ready.\n\nNext, share your GSTR-2B Detail.\n\nWhy this helps: We'll cross-check this official statement against your books to highlight claimable ITC, tax mismatches, and portal differences.",
+      F05: "Got it. Now share your GSTR-2B Detail.\n\nWhy this helps: Flags claimable ITC and mismatches.",
     },
     portalFetchFileIds: ["F02"],
     autoAdvanceMessage: "Both files are ready. Running your reconciliation summary... ⏳",
+  },
+  // "Sales Register vs GST Reconciliation": four progressive rounds, each adding one more document
+  // and showing a refreshed, more accurate result — Sales Register + GSTR-1 first, then GSTR-1A,
+  // then the outward credit/debit notes, then the GSTR-3B Liability Summary that closes the loop.
+  // The two GSTR-1A/GSTR-3B-summary file ids below are hand-written for this script specifically
+  // (not drawn from File_Requirements.xlsx — see FileRequirement's own doc comment on
+  // ReconciliationCheckpoint.files), using a non-numeric id so they can never collide with a real
+  // generated F-number.
+  "10.1": {
+    filesIntro:
+      "Let's start with your Sales Revenue Register for the period.\n\nWhy this helps: Sets the books-side baseline.",
+    requiredFileNameOverrides: {
+      F18: "GSTR-1",
+    },
+    fileAckOverrides: {
+      F17: "Got it. Now share your GSTR-1 for the same period.\n\nWhy this helps: Matches every invoice to what's reported.",
+    },
+    portalFetchFileIds: ["F18"],
+    autoAdvanceMessage: "Both files are ready. Running your Sales Register vs GSTR-1 reconciliation... ⏳",
+    furtherCheckpoints: [
+      {
+        // The pitch for this round IS its filesIntro — the ask ("share it below") sits right next
+        // to a "continue with the existing uploaded documents alone" way out (see FileUploadStep),
+        // not behind a separate yes/no turn first.
+        filesIntro:
+          "Add your GSTR-1A for a more accurate number, or continue with what's already uploaded.\n\nWhy this helps: Corrected or cancelled invoices won't be flagged as mismatches.",
+        files: [
+          {
+            fileId: "SG-GSTR1A",
+            name: "GSTR-1A",
+            level: "required",
+            why: "Captures same-period amendments to GSTR-1 — corrections, cancellations and rate fixes.",
+          },
+        ],
+        portalFetchFileIds: ["SG-GSTR1A"],
+        autoAdvanceMessage: "GSTR-1A is in. Refreshing your reconciliation with the amendments included... ⏳",
+        mockResult: generateMockResult("10.1::checkpoint-1"),
+      },
+      {
+        filesIntro:
+          "Add your credit/debit notes for an even tighter number, or continue as-is.\n\nWhy this helps: Links notes back to the right original invoice.",
+        files: [
+          {
+            fileId: "F31",
+            name: FILE_DEFS.F31.name,
+            level: "required",
+            why: FILE_DEFS.F31.why,
+          },
+        ],
+        portalFetchFileIds: ["F31"],
+        autoAdvanceMessage: "Credit/debit notes received. Recalculating with the full adjustment trail... ⏳",
+        mockResult: generateMockResult("10.1::checkpoint-2"),
+      },
+      {
+        filesIntro:
+          "Last one — add your GSTR-3B Liability Summary for the final, audit-ready number, or continue as-is.\n\nWhy this helps: Confirms declared tax matches what you owe.",
+        files: [
+          {
+            fileId: "SG-GSTR3B",
+            name: "GSTR-3B Liability Summary",
+            level: "required",
+            why: "Confirms the output tax liability actually declared in GSTR-3B against the sales-side reconciliation.",
+          },
+        ],
+        portalFetchFileIds: ["SG-GSTR3B"],
+        autoAdvanceMessage: "All documents are in. Running your final Sales Register vs GST reconciliation... ⏳",
+        mockResult: generateMockResult("10.1::checkpoint-3"),
+      },
+    ],
   },
 };
 
@@ -84,14 +162,18 @@ export function buildResolvedTopic(reconciliationId: string): ReconciliationTopi
   const entry = getCatalogEntry(reconciliationId);
   if (!entry) return null;
   const { required, optional } = buildFileRequirements(entry);
+  const { requiredFileNameOverrides, ...script } = RECONCILIATION_SCRIPTS[entry.id] ?? {};
+  const requiredWithOverrides = requiredFileNameOverrides
+    ? required.map((f) => (requiredFileNameOverrides[f.fileId] ? { ...f, name: requiredFileNameOverrides[f.fileId] } : f))
+    : required;
   return {
     id: entry.id,
     label: entry.name,
     acknowledgement: `Let's work through ${entry.name} — ${lowercaseFirst(entry.purpose)}`,
-    requiredFiles: required,
+    requiredFiles: requiredWithOverrides,
     optionalFiles: optional,
     mockResult: generateMockResult(entry.id),
-    ...RECONCILIATION_SCRIPTS[entry.id],
+    ...script,
   };
 }
 

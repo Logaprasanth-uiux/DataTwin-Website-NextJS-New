@@ -1,7 +1,7 @@
 "use client";
 
 import { useRecoveryFormatter } from "@/lib/chat/useCurrency";
-import type { RecoveryBucket, RecoveryPreviewRow, TopicMockResult } from "@/lib/chat/types";
+import type { RecoveryBucket, RecoveryPreviewRow, RecoverySign, TopicMockResult } from "@/lib/chat/types";
 
 // Human-friendly category labels, one-line descriptions and design-system colors — never the raw
 // bucket key, and never a color outside navy/accent/crimson. Shared by the metric card, the donut
@@ -45,10 +45,14 @@ const BUCKET_DOT_CLASS: Record<RecoveryBucket, string> = {
 // happen to appear in the underlying data.
 const BUCKET_ORDER: RecoveryBucket[] = ["recovery", "correction", "followup", "neutral"];
 
-function aggregateByBucket(previewRows: readonly RecoveryPreviewRow[]) {
+// Aggregated by bucket within ONE sign only — a positive (recoverable) row and a negative
+// (liability) row in the same bucket aren't the same kind of amount, so they're never summed
+// together into one figure (see VarianceBreakdown, which calls this once per sign).
+function aggregateByBucket(previewRows: readonly RecoveryPreviewRow[], sign: RecoverySign) {
   const totals = new Map<RecoveryBucket, number>();
   let grandTotal = 0;
   for (const row of previewRows) {
+    if (row.sign !== sign) continue;
     totals.set(row.bucket, (totals.get(row.bucket) ?? 0) + row.amount);
     grandTotal += row.amount;
   }
@@ -85,7 +89,7 @@ export function ExecutiveSummaryHeader({ result }: { result: TopicMockResult }) 
 }
 
 function summaryHighlights(result: TopicMockResult) {
-  const { segments } = aggregateByBucket(result.previewRows);
+  const { segments } = aggregateByBucket(result.previewRows, "positive");
   const top = segments[0];
   const second = segments[1];
   const topSharePct = Math.round((top?.share ?? 0) * 100);
@@ -117,7 +121,11 @@ export function ExecutiveSummaryBody({ result }: { result: TopicMockResult }) {
   const format = (amount: number) => (ready ? formatter.format(amount) : "");
 
   const { segments, top, second, topSharePct } = summaryHighlights(result);
-  const growthPct = Math.round(((result.exposureYear - result.potentialNow) / result.potentialNow) * 100);
+  // Exposure is projected off the gross recoverable side, not the net (see mockResult.ts) — this
+  // compares like with like, and stays meaningful even when the net itself is small.
+  const growthPct = Math.round(((result.exposureYear - result.grossPositive) / result.grossPositive) * 100);
+  const { segments: negativeSegments } = aggregateByBucket(result.previewRows, "negative");
+  const hasLiability = result.grossNegative > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -133,11 +141,35 @@ export function ExecutiveSummaryBody({ result }: { result: TopicMockResult }) {
           {format(result.potentialNow)}
         </p>
         <p className="mt-2 text-[13px] font-medium tracking-[0.02em] text-navy-muted uppercase">
-          Potentially recoverable
+          Net recoverable position
         </p>
+
+        {/* The net above is what's left once what's recoverable is set against what's still
+            short-paid/payable — both real, gross figures, shown explicitly rather than only ever
+            implied by the net (see mockResult.ts's own doc comment on `potentialNow`). */}
+        <div className="mt-5 flex flex-wrap gap-3">
+          <div className="flex items-center gap-2 rounded-full border border-accent/25 bg-accent/[0.06] px-4 py-2">
+            <span
+              className={`text-[13.5px] font-semibold text-accent transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
+            >
+              +{format(result.grossPositive)}
+            </span>
+            <span className="text-[12px] text-navy-muted">recoverable / overpaid</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-loss/25 bg-loss/[0.06] px-4 py-2">
+            <span
+              className={`text-[13.5px] font-semibold text-loss transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
+            >
+              −{format(result.grossNegative)}
+            </span>
+            <span className="text-[12px] text-navy-muted">short-paid / payable</span>
+          </div>
+        </div>
+
         <p className="mt-4 max-w-xl text-[14.5px] leading-relaxed text-navy-body">
-          Based on the initial reconciliation, we identified a material recovery opportunity. This is an
-          illustrative demo figure — final numbers depend on the detailed analysis.
+          Based on the initial reconciliation, we identified a material recovery opportunity, netted against
+          what's still short-paid. This is an illustrative demo figure — final numbers depend on the detailed
+          analysis.
         </p>
       </div>
 
@@ -146,14 +178,14 @@ export function ExecutiveSummaryBody({ result }: { result: TopicMockResult }) {
           tone="crimson"
           value={`+${growthPct}%`}
           label="Exposure growth if unresolved"
-          detail={`From ${format(result.potentialNow)} now to ${format(result.exposureYear)} within the year`}
+          detail={`From ${format(result.grossPositive)} now to ${format(result.exposureYear)} within the year`}
           ready={ready}
         />
         <MetricCard
           tone="accent"
           value={format(result.potentialNow)}
-          label="Recoverable this period"
-          detail="Identified from the current reconciliation, before further corrections"
+          label="Net recoverable this period"
+          detail={`${format(result.grossPositive)} recoverable, less ${format(result.grossNegative)} short-paid`}
           ready={ready}
         />
         {top && (
@@ -175,25 +207,35 @@ export function ExecutiveSummaryBody({ result }: { result: TopicMockResult }) {
           }`}
         >
           {format(result.potentialNow)} is recoverable for this period
+          {hasLiability ? (
+            <>
+              , net of {format(result.grossNegative)} identified as still short-paid
+            </>
+          ) : null}
           {top ? (
             <>
-              , with <span className="font-medium">{topSharePct}%</span> concentrated in{" "}
+              , with <span className="font-medium">{topSharePct}%</span> of the recoverable side concentrated in{" "}
               <span className="font-medium">{BUCKET_LABELS[top.bucket].toLowerCase()}</span>
             </>
           ) : null}
-          . Left unresolved, this exposure could grow to {format(result.exposureYear)} over the coming year.
+          . Left unresolved, the recoverable opportunity could grow to {format(result.exposureYear)} over the
+          coming year.
         </p>
       </div>
 
       <VarianceBreakdown
         segments={segments}
-        displayTotal={result.potentialNow}
+        displayTotal={result.grossPositive}
         top={top}
         second={second}
-        rowCount={result.previewRows.length}
+        rowCount={result.previewRows.filter((r) => r.sign === "positive").length}
         format={format}
         ready={ready}
       />
+
+      {hasLiability && (
+        <LiabilityBreakdown segments={negativeSegments} total={result.grossNegative} format={format} ready={ready} />
+      )}
     </div>
   );
 }
@@ -246,7 +288,7 @@ function VarianceBreakdown({
   ready,
 }: {
   segments: { bucket: RecoveryBucket; amount: number; share: number }[];
-  /** The headline `potentialNow` figure — used for every number shown to the user here, so it
+  /** The gross recoverable figure (`grossPositive`) — used for every number shown here, so it
    * always matches the same figure quoted elsewhere on the page. Row amounts are independently
    * rounded to the nearest 10k (see mockResult.ts), so their raw sum can drift a little from this
    * by a few thousand — fine for computing each segment's *share*, but never shown as "the total". */
@@ -261,7 +303,7 @@ function VarianceBreakdown({
     <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft sm:p-7">
       <p className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">Recovery areas</p>
       <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">
-        Where the {format(displayTotal)} position is concentrated
+        Where the {format(displayTotal)} recoverable position is concentrated
       </h3>
       <p className="mt-1.5 text-[13px] text-navy-body">
         {top && second
@@ -298,6 +340,55 @@ function VarianceBreakdown({
       <p className="mt-6 border-t border-navy-hairline pt-4 text-[12px] text-navy-faint">
         All {rowCount} identified findings are reflected in the categories above — nothing here is unclassified.
       </p>
+    </div>
+  );
+}
+
+// The other side of the net: findings that turned out to be a liability — tax short-paid or
+// under-reported, not recoverable — shown as its own compact breakdown in loss-red tones rather
+// than folded into (or netted away by) the recoverable breakdown above.
+function LiabilityBreakdown({
+  segments,
+  total,
+  format,
+  ready,
+}: {
+  segments: { bucket: RecoveryBucket; amount: number; share: number }[];
+  total: number;
+  format: (amount: number) => string;
+  ready: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-loss/20 bg-loss/[0.03] p-6 shadow-soft sm:p-7">
+      <p className="text-[11px] font-semibold tracking-[0.14em] text-loss uppercase">Short-paid / payable</p>
+      <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">
+        Where the {format(total)} owed comes from
+      </h3>
+      <p className="mt-1.5 text-[13px] text-navy-body">
+        Netted against the recoverable side above to arrive at the net position quoted up top.
+      </p>
+
+      <ul className="mt-5 flex flex-col gap-3">
+        {segments.map(({ bucket, amount, share }) => (
+          <li key={bucket} className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-2.5">
+              <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-loss" />
+              <div>
+                <p className="text-[13.5px] font-semibold text-navy">{BUCKET_LABELS[bucket]}</p>
+                <p className="mt-0.5 text-[12.5px] leading-relaxed text-navy-muted">{BUCKET_DESCRIPTIONS[bucket]}</p>
+              </div>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <p
+                className={`text-[13.5px] font-semibold text-loss tabular-nums transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
+              >
+                −{format(amount)}
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-navy-muted">{Math.round(share * 100)}%</p>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

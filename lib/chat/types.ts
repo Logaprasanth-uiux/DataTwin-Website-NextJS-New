@@ -13,6 +13,14 @@ export interface FileRequirement {
 
 export type RecoveryBucket = "recovery" | "correction" | "followup" | "neutral";
 
+// Which way a finding moves the net position: "positive" is money coming back (overpaid, over-
+// reported, a genuine recoverable amount); "negative" is a liability — tax short-paid or under-
+// reported that's actually owed. A reconciliation nets these against each other into
+// TopicMockResult.potentialNow, so a modest net figure can still sit on top of two much larger
+// gross numbers pulling in opposite directions — both are shown explicitly (see ExecutiveSummary)
+// rather than only ever surfacing the net.
+export type RecoverySign = "positive" | "negative";
+
 export interface RecoveryPreviewRow {
   /** Business classification label — real text from the recovery-output data, not narrowed to a
    * fixed set, since the full catalogue spans ~40 distinct classifications. */
@@ -21,11 +29,20 @@ export interface RecoveryPreviewRow {
   bucket: RecoveryBucket;
   /** Revealed only after the unlock step. */
   detail: string;
+  /** Always a non-negative magnitude — `sign` says which direction it moves the net position. */
   amount: number;
+  sign: RecoverySign;
 }
 
 export interface TopicMockResult {
+  /** The NET recoverable position — `grossPositive - grossNegative`. This is the headline figure
+   * quoted everywhere a single number is needed; the two gross figures below are what it's made
+   * of, shown alongside it rather than only implied by it. */
   potentialNow: number;
+  /** Total of every positive-signed row — money coming back. */
+  grossPositive: number;
+  /** Total of every negative-signed row — tax short-paid/under-reported, still owed. */
+  grossNegative: number;
   exposureQuarter: number;
   exposureYear: number;
   previewRows: RecoveryPreviewRow[];
@@ -58,6 +75,32 @@ export interface ReconciliationTopic {
    * need..." + optional-files offer + manual "Continue to verification" button — and, after a
    * short beat, automatically continues into verification itself. */
   autoAdvanceMessage?: string;
+  /** A scripted reconciliation can run several rounds instead of just one: collect a document,
+   * verify it, then — instead of showing a result — offer one more document as an accuracy
+   * improvement (its own file-upload turn, `filesIntro` making the pitch and the benefit) with a
+   * "continue with the existing uploaded documents alone" way out for anyone who'd rather stop
+   * here; only once there's nothing further to offer (or the user has declined it) does the
+   * one-and-only result for the whole conversation actually show. See the "Sales Register vs GST
+   * Reconciliation" walkthrough in reconciliation.ts. Absent for every other (single-round) topic,
+   * which behaves exactly as before — straight from verification to its result, no offer in
+   * between. */
+  furtherCheckpoints?: ReconciliationCheckpoint[];
+}
+
+// One additional round of a multi-checkpoint scripted reconciliation (see
+// ReconciliationTopic.furtherCheckpoints) — collect one more document before the conversation's
+// result is shown. `files` are this round's own newly-required documents, hand-written
+// FileRequirement literals rather than necessarily drawn from FILE_DEFS, since a scripted
+// follow-up round may ask for a document the generic catalogue doesn't itemise on its own (e.g.
+// GSTR-1A as its own ask after GSTR-1 already went by).
+export interface ReconciliationCheckpoint {
+  files: FileRequirement[];
+  filesIntro?: string;
+  fileAckOverrides?: Record<string, string>;
+  portalFetchFileIds?: string[];
+  autoAdvanceMessage?: string;
+  /** This round's own refreshed result, shown once its files are all ready and verified. */
+  mockResult: TopicMockResult;
 }
 
 export const PERIOD_OPTIONS = [
@@ -215,6 +258,10 @@ export interface ConversationState {
   discovery: DiscoveryState;
   selectedPeriodId: PeriodOptionId | null;
   customPeriodRange: CustomPeriodRange | null;
+  /** Which round of a multi-checkpoint scripted reconciliation is current — see
+   * ReconciliationTopic.furtherCheckpoints. 0 = the topic's own base round; 1 = furtherCheckpoints[0];
+   * and so on. Always 0 for a topic with no further checkpoints. */
+  checkpointIndex: number;
   uploads: Record<string, UploadedFile>;
   /** High-water mark of how many required files have been progressively revealed — only ever
    * grows, so removing an earlier file never hides later, already-acknowledged ones. */
@@ -287,8 +334,25 @@ export type TranscriptItem =
       resolved: boolean;
     }
   | { kind: "custom-period-input"; id: string; resolved: boolean; value: CustomPeriodRange | null }
-  | { kind: "file-upload"; id: string; topic: ReconciliationTopic; resolved: boolean }
+  | {
+      kind: "file-upload";
+      id: string;
+      topic: ReconciliationTopic;
+      resolved: boolean;
+      /** How many of `topic.requiredFiles` (cumulative across every checkpoint so far — see
+       * ReconciliationTopic.furtherCheckpoints) were already fully shown in an EARLIER round's own
+       * "file-upload" item — this one only renders from that index on, so a later checkpoint's
+       * round doesn't re-display the previous rounds' already-committed upload exchanges. 0 for a
+       * topic's base round (nothing earlier to skip). */
+      startFileIndex: number;
+      /** True while this round offers a "continue with the existing uploaded documents alone" way
+       * out instead of its own file — i.e. this round came from a checkpoint (never the base
+       * round), it's the one currently being asked for, and nothing has been started on its file
+       * yet (no upload, no source choice). Once the user engages — or this round is already
+       * resolved, or is an earlier, already-superseded round — this is false. */
+      canDecline: boolean;
+    }
   | { kind: "verification"; id: string }
-  | { kind: "result"; id: string; topic: ReconciliationTopic }
+  | { kind: "result"; id: string; topic: ReconciliationTopic; active: boolean }
   | { kind: "schedule"; id: string; resolved: boolean }
   | { kind: "reveal"; id: string; topic: ReconciliationTopic };

@@ -44,6 +44,7 @@ export interface TranscriptActions {
   onReplaceFlagged: (fileId: string) => void;
   onTogglePreview: (fileId: string) => void;
   onVerificationComplete: () => void;
+  onDeclineCheckpoint: () => void;
   onOpenSchedule: () => void;
   onScheduleMeeting: (contact: ContactDetails, meeting: ScheduledMeeting) => void;
   onSubmitSummaryContact: (contact: ContactDetails) => void;
@@ -150,6 +151,9 @@ export function Transcript({
                     (file) => state.uploads[file.fileId]?.status === "ready",
                   )}
                   maxRevealed={state.maxRequiredFilesRevealed}
+                  startIndex={item.startFileIndex}
+                  canDecline={item.canDecline}
+                  onDecline={actions.onDeclineCheckpoint}
                   fileSource={state.fileSource}
                   portalFetch={state.portalFetch}
                   fileValidation={state.fileValidation}
@@ -180,7 +184,7 @@ export function Transcript({
               <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
                 <ResultStep
                   topic={item.topic}
-                  active={state.phase === "result"}
+                  active={item.active}
                   summaryContact={state.summaryContact}
                   summaryVerified={state.summaryVerified}
                   onSubmitSummaryContact={actions.onSubmitSummaryContact}

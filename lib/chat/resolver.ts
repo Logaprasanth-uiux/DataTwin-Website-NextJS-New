@@ -133,6 +133,32 @@ function matchesGstr2bScriptedTrigger(userTokens: ReadonlySet<string>): CatalogE
   return INDEX.find((i) => i.entry.id === GSTR_2B_SCRIPTED_ENTRY_ID)?.entry ?? null;
 }
 
+// "Sales Register vs GSTR-1" (10.1) also has a bespoke multi-round scripted walkthrough (see
+// reconciliation.ts's RECONCILIATION_SCRIPTS) — the "Sales Register vs GST Reconciliation" flow.
+// Its trigger phrases ("Sales Register vs GST", "Accounts Receivables Check", "sales vs gst",
+// "GSTR-1") are looser and more varied than 1.2's, so this checks several independent signals
+// rather than one fixed combination — any one of them is specific enough on its own. A bare
+// "GSTR-1" only counts when no OTHER GST return is also mentioned (which would more likely mean
+// one of the other outward/inward-supply entries instead).
+const SALES_REGISTER_GST_SCRIPTED_ENTRY_ID = "10.1";
+
+function matchesSalesRegisterGstScriptedTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
+  const hasSalesRegister = userTokens.has("sales") && userTokens.has("register");
+  const hasAccountsReceivablesCheck =
+    userTokens.has("accounts") && (userTokens.has("receivables") || userTokens.has("receivable"));
+  const hasSalesVsGst = userTokens.has("sales") && userTokens.has("gst");
+  const mentionsOtherGstReturn =
+    userTokens.has("gstr-1a") ||
+    userTokens.has("gstr-2") ||
+    userTokens.has("gstr-2a") ||
+    userTokens.has("gstr-2b") ||
+    userTokens.has("gstr-3b");
+  const hasGstr1Only = userTokens.has("gstr-1") && !mentionsOtherGstReturn;
+
+  if (!hasSalesRegister && !hasAccountsReceivablesCheck && !hasSalesVsGst && !hasGstr1Only) return null;
+  return INDEX.find((i) => i.entry.id === SALES_REGISTER_GST_SCRIPTED_ENTRY_ID)?.entry ?? null;
+}
+
 /** Distinguishes a genuine greeting or "what can you do" question from an actual attempt at
  * describing a problem — so the reply can answer *that*, rather than treating every message as a
  * failed reconciliation match and reusing the same clarifying prompt regardless of what was said.
@@ -154,7 +180,8 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
   const userTokenSet = new Set(userTokens);
   const excluded = new Set(excludeIds);
 
-  const scriptedMatch = matchesGstr2bScriptedTrigger(userTokenSet);
+  const scriptedMatch =
+    matchesGstr2bScriptedTrigger(userTokenSet) ?? matchesSalesRegisterGstScriptedTrigger(userTokenSet);
   if (scriptedMatch && !excluded.has(scriptedMatch.id)) {
     return { confidence: "high", top: scriptedMatch, candidates: [] };
   }

@@ -115,9 +115,10 @@ export function ScheduleMeetingStep({
         <Field label="Phone">
           <input
             type="tel"
+            inputMode="numeric"
             required
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onChange={(event) => setPhone(event.target.value.replace(/\D/g, ""))}
             autoComplete="tel"
             className="h-11 w-full rounded-lg border border-navy-hairline bg-white px-3.5 text-[14px] text-navy focus:border-accent focus:outline-none"
           />

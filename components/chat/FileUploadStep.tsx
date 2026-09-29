@@ -9,7 +9,6 @@ import type {
   UploadedFile,
 } from "@/lib/chat/types";
 import { FileRequirementCard } from "./FileRequirementCard";
-import { FileSourceChoice } from "./FileSourceChoice";
 import { FileValidationFlow } from "./FileValidationFlow";
 import { MessageTurn } from "./MessageTurn";
 import { PortalFetchFlow } from "./PortalFetchFlow";
@@ -130,6 +129,9 @@ export function FileUploadStep({
   resolved,
   requiredReady,
   maxRevealed,
+  startIndex = 0,
+  canDecline,
+  onDecline,
   fileSource,
   portalFetch,
   fileValidation,
@@ -154,6 +156,17 @@ export function FileUploadStep({
   resolved: boolean;
   requiredReady: boolean;
   maxRevealed: number;
+  /** Skips rendering `topic.requiredFiles` entries before this index — a multi-checkpoint scripted
+   * reconciliation's later round shares one cumulative `topic.requiredFiles` list with every
+   * earlier round (see ReconciliationTopic.furtherCheckpoints), whose own files were already shown
+   * in full in THEIR OWN "file-upload" turn; this keeps a later round from re-showing them. 0
+   * (every file renders) for a topic's base round, and for any topic with no further checkpoints. */
+  startIndex?: number;
+  /** True while this round offers a "continue with the existing uploaded documents alone" way out
+   * instead of its own file (see the "file-upload" TranscriptItem's own doc comment) — renders the
+   * button below the round's file card(s) when set. */
+  canDecline?: boolean;
+  onDecline?: () => void;
   fileSource: Record<string, FileSourceChoiceValue>;
   portalFetch: Record<string, PortalFetchStage>;
   fileValidation: Record<string, FileValidationStage>;
@@ -175,7 +188,7 @@ export function FileUploadStep({
   // previously-committed exchange must never shrink after the fact) — `resolved` only suppresses
   // the now-irrelevant "Continue to verification" action further down. `maxRevealed` is a
   // high-water mark, so removing an earlier file never pulls later, already-shown files back out.
-  const visibleRequired = visibleRequiredFiles(topic, uploads, maxRevealed);
+  const visibleRequired = visibleRequiredFiles(topic, uploads, maxRevealed).slice(startIndex);
   const firstRequiredFileId = topic.requiredFiles[0]?.fileId;
 
   return (
@@ -230,38 +243,50 @@ export function FileUploadStep({
           );
         }
 
-        if (topic.portalFetchFileIds?.includes(file.fileId)) {
-          const source = fileSource[file.fileId];
-          if (!source) {
-            return <FileSourceChoice key={file.fileId} file={file} onChoose={(src) => onChooseFileSource(file.fileId, src)} />;
-          }
-          if (source === "portal") {
-            return (
-              <PortalFetchFlow
-                key={file.fileId}
-                itemKey={`${itemKey}:${file.fileId}`}
-                tracker={tracker}
-                file={file}
-                stage={portalFetch[file.fileId] ?? "gstin"}
-                onSubmitGstin={() => onSubmitPortalGstin(file.fileId)}
-                onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
-              />
-            );
-          }
-          // source === "upload" — falls through to the normal upload card below.
+        if (topic.portalFetchFileIds?.includes(file.fileId) && fileSource[file.fileId] === "portal") {
+          return (
+            <PortalFetchFlow
+              key={file.fileId}
+              itemKey={`${itemKey}:${file.fileId}`}
+              tracker={tracker}
+              file={file}
+              stage={portalFetch[file.fileId] ?? "gstin"}
+              onSubmitGstin={() => onSubmitPortalGstin(file.fileId)}
+              onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
+            />
+          );
         }
 
+        // The same card either way (see FileRequirementCard's own doc comment on
+        // `onChoosePortal`) — a portal-eligible file just gets a second button alongside
+        // "Upload file", not a differently-styled choice step ahead of it.
         return (
           <FileRequirementCard
             key={file.fileId}
             requirement={file}
             upload={upload}
-            onUpload={onUpload}
+            onUpload={(fileId, fileName) => {
+              onChooseFileSource(fileId, "upload");
+              onUpload(fileId, fileName);
+            }}
             onAdvanceStatus={onAdvanceStatus}
             onRemove={onRemove}
+            onChoosePortal={
+              topic.portalFetchFileIds?.includes(file.fileId) ? () => onChooseFileSource(file.fileId, "portal") : undefined
+            }
           />
         );
       })}
+
+      {canDecline && onDecline && (
+        <button
+          type="button"
+          onClick={onDecline}
+          className="w-fit text-[13.5px] font-medium text-navy-muted underline decoration-navy-hairline underline-offset-4 transition-colors hover:text-navy"
+        >
+          Continue with the existing uploaded documents alone
+        </button>
+      )}
 
       {requiredReady && topic.autoAdvanceMessage && (
         <AutoAdvanceNotice message={topic.autoAdvanceMessage} onAdvance={onContinue} />

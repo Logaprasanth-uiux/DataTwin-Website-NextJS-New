@@ -14,8 +14,9 @@ import {
   completeVerification,
   continueWithFileIssue,
   createInitialState,
+  declineRemainingCheckpoints,
   flagFileIssue,
-  getResolvedTopic,
+  getEffectiveTopic,
   openSchedule,
   recordUpload,
   removeUpload,
@@ -294,6 +295,7 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     onReplaceFlagged: (fileId) => update((prev) => replaceFlaggedFile(prev, fileId)),
     onTogglePreview: (fileId) => update((prev) => toggleFilePreview(prev, fileId)),
     onVerificationComplete: () => update((prev) => completeVerification(prev)),
+    onDeclineCheckpoint: () => update((prev) => declineRemainingCheckpoints(prev)),
     onOpenSchedule: () => update((prev) => openSchedule(prev)),
     onScheduleMeeting: (contact, meeting) => update((prev) => scheduleMeeting(prev, contact, meeting, getOrCreateUserId())),
     onSubmitSummaryContact: (contact) => update((prev) => submitSummaryContact(prev, contact)),
@@ -317,7 +319,7 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
   };
 
   const items = buildTranscript(state);
-  const topic = getResolvedTopic(state.discovery.resolvedId);
+  const topic = getEffectiveTopic(state);
   const showFilePanel = topic !== null && FILE_PANEL_PHASES.has(state.phase);
   const showComposer = !COMPOSER_HIDDEN_PHASES.has(state.phase);
 
@@ -395,7 +397,15 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
       )}
 
       {pendingConsentFileId && (
-        <PortalConsentModal onAgree={handleAgreePortalConsent} onCancel={handleCancelPortalConsent} />
+        <PortalConsentModal
+          fileName={
+            [...(topic?.requiredFiles ?? []), ...(topic?.optionalFiles ?? [])].find(
+              (f) => f.fileId === pendingConsentFileId,
+            )?.name ?? "requested document"
+          }
+          onAgree={handleAgreePortalConsent}
+          onCancel={handleCancelPortalConsent}
+        />
       )}
     </>
   );

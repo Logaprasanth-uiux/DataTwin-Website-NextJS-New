@@ -30,6 +30,44 @@ export function getResolvedTopic(reconciliationId: string | null): Reconciliatio
   return buildResolvedTopic(reconciliationId);
 }
 
+// --- Multi-checkpoint scripted reconciliations (see ReconciliationTopic.furtherCheckpoints) -----
+
+// The topic AS IT STANDS through a given checkpoint round: its required files are every file
+// collected so far (this topic's own base files, plus each further checkpoint's files up to and
+// including `index`), and its script fields (filesIntro/fileAckOverrides/portalFetchFileIds/
+// autoAdvanceMessage/mockResult) are that round's own — everything downstream (FileUploadStep,
+// ResultStep, RevealStep, ...) already just consumes a `ReconciliationTopic`, so nothing about
+// those components needs to know checkpoints exist at all. For a topic with no further checkpoints
+// this returns a value equal in every field to the topic itself — index 0 is always the only round.
+function effectiveTopicForCheckpoint(topic: ReconciliationTopic, index: number): ReconciliationTopic {
+  const checkpoints = topic.furtherCheckpoints ?? [];
+  const current = index > 0 ? checkpoints[index - 1] : undefined;
+  const requiredFiles = [...topic.requiredFiles, ...checkpoints.slice(0, index).flatMap((c) => c.files)];
+  return {
+    ...topic,
+    requiredFiles,
+    optionalFiles: index === 0 ? topic.optionalFiles : [],
+    filesIntro: current ? current.filesIntro : topic.filesIntro,
+    fileAckOverrides: current ? current.fileAckOverrides : topic.fileAckOverrides,
+    portalFetchFileIds: current ? current.portalFetchFileIds : topic.portalFetchFileIds,
+    autoAdvanceMessage: current ? current.autoAdvanceMessage : topic.autoAdvanceMessage,
+    mockResult: current ? current.mockResult : topic.mockResult,
+  };
+}
+
+function totalCheckpointCount(topic: ReconciliationTopic): number {
+  return 1 + (topic.furtherCheckpoints?.length ?? 0);
+}
+
+// The topic as it stands at the conversation's CURRENT checkpoint — what every file-collection
+// helper below should read/write against, so a scripted multi-round reconciliation asks for (and
+// tracks readiness of) only its current round's files, not the whole eventual set up front.
+export function getEffectiveTopic(state: ConversationState): ReconciliationTopic | null {
+  const topic = getResolvedTopic(state.discovery.resolvedId);
+  if (!topic) return null;
+  return effectiveTopicForCheckpoint(topic, state.checkpointIndex ?? 0);
+}
+
 export function createInitialState(
   id: string,
   firstMessage: string | null,
@@ -48,6 +86,7 @@ export function createInitialState(
     discovery,
     selectedPeriodId: null,
     customPeriodRange: null,
+    checkpointIndex: 0,
     uploads: {},
     maxRequiredFilesRevealed: 0,
     fileEvents: [],
@@ -183,7 +222,7 @@ export function advanceUploadStatus(
   // Captured once, the moment this file first becomes ready — never recomputed on later renders,
   // so the acknowledgement message that reads it stays fixed even after other files are uploaded.
   if (status === "ready" && nextFileHint === undefined) {
-    const topic = getResolvedTopic(state.discovery.resolvedId);
+    const topic = getEffectiveTopic(state);
     const index = topic?.requiredFiles.findIndex((f) => f.fileId === fileId) ?? -1;
     const next = topic && index !== -1 ? topic.requiredFiles[index + 1] : undefined;
     nextFileHint = next?.fileId ?? null;
@@ -298,7 +337,7 @@ export function completePortalFetch(state: ConversationState, fileId: string, fi
 }
 
 export function requiredFilesReady(state: ConversationState): boolean {
-  const topic = getResolvedTopic(state.discovery.resolvedId);
+  const topic = getEffectiveTopic(state);
   if (!topic) return false;
   return topic.requiredFiles.every((f) => state.uploads[f.fileId]?.status === "ready");
 }
@@ -324,8 +363,35 @@ export function beginVerification(state: ConversationState): ConversationState {
   return touch({ ...state, phase: "verifying" });
 }
 
+// A multi-checkpoint scripted reconciliation (see ReconciliationTopic.furtherCheckpoints) doesn't
+// go straight to its result once a round's verification completes, as long as a further checkpoint
+// still exists to offer — instead it pre-advances straight into that next round's own file-upload
+// turn (no separate yes/no decision first): the offer, its benefit, the upload card and a
+// "continue with the existing uploaded documents alone" way out (see FileUploadStep/
+// declineRemainingCheckpoints below) all live in that ONE turn. Only the true final round goes
+// straight to "result", exactly as every other, non-checkpointed reconciliation already does.
 export function completeVerification(state: ConversationState): ConversationState {
-  return touch({ ...state, phase: "result" });
+  const topic = getResolvedTopic(state.discovery.resolvedId);
+  const checkpointIndex = state.checkpointIndex ?? 0;
+  const hasMoreCheckpoints = topic ? checkpointIndex < totalCheckpointCount(topic) - 1 : false;
+  return touch(
+    hasMoreCheckpoints
+      ? { ...state, checkpointIndex: checkpointIndex + 1, phase: "files" }
+      : { ...state, phase: "result" },
+  );
+}
+
+// The "continue with the existing uploaded documents alone" way out of an offered checkpoint round
+// (see completeVerification above) — rolls that pre-advance back, since nothing for this round has
+// been uploaded yet (FileUploadStep only ever offers this while that's true), and moves straight to
+// the conversation's one-and-only result using whatever was already collected. A no-op from
+// anywhere but an in-progress "files" phase, or from the topic's own base round (checkpointIndex 0
+// — nothing to decline back to).
+export function declineRemainingCheckpoints(state: ConversationState): ConversationState {
+  if (state.phase !== "files") return state;
+  const checkpointIndex = state.checkpointIndex ?? 0;
+  if (checkpointIndex === 0) return state;
+  return touch({ ...state, checkpointIndex: checkpointIndex - 1, phase: "result" });
 }
 
 export function openSchedule(state: ConversationState): ConversationState {
@@ -440,31 +506,68 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
     });
   }
 
-  const firstRequired = topic.requiredFiles[0];
-  push({
-    kind: "assistant-text",
-    id: "files-ack",
-    text:
-      topic.filesIntro ??
-      (firstRequired ? `Let's start with your ${firstRequired.name}.` : "Let's see what I have to work with."),
-  });
-  push({
-    kind: "file-upload",
-    id: "file-upload",
-    topic,
-    resolved: state.phase !== "files",
-  });
+  // A scripted multi-checkpoint reconciliation (see ReconciliationTopic.furtherCheckpoints) collects
+  // one round at a time — files, then verification — pre-advancing straight into the next round's
+  // own file-upload turn once a round with a further checkpoint finishes verifying (see
+  // completeVerification), rather than stopping for a separate decision first. Only ONE round ever
+  // actually reaches "result": every earlier round's own files/verification stay in the transcript
+  // as real, already-settled history (this loop still renders every round up to and including the
+  // current one in full), but a round the conversation has since moved past never gets a result of
+  // its own — the loop just carries on (`continue`) until it reaches whichever round the
+  // conversation is actually resting on. A topic with no further checkpoints has exactly one round
+  // and goes straight to "result", so this behaves exactly as it did before checkpoints existed.
+  const totalRounds = totalCheckpointCount(topic);
+  const currentCheckpointIndex = state.checkpointIndex ?? 0;
+  for (let round = 0; round <= currentCheckpointIndex && round < totalRounds; round++) {
+    const isCurrentRound = round === currentCheckpointIndex;
+    const effectiveTopic = effectiveTopicForCheckpoint(topic, round);
+    const roundFiles = round === 0 ? effectiveTopic.requiredFiles : topic.furtherCheckpoints![round - 1].files;
+    const firstNewFile = roundFiles[0];
 
-  if (state.phase === "files") return finish();
+    push({
+      kind: "assistant-text",
+      id: `files-ack-${round}`,
+      text:
+        effectiveTopic.filesIntro ??
+        (firstNewFile ? `Let's start with your ${firstNewFile.name}.` : "Let's see what I have to work with."),
+    });
+    push({
+      kind: "file-upload",
+      id: `file-upload-${round}`,
+      topic: effectiveTopic,
+      resolved: !isCurrentRound || state.phase !== "files",
+      // Every earlier round's files were already shown in full in that round's own "file-upload"
+      // item — this one starts right after them, on `effectiveTopic.requiredFiles`'s own
+      // cumulative list, so only this round's newly-added file(s) render here.
+      startFileIndex: effectiveTopic.requiredFiles.length - roundFiles.length,
+      // Offering to stop here only makes sense for a checkpoint round (never the mandatory base
+      // pair), only while it's the one currently being asked for, and only before the user has
+      // engaged with its file at all — once they have, they've effectively already said "add it".
+      canDecline:
+        round > 0 &&
+        isCurrentRound &&
+        state.phase === "files" &&
+        roundFiles.every((f) => !state.uploads[f.fileId] && !state.fileSource[f.fileId]),
+    });
 
-  push({ kind: "verification", id: "verification" });
+    if (isCurrentRound && state.phase === "files") return finish();
 
-  if (state.phase === "verifying") return finish();
+    push({ kind: "verification", id: `verification-${round}` });
 
-  push({ kind: "result", id: "result", topic });
+    if (isCurrentRound && state.phase === "verifying") return finish();
 
-  appendContactAndBeyond(items, state, topic);
-  appendFileEvents(items, state, topic);
+    // This round has been superseded — completeVerification already pre-advanced past it into the
+    // next one — nothing further to show for it.
+    if (!isCurrentRound) continue;
+
+    push({ kind: "result", id: "result", topic: effectiveTopic, active: state.phase === "result" });
+    appendContactAndBeyond(items, state, effectiveTopic);
+    appendFileEvents(items, state, effectiveTopic);
+    return finish();
+  }
+
+  // Unreachable in practice — the loop above always returns by the time it processes
+  // `currentCheckpointIndex` — kept only so this function provably returns on every path.
   return finish();
 }
 
