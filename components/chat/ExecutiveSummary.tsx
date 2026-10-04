@@ -1,7 +1,13 @@
 "use client";
 
 import { useRecoveryFormatter } from "@/lib/chat/useCurrency";
-import type { RecoveryBucket, RecoveryPreviewRow, RecoverySign, TopicMockResult } from "@/lib/chat/types";
+import type {
+  RecoveryBucket,
+  RecoveryPreviewRow,
+  RecoverySign,
+  SummaryFraming,
+  TopicMockResult,
+} from "@/lib/chat/types";
 
 // Human-friendly category labels, one-line descriptions and design-system colors — never the raw
 // bucket key, and never a color outside navy/accent/crimson. Shared by the metric card, the donut
@@ -48,11 +54,11 @@ const BUCKET_ORDER: RecoveryBucket[] = ["recovery", "correction", "followup", "n
 // Aggregated by bucket within ONE sign only — a positive (recoverable) row and a negative
 // (liability) row in the same bucket aren't the same kind of amount, so they're never summed
 // together into one figure (see VarianceBreakdown, which calls this once per sign).
-function aggregateByBucket(previewRows: readonly RecoveryPreviewRow[], sign: RecoverySign) {
+function aggregateByBucket(previewRows: readonly RecoveryPreviewRow[], sign: RecoverySign | "all") {
   const totals = new Map<RecoveryBucket, number>();
   let grandTotal = 0;
   for (const row of previewRows) {
-    if (row.sign !== sign) continue;
+    if (sign !== "all" && row.sign !== sign) continue;
     totals.set(row.bucket, (totals.get(row.bucket) ?? 0) + row.amount);
     grandTotal += row.amount;
   }
@@ -88,8 +94,13 @@ export function ExecutiveSummaryHeader({ result }: { result: TopicMockResult }) 
   );
 }
 
+// Which findings the summary leads with: recoverable amounts, the owed/unpaid side, or all of them.
+function leadSign(framing: SummaryFraming): RecoverySign | "all" {
+  return framing === "exposure" ? "negative" : framing === "mismatch" ? "all" : "positive";
+}
+
 function summaryHighlights(result: TopicMockResult) {
-  const { segments } = aggregateByBucket(result.previewRows, "positive");
+  const { segments } = aggregateByBucket(result.previewRows, leadSign(result.framing ?? "recovery"));
   const top = segments[0];
   const second = segments[1];
   const topSharePct = Math.round((top?.share ?? 0) * 100);
@@ -120,74 +131,119 @@ export function ExecutiveSummaryBody({ result }: { result: TopicMockResult }) {
   const { formatter, ready } = useRecoveryFormatter();
   const format = (amount: number) => (ready ? formatter.format(amount) : "");
 
+  const framing = result.framing ?? "recovery";
   const { segments, top, second, topSharePct } = summaryHighlights(result);
-  // Exposure is projected off the gross recoverable side, not the net (see mockResult.ts) — this
-  // compares like with like, and stays meaningful even when the net itself is small.
-  const growthPct = Math.round(((result.exposureYear - result.grossPositive) / result.grossPositive) * 100);
   const { segments: negativeSegments } = aggregateByBucket(result.previewRows, "negative");
+  const { segments: positiveSegments } = aggregateByBucket(result.previewRows, "positive");
   const hasLiability = result.grossNegative > 0;
+  const hasPositive = result.grossPositive > 0;
+  const totalAffected = result.grossPositive + result.grossNegative;
+  const rowCount = result.previewRows.length;
+  // Exposure is projected off the side the story leads with (see mockResult.ts) — this compares
+  // like with like, and stays meaningful even when the net itself is small.
+  const growthBase = framing === "exposure" ? result.grossNegative : result.grossPositive;
+  const growthPct = Math.round(((result.exposureYear - growthBase) / growthBase) * 100);
+
+  // Everything below is read off the same generated findings (`result`) — the wording only changes
+  // how those figures are framed, never what they are.
+  const headline =
+    framing === "exposure" ? "GST exposure identified" : framing === "mismatch" ? "Differences identified" : "Potential recovery identified";
+  const headlineValue = framing === "mismatch" ? totalAffected : result.potentialNow;
+  const headlineLabel =
+    framing === "exposure" ? "Net tax exposure" : framing === "mismatch" ? "Total value affected" : "Net recoverable position";
+  const intro =
+    framing === "exposure"
+      ? "Based on the initial reconciliation, we identified tax that appears unpaid or under-reported, partly offset by amounts paid in excess. This is an illustrative demo figure — final numbers depend on the detailed analysis."
+      : framing === "mismatch"
+        ? "Based on the initial reconciliation, we found differences between your books and the return. These are mismatches to correct, not an amount owed or recoverable yet. This is an illustrative demo figure — final numbers depend on the detailed analysis."
+        : "Based on the initial reconciliation, we identified a material recovery opportunity, netted against what's still short-paid. This is an illustrative demo figure — final numbers depend on the detailed analysis.";
+
+  const positivePill = (
+    <AmountPill
+      key="positive"
+      tone="accent"
+      amount={result.grossPositive}
+      prefix={framing === "mismatch" ? "" : "+"}
+      label={framing === "exposure" ? "paid in excess" : framing === "mismatch" ? "higher in your books" : "recoverable / overpaid"}
+      format={format}
+      ready={ready}
+    />
+  );
+  const negativePill = (
+    <AmountPill
+      key="negative"
+      tone="loss"
+      amount={result.grossNegative}
+      prefix={framing === "mismatch" ? "" : "−"}
+      label={framing === "exposure" ? "unpaid / under-reported" : framing === "mismatch" ? "higher in the return" : "short-paid / payable"}
+      format={format}
+      ready={ready}
+    />
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-2xl border border-navy-hairline bg-white p-7 shadow-soft sm:p-8">
-        <h2 className="dt-display text-2xl font-semibold tracking-[-0.01em] text-navy sm:text-[28px]">
-          Potential recovery identified
-        </h2>
+        <h2 className="dt-display text-2xl font-semibold tracking-[-0.01em] text-navy sm:text-[28px]">{headline}</h2>
         <p
           className={`dt-display mt-3 text-4xl leading-none font-semibold tracking-[-0.02em] text-navy transition-opacity duration-300 sm:text-5xl ${
             ready ? "opacity-100" : "opacity-0"
           }`}
         >
-          {format(result.potentialNow)}
+          {format(headlineValue)}
         </p>
-        <p className="mt-2 text-[13px] font-medium tracking-[0.02em] text-navy-muted uppercase">
-          Net recoverable position
-        </p>
+        <p className="mt-2 text-[13px] font-medium tracking-[0.02em] text-navy-muted uppercase">{headlineLabel}</p>
 
-        {/* The net above is what's left once what's recoverable is set against what's still
-            short-paid/payable — both real, gross figures, shown explicitly rather than only ever
-            implied by the net (see mockResult.ts's own doc comment on `potentialNow`). */}
+        {/* The headline is what's left once the two real, gross figures below are set against each
+            other (or, for a mismatch, added together) — both shown explicitly rather than only ever
+            implied by it (see mockResult.ts's own doc comment on `potentialNow`). */}
         <div className="mt-5 flex flex-wrap gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-accent/25 bg-accent/[0.06] px-4 py-2">
-            <span
-              className={`text-[13.5px] font-semibold text-accent transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
-            >
-              +{format(result.grossPositive)}
-            </span>
-            <span className="text-[12px] text-navy-muted">recoverable / overpaid</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-full border border-loss/25 bg-loss/[0.06] px-4 py-2">
-            <span
-              className={`text-[13.5px] font-semibold text-loss transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
-            >
-              −{format(result.grossNegative)}
-            </span>
-            <span className="text-[12px] text-navy-muted">short-paid / payable</span>
-          </div>
+          {framing === "exposure" ? [negativePill, positivePill] : [positivePill, negativePill]}
         </div>
 
-        <p className="mt-4 max-w-xl text-[14.5px] leading-relaxed text-navy-body">
-          Based on the initial reconciliation, we identified a material recovery opportunity, netted against
-          what's still short-paid. This is an illustrative demo figure — final numbers depend on the detailed
-          analysis.
-        </p>
+        <p className="mt-4 max-w-xl text-[14.5px] leading-relaxed text-navy-body">{intro}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MetricCard
-          tone="crimson"
-          value={`+${growthPct}%`}
-          label="Exposure growth if unresolved"
-          detail={`From ${format(result.grossPositive)} now to ${format(result.exposureYear)} within the year`}
-          ready={ready}
-        />
-        <MetricCard
-          tone="accent"
-          value={format(result.potentialNow)}
-          label="Net recoverable this period"
-          detail={`${format(result.grossPositive)} recoverable, less ${format(result.grossNegative)} short-paid`}
-          ready={ready}
-        />
+        {framing === "mismatch" ? (
+          <>
+            <MetricCard
+              tone="navy"
+              value={String(rowCount)}
+              label="Differences to review"
+              detail="Each one is a record or total that doesn't agree"
+              ready={ready}
+            />
+            <MetricCard
+              tone="accent"
+              value={format(totalAffected)}
+              label="Value affected"
+              detail={`${format(result.grossPositive)} higher in your books, ${format(result.grossNegative)} higher in the return`}
+              ready={ready}
+            />
+          </>
+        ) : (
+          <>
+            <MetricCard
+              tone="crimson"
+              value={`+${growthPct}%`}
+              label="Exposure growth if unresolved"
+              detail={`From ${format(growthBase)} now to ${format(result.exposureYear)} within the year`}
+              ready={ready}
+            />
+            <MetricCard
+              tone="accent"
+              value={format(result.potentialNow)}
+              label={framing === "exposure" ? "Net tax exposure this period" : "Net recoverable this period"}
+              detail={
+                framing === "exposure"
+                  ? `${format(result.grossNegative)} unpaid, less ${format(result.grossPositive)} paid in excess`
+                  : `${format(result.grossPositive)} recoverable, less ${format(result.grossNegative)} short-paid`
+              }
+              ready={ready}
+            />
+          </>
+        )}
         {top && (
           <MetricCard
             tone="navy"
@@ -206,36 +262,125 @@ export function ExecutiveSummaryBody({ result }: { result: TopicMockResult }) {
             ready ? "opacity-100" : "opacity-0"
           }`}
         >
-          {format(result.potentialNow)} is recoverable for this period
-          {hasLiability ? (
+          {framing === "exposure" ? (
             <>
-              , net of {format(result.grossNegative)} identified as still short-paid
+              {format(result.potentialNow)} of tax appears unpaid or under-reported for this period
+              {hasPositive ? <>, net of {format(result.grossPositive)} paid in excess</> : null}
+              {top ? (
+                <>
+                  , with <span className="font-medium">{topSharePct}%</span> of the exposure concentrated in{" "}
+                  <span className="font-medium">{BUCKET_LABELS[top.bucket].toLowerCase()}</span>
+                </>
+              ) : null}
+              . Left unresolved, the exposure could grow to {format(result.exposureYear)} over the coming year, and
+              interest would add to that.
             </>
-          ) : null}
-          {top ? (
+          ) : framing === "mismatch" ? (
             <>
-              , with <span className="font-medium">{topSharePct}%</span> of the recoverable side concentrated in{" "}
-              <span className="font-medium">{BUCKET_LABELS[top.bucket].toLowerCase()}</span>
+              {rowCount} differences affecting {format(totalAffected)} were found
+              {top ? (
+                <>
+                  , with <span className="font-medium">{topSharePct}%</span> of the value in{" "}
+                  <span className="font-medium">{BUCKET_LABELS[top.bucket].toLowerCase()}</span>
+                </>
+              ) : null}
+              . Resolving them before the next filing avoids notices, rework and a return that doesn&apos;t match your books.
             </>
-          ) : null}
-          . Left unresolved, the recoverable opportunity could grow to {format(result.exposureYear)} over the
-          coming year.
+          ) : (
+            <>
+              {format(result.potentialNow)} is recoverable for this period
+              {hasLiability ? <>, net of {format(result.grossNegative)} identified as still short-paid</> : null}
+              {top ? (
+                <>
+                  , with <span className="font-medium">{topSharePct}%</span> of the recoverable side concentrated in{" "}
+                  <span className="font-medium">{BUCKET_LABELS[top.bucket].toLowerCase()}</span>
+                </>
+              ) : null}
+              . Left unresolved, the recoverable opportunity could grow to {format(result.exposureYear)} over the
+              coming year.
+            </>
+          )}
         </p>
       </div>
 
       <VarianceBreakdown
         segments={segments}
-        displayTotal={result.grossPositive}
+        displayTotal={framing === "exposure" ? result.grossNegative : framing === "mismatch" ? totalAffected : result.grossPositive}
+        eyebrow={framing === "exposure" ? "Exposure areas" : framing === "mismatch" ? "Difference areas" : "Recovery areas"}
+        heading={(total) =>
+          framing === "exposure"
+            ? `Where the ${total} of exposure is concentrated`
+            : framing === "mismatch"
+              ? `Where the ${total} of differences is concentrated`
+              : `Where the ${total} recoverable position is concentrated`
+        }
         top={top}
         second={second}
-        rowCount={result.previewRows.filter((r) => r.sign === "positive").length}
+        rowCount={
+          framing === "mismatch"
+            ? rowCount
+            : result.previewRows.filter((r) => r.sign === (framing === "exposure" ? "negative" : "positive")).length
+        }
         format={format}
         ready={ready}
       />
 
-      {hasLiability && (
-        <LiabilityBreakdown segments={negativeSegments} total={result.grossNegative} format={format} ready={ready} />
+      {framing === "recovery" && hasLiability && (
+        <SideBreakdown
+          tone="loss"
+          prefix="−"
+          eyebrow="Short-paid / payable"
+          heading={`Where the ${format(result.grossNegative)} owed comes from`}
+          note="Netted against the recoverable side above to arrive at the net position quoted up top."
+          segments={negativeSegments}
+          format={format}
+          ready={ready}
+        />
       )}
+      {framing === "exposure" && hasPositive && (
+        <SideBreakdown
+          tone="accent"
+          prefix="+"
+          eyebrow="Paid in excess"
+          heading={`Where the ${format(result.grossPositive)} paid in excess comes from`}
+          note="Set against the exposure above to arrive at the net position quoted up top."
+          segments={positiveSegments}
+          format={format}
+          ready={ready}
+        />
+      )}
+    </div>
+  );
+}
+
+function AmountPill({
+  tone,
+  amount,
+  prefix,
+  label,
+  format,
+  ready,
+}: {
+  tone: "accent" | "loss";
+  amount: number;
+  prefix: string;
+  label: string;
+  format: (amount: number) => string;
+  ready: boolean;
+}) {
+  const toneClass =
+    tone === "accent"
+      ? "border-accent/25 bg-accent/[0.06] text-accent"
+      : "border-loss/25 bg-loss/[0.06] text-loss";
+  return (
+    <div className={`flex items-center gap-2 rounded-full border px-4 py-2 ${toneClass.split(" ").slice(0, 2).join(" ")}`}>
+      <span
+        className={`text-[13.5px] font-semibold transition-opacity duration-300 ${toneClass.split(" ")[2]} ${ready ? "opacity-100" : "opacity-0"}`}
+      >
+        {prefix}
+        {format(amount)}
+      </span>
+      <span className="text-[12px] text-navy-muted">{label}</span>
     </div>
   );
 }
@@ -281,6 +426,8 @@ function MetricCard({
 function VarianceBreakdown({
   segments,
   displayTotal,
+  eyebrow,
+  heading,
   top,
   second,
   rowCount,
@@ -293,6 +440,8 @@ function VarianceBreakdown({
    * rounded to the nearest 10k (see mockResult.ts), so their raw sum can drift a little from this
    * by a few thousand — fine for computing each segment's *share*, but never shown as "the total". */
   displayTotal: number;
+  eyebrow: string;
+  heading: (formattedTotal: string) => string;
   top: { bucket: RecoveryBucket; amount: number; share: number } | undefined;
   second: { bucket: RecoveryBucket; amount: number; share: number } | undefined;
   rowCount: number;
@@ -301,10 +450,8 @@ function VarianceBreakdown({
 }) {
   return (
     <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft sm:p-7">
-      <p className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">Recovery areas</p>
-      <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">
-        Where the {format(displayTotal)} recoverable position is concentrated
-      </h3>
+      <p className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">{eyebrow}</p>
+      <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">{heading(format(displayTotal))}</h3>
       <p className="mt-1.5 text-[13px] text-navy-body">
         {top && second
           ? `${BUCKET_LABELS[top.bucket]} leads, followed by ${BUCKET_LABELS[second.bucket].toLowerCase()}.`
@@ -344,35 +491,42 @@ function VarianceBreakdown({
   );
 }
 
-// The other side of the net: findings that turned out to be a liability — tax short-paid or
-// under-reported, not recoverable — shown as its own compact breakdown in loss-red tones rather
-// than folded into (or netted away by) the recoverable breakdown above.
-function LiabilityBreakdown({
+// The other side of the net, as its own compact breakdown in a contrasting tone rather than folded
+// into (or netted away by) the main breakdown above: for a recovery story that's the short-paid /
+// owed side; for an exposure story it's what was paid in excess.
+function SideBreakdown({
+  tone,
+  prefix,
+  eyebrow,
+  heading,
+  note,
   segments,
-  total,
   format,
   ready,
 }: {
+  tone: "loss" | "accent";
+  prefix: string;
+  eyebrow: string;
+  heading: string;
+  note: string;
   segments: { bucket: RecoveryBucket; amount: number; share: number }[];
-  total: number;
   format: (amount: number) => string;
   ready: boolean;
 }) {
+  const card = tone === "loss" ? "border-loss/20 bg-loss/[0.03]" : "border-accent/25 bg-accent/[0.04]";
+  const text = tone === "loss" ? "text-loss" : "text-accent";
+  const dot = tone === "loss" ? "bg-loss" : "bg-accent";
   return (
-    <div className="rounded-2xl border border-loss/20 bg-loss/[0.03] p-6 shadow-soft sm:p-7">
-      <p className="text-[11px] font-semibold tracking-[0.14em] text-loss uppercase">Short-paid / payable</p>
-      <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">
-        Where the {format(total)} owed comes from
-      </h3>
-      <p className="mt-1.5 text-[13px] text-navy-body">
-        Netted against the recoverable side above to arrive at the net position quoted up top.
-      </p>
+    <div className={`rounded-2xl border p-6 shadow-soft sm:p-7 ${card}`}>
+      <p className={`text-[11px] font-semibold tracking-[0.14em] uppercase ${text}`}>{eyebrow}</p>
+      <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">{heading}</h3>
+      <p className="mt-1.5 text-[13px] text-navy-body">{note}</p>
 
       <ul className="mt-5 flex flex-col gap-3">
         {segments.map(({ bucket, amount, share }) => (
           <li key={bucket} className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-2.5">
-              <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-loss" />
+              <span aria-hidden="true" className={`mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ${dot}`} />
               <div>
                 <p className="text-[13.5px] font-semibold text-navy">{BUCKET_LABELS[bucket]}</p>
                 <p className="mt-0.5 text-[12.5px] leading-relaxed text-navy-muted">{BUCKET_DESCRIPTIONS[bucket]}</p>
@@ -380,9 +534,10 @@ function LiabilityBreakdown({
             </div>
             <div className="flex-shrink-0 text-right">
               <p
-                className={`text-[13.5px] font-semibold text-loss tabular-nums transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
+                className={`text-[13.5px] font-semibold tabular-nums transition-opacity duration-300 ${text} ${ready ? "opacity-100" : "opacity-0"}`}
               >
-                −{format(amount)}
+                {prefix}
+                {format(amount)}
               </p>
               <p className="mt-0.5 text-[12.5px] text-navy-muted">{Math.round(share * 100)}%</p>
             </div>

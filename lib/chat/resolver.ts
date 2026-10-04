@@ -183,6 +183,29 @@ function matchesAnnualScriptedTrigger(userTokens: ReadonlySet<string>): CatalogE
   return INDEX.find((i) => i.entry.id === ANNUAL_SCRIPTED_ENTRY_ID)?.entry ?? null;
 }
 
+// Advances received from customers and HSN/SAC summaries each have their own scripted flow. Both
+// are checked ahead of the sales-register trigger, which would otherwise claim "HSN summary vs
+// sales register". "Advance" alone is ambiguous (advances to vendors are a payables matter), so it
+// needs customer/output-side context and no purchase-side word.
+const ADVANCES_SCRIPTED_ENTRY_ID = "10.11";
+const HSN_SAC_SCRIPTED_ENTRY_ID = "10.12";
+
+function matchesAdvancesScriptedTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
+  const advance = userTokens.has("advance") || userTokens.has("advances");
+  const customerSide = ["received", "receipt", "receipts", "customer", "customers", "output", "liability", "sales", "gst", "tax"].some(
+    (t) => userTokens.has(t),
+  );
+  const purchaseSide = ["vendor", "vendors", "supplier", "suppliers", "purchase", "paid", "itc"].some((t) => userTokens.has(t));
+  if (!advance || !customerSide || purchaseSide) return null;
+  return INDEX.find((i) => i.entry.id === ADVANCES_SCRIPTED_ENTRY_ID)?.entry ?? null;
+}
+
+function matchesHsnSacScriptedTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
+  const hsnSac = userTokens.has("hsn") || userTokens.has("sac") || userTokens.has("hsn/sac") || userTokens.has("hsn-sac");
+  if (!hsnSac) return null;
+  return INDEX.find((i) => i.entry.id === HSN_SAC_SCRIPTED_ENTRY_ID)?.entry ?? null;
+}
+
 export function classifyOpener(text: string): OpenerKind {
   const trimmed = text.trim();
   if (tokenize(trimmed).length === 0) return "greeting";
@@ -202,6 +225,8 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
 
   const scriptedMatch =
     matchesAnnualScriptedTrigger(userTokenSet) ??
+    matchesHsnSacScriptedTrigger(userTokenSet) ??
+    matchesAdvancesScriptedTrigger(userTokenSet) ??
     matchesGstr2bScriptedTrigger(userTokenSet) ??
     matchesSalesRegisterGstScriptedTrigger(userTokenSet);
   if (scriptedMatch && !excluded.has(scriptedMatch.id)) {

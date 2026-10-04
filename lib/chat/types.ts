@@ -32,9 +32,21 @@ export interface RecoveryPreviewRow {
   /** Always a non-negative magnitude — `sign` says which direction it moves the net position. */
   amount: number;
   sign: RecoverySign;
+  /** How many records sit behind this line — a demo figure, shown blurred until unlocked. */
+  records: number;
+  /** Relative weight of this line within its result, from its amount. */
+  priority: "High" | "Medium" | "Low";
 }
 
+// How the executive summary is worded and what it leads with. Chosen from the reconciliation (see
+// mockResult.ts) and then read back off the generated findings: "recovery" leads with money coming
+// back; "exposure" with tax that looks unpaid or under-reported; "mismatch" with differences
+// between books and returns that aren't an amount owed or recoverable yet.
+export type SummaryFraming = "recovery" | "exposure" | "mismatch";
+
 export interface TopicMockResult {
+  /** Absent on older saved data — treated as "recovery". */
+  framing?: SummaryFraming;
   /** The NET recoverable position — `grossPositive - grossNegative`. This is the headline figure
    * quoted everywhere a single number is needed; the two gross figures below are what it's made
    * of, shown alongside it rather than only implied by it. */

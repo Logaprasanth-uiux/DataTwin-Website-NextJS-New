@@ -86,7 +86,31 @@ const ANNUAL_TURNOVER: IntentSummary = {
   ],
 };
 
+const ADVANCES: IntentSummary = {
+  problem:
+    "Advances you received from customers may not have been reported and paid in GST, or may not have been adjusted correctly when the invoice was raised.",
+  intent: "Make sure tax on every advance was reported and paid on time, and that adjustments against invoices don't leave any advance counted twice or missed.",
+  checks: [
+    "Advances received in your register vs advances reported in GSTR-1",
+    "Tax on advances declared in GSTR-1 vs tax paid in GSTR-3B",
+    "Adjustments against later invoices, so nothing is double-counted or left open",
+  ],
+};
+
+const HSN_SAC: IntentSummary = {
+  problem:
+    "The HSN/SAC summary in your GSTR-1 may not agree with your sales register, so quantities, values or tax by code could be wrong.",
+  intent: "Catch wrong, missing or inconsistent HSN/SAC codes and rates before they cause mismatches, notices or rejected returns.",
+  checks: [
+    "HSN/SAC-wise taxable value and tax in GSTR-1 vs the sales register",
+    "Quantity and unit differences by code",
+    "Missing or invalid HSN/SAC codes and rate mismatches",
+  ],
+};
+
 const OVERRIDES: Record<string, IntentSummary> = {
+  "10.11": ADVANCES,
+  "10.12": HSN_SAC,
   "8.5": ANNUAL_TURNOVER,
   "10.1": SALES_VS_GSTR1,
   "10.3": GSTR1_VS_3B,

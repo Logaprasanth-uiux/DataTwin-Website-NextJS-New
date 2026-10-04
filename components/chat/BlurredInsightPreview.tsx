@@ -15,59 +15,71 @@ const BUCKET_STYLES: Record<RecoveryBucket, string> = {
 export function BlurredInsightPreview({
   rows,
   revealed,
+  heading = "Where is the recovery coming from?",
+  showSign = true,
+  className = "",
 }: {
   rows: readonly RecoveryPreviewRow[];
   revealed: boolean;
+  heading?: string;
+  /** False for a mismatch story, where an amount is a difference, not money in or out. */
+  showSign?: boolean;
+  className?: string;
 }) {
   const { formatter, ready } = useRecoveryFormatter();
 
   return (
-    <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft">
-      <p className="text-[13.5px] font-medium text-navy">Where is the recovery coming from?</p>
+    <div className={`@container rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft ${className}`}>
+      <p className="text-[13.5px] font-medium text-navy">{heading}</p>
 
-      <div className="mt-4 flex flex-col divide-y divide-navy-divider">
+      <div className="mt-4 hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)_4.5rem_5.5rem_6rem] gap-4 border-b border-navy-divider pb-2 text-[10.5px] font-semibold tracking-[0.12em] text-navy-faint uppercase @xl:grid">
+        <span>Finding</span>
+        <span>Detail</span>
+        <span className="text-right">Records</span>
+        <span>Priority</span>
+        <span className="text-right">Impact</span>
+      </div>
+
+      <div className="mt-2 flex flex-col divide-y divide-navy-divider @xl:mt-0">
         {rows.map((row, index) => (
-          <div key={index} className="flex items-center justify-between gap-4 py-3">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span
-                className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.04em] whitespace-nowrap ${BUCKET_STYLES[row.bucket]}`}
-              >
-                {row.classification}
-              </span>
-              <span
-                className={`truncate text-[13px] text-navy ${revealed ? "" : "blur-[6px] select-none"}`}
-                aria-hidden={!revealed}
-              >
-                {row.detail}
-              </span>
-            </div>
+          <div
+            key={index}
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 py-3 @xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)_4.5rem_5.5rem_6rem]"
+          >
             <span
-              className={`flex-shrink-0 tabular-nums text-[13.5px] font-medium ${
-                row.sign === "negative" ? "text-loss" : "text-navy"
+              className={`w-fit max-w-full flex-shrink-0 truncate rounded-full px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.04em] whitespace-nowrap ${BUCKET_STYLES[row.bucket]}`}
+            >
+              {row.classification}
+            </span>
+            <span
+              className={`order-last col-span-2 truncate text-[13px] text-navy @xl:order-none @xl:col-span-1 ${revealed ? "" : "blur-[6px] select-none"}`}
+              aria-hidden={!revealed}
+            >
+              {row.detail}
+            </span>
+            <span
+              className={`hidden text-right tabular-nums text-[13px] text-navy-body @xl:block ${revealed ? "" : "blur-[6px] select-none"}`}
+              aria-hidden={!revealed}
+            >
+              {row.records}
+            </span>
+            <span
+              className={`hidden text-[12.5px] text-navy-body @xl:block ${revealed ? "" : "blur-[6px] select-none"}`}
+              aria-hidden={!revealed}
+            >
+              {row.priority}
+            </span>
+            <span
+              className={`text-right tabular-nums text-[13.5px] font-medium ${
+                showSign && row.sign === "negative" ? "text-loss" : "text-navy"
               } ${revealed ? "" : "blur-[6px] select-none"}`}
               aria-hidden={!revealed}
             >
-              {ready ? `${row.sign === "negative" ? "−" : ""}${formatter.format(row.amount)}` : ""}
+              {ready ? `${showSign && row.sign === "negative" ? "−" : ""}${formatter.format(row.amount)}` : ""}
             </span>
           </div>
         ))}
       </div>
-
-      {!revealed && (
-        <p className="mt-3 flex items-center gap-1.5 text-[12px] text-navy-faint">
-          <LockIcon className="h-3 w-3" />
-          Full detail unlocks after scheduling a conversation with the DataTwin Team
-        </p>
-      )}
     </div>
-  );
-}
-
-function LockIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
-      <rect x="3.5" y="7" width="9" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1.25" />
-      <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
-    </svg>
   );
 }

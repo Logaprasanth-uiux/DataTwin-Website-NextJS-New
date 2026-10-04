@@ -86,6 +86,8 @@ type ReconciliationScript = Pick<
   "filesIntro" | "fileAckOverrides" | "portalFetchFileIds" | "autoAdvanceMessage" | "furtherCheckpoints"
 > & {
   requiredFileNameOverrides?: Record<string, string>;
+  /** Replaces a required file's generic catalogue description with one that fits this flow. */
+  requiredFileWhyOverrides?: Record<string, string>;
   /** Narrows the generically-derived required files to just these (in this order) — the rest of
    * the catalogue entry's files are dropped rather than asked up front, so a scripted flow can
    * introduce them as its own later rounds instead. */
@@ -97,6 +99,84 @@ type ReconciliationScript = Pick<
 // generic path already produces, so a reconciliation with no entry here behaves exactly as it did
 // before.
 const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
+  // "Advances Received vs GST Liability": advances taken from customers are taxable when received,
+  // reported in GSTR-1 (advance table) and paid through GSTR-3B, then adjusted when the invoice is
+  // raised. Advance Register + GSTR-1 first; the sales register and GSTR-3B as accuracy rounds.
+  "10.11": {
+    baseFileIds: ["F22", "F18"],
+    requiredFileWhyOverrides: {
+      F22: "Lists advances received from customers, with dates and amounts, so each can be checked for GST at receipt and for later adjustment.",
+      F18: "Shows the advances you reported and the adjustments you made against invoices for the period.",
+    },
+    requiredFileNameOverrides: { F18: "GSTR-1" },
+    filesIntro:
+      "Let's start with your Advance Register for the period.\n\nWhy this helps: Lists every advance received from customers.",
+    fileAckOverrides: {
+      F22: "Got it. Now share your GSTR-1 for the same period.\n\nWhy this helps: Shows which advances were reported and which were adjusted.",
+    },
+    portalFetchFileIds: ["F18"],
+    autoAdvanceMessage: "Both files are ready. Running your Advances vs GST Liability reconciliation... ⏳",
+    furtherCheckpoints: [
+      {
+        filesIntro:
+          "Add your Sales Revenue Register for a more accurate number, or continue with what's already uploaded.\n\nWhy this helps: Confirms advances were adjusted against the right invoices.",
+        files: [{ fileId: "F17", name: FILE_DEFS.F17.name, level: "required", why: FILE_DEFS.F17.why }],
+        accuracyBenefit:
+          "Matches each advance to the invoice that later adjusted it, so adjusted advances stop showing up as still-unreported.",
+        autoAdvanceMessage: "Sales register received. Refreshing your reconciliation... ⏳",
+        mockResult: generateMockResult("10.11::checkpoint-1"),
+      },
+      {
+        filesIntro:
+          "Last one — add your GSTR-3B Liability Summary for the final number, or continue as-is.\n\nWhy this helps: Confirms tax on advances was actually paid.",
+        files: [
+          {
+            fileId: "SG-GSTR3B",
+            name: "GSTR-3B Liability Summary",
+            level: "required",
+            why: "Confirms the output tax declared and paid in GSTR-3B includes the tax due on advances.",
+          },
+        ],
+        portalFetchFileIds: ["SG-GSTR3B"],
+        accuracyBenefit:
+          "Checks that tax due on advances reached GSTR-3B, which is where unpaid tax on advances shows up.",
+        autoAdvanceMessage: "All documents are in. Running your final Advances vs GST Liability reconciliation... ⏳",
+        mockResult: generateMockResult("10.11::checkpoint-2"),
+      },
+    ],
+  },
+  // "HSN/SAC Summary vs Sales Register": the GSTR-1 HSN summary (Table 12) against the same
+  // period's sales register, then the HSN master and credit/debit notes as accuracy rounds.
+  "10.12": {
+    baseFileIds: ["F17", "F58"],
+    filesIntro:
+      "Let's start with your Sales Revenue Register for the period.\n\nWhy this helps: Sets the books-side HSN/SAC baseline.",
+    fileAckOverrides: {
+      F17: "Got it. Now share your GSTR-1 HSN Summary for the same period.\n\nWhy this helps: Shows the HSN/SAC-wise values you reported.",
+    },
+    portalFetchFileIds: ["F58"],
+    autoAdvanceMessage: "Both files are ready. Running your HSN/SAC Summary vs Sales Register reconciliation... ⏳",
+    furtherCheckpoints: [
+      {
+        filesIntro:
+          "Add your HSN/SAC Master for a more accurate number, or continue with what's already uploaded.\n\nWhy this helps: Catches wrong or missing HSN/SAC codes at source.",
+        files: [{ fileId: "F59", name: FILE_DEFS.F59.name, level: "required", why: FILE_DEFS.F59.why }],
+        accuracyBenefit:
+          "Checks each item's code and rate against your master, so wrong-code and wrong-rate differences are explained instead of left as gaps.",
+        autoAdvanceMessage: "HSN/SAC master received. Refreshing your reconciliation... ⏳",
+        mockResult: generateMockResult("10.12::checkpoint-1"),
+      },
+      {
+        filesIntro:
+          "Last one — add your credit/debit notes for the final number, or continue as-is.\n\nWhy this helps: Nets returns and price changes out of each HSN total.",
+        files: [{ fileId: "F31", name: FILE_DEFS.F31.name, level: "required", why: FILE_DEFS.F31.why }],
+        accuracyBenefit:
+          "Nets credit and debit notes out of each HSN/SAC total, so returns don't read as quantity or value differences.",
+        autoAdvanceMessage: "Credit/debit notes received. Recalculating... ⏳",
+        mockResult: generateMockResult("10.12::checkpoint-2"),
+      },
+    ],
+  },
   // "Gross Turnover Reconciliation - Table 5/6" — the year-end (GSTR-9) counterpart to the monthly
   // Sales Register vs GSTR-1 flow: full-year books turnover against the annual return. Same
   // round-by-round shape: Sales Register + GSTR-9 first, then the financial statements, the Trial
@@ -234,13 +314,15 @@ export function buildResolvedTopic(reconciliationId: string): ReconciliationTopi
   const entry = getCatalogEntry(reconciliationId);
   if (!entry) return null;
   const { required, optional } = buildFileRequirements(entry);
-  const { requiredFileNameOverrides, baseFileIds, ...script } = RECONCILIATION_SCRIPTS[entry.id] ?? {};
+  const { requiredFileNameOverrides, requiredFileWhyOverrides, baseFileIds, ...script } = RECONCILIATION_SCRIPTS[entry.id] ?? {};
   const requiredBase = baseFileIds
     ? baseFileIds.map((id) => required.find((f) => f.fileId === id)).filter((f): f is FileRequirement => Boolean(f))
     : required;
-  const requiredWithOverrides = requiredFileNameOverrides
-    ? requiredBase.map((f) => (requiredFileNameOverrides[f.fileId] ? { ...f, name: requiredFileNameOverrides[f.fileId] } : f))
-    : requiredBase;
+  const requiredWithOverrides = requiredBase.map((f) => ({
+    ...f,
+    name: requiredFileNameOverrides?.[f.fileId] ?? f.name,
+    why: requiredFileWhyOverrides?.[f.fileId] ?? f.why,
+  }));
   return {
     id: entry.id,
     label: CHAT_LABEL_OVERRIDES[entry.id] ?? entry.name,

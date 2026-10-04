@@ -65,5 +65,8 @@ export const FILE_DEFS: Record<string, FileDef> = {
   F54: { id: "F54", name: "DRC-01B Return Compliance", level: "required", why: "Provides liability-mismatch intimations comparing GSTR-1/IFF and GSTR-3B." },
   F55: { id: "F55", name: "DRC-01C Return Compliance", level: "required", why: "Provides ITC-mismatch intimations comparing GSTR-2B and GSTR-3B." },
   F56: { id: "F56", name: "System Generated GSTR-3B Summary", level: "optional", why: "Provides system-computed GSTR-3B values from GSTR-1/1A and GSTR-2B before edits." },
+  // F58/F59 are hand-added for the HSN/SAC reconciliation (10.12) — not rows in File_Requirements.xlsx.
+  F58: { id: "F58", name: "GSTR-1 HSN Summary", level: "required", why: "Provides the HSN/SAC-wise quantity, taxable value and tax reported in GSTR-1 (Table 12)." },
+  F59: { id: "F59", name: "HSN/SAC Master", level: "optional", why: "Maps each item or service to its HSN/SAC code and GST rate, so wrong or missing codes can be caught at source." },
   F57: { id: "F57", name: "DRC Response Register", level: "optional", why: "Tracks reasons, responses, payments/reversals and closure evidence for DRC intimations." },
 };

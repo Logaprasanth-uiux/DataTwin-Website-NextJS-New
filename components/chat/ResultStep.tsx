@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { ContactDetails, ReconciliationTopic } from "@/lib/chat/types";
+import { framingCopy } from "@/lib/chat/summaryCopy";
 import { BlurredInsightPreview } from "./BlurredInsightPreview";
 import { ExecutiveSummary, ExecutiveSummaryBody, ExecutiveSummaryHeader } from "./ExecutiveSummary";
 import { SummaryAccessGate } from "./SummaryAccessGate";
@@ -49,54 +50,64 @@ export function ResultStep({
             figure, and it's exactly the "heading/instructions above the form" that must stay
             visible alongside it. */}
         <ExecutiveSummaryHeader result={topic.mockResult} />
-        <div className="relative flex flex-col">
-          <div aria-hidden="true" className="pointer-events-none blur-md select-none">
-            <ExecutiveSummaryBody result={topic.mockResult} />
-          </div>
-          {/* This overlay spans exactly the (blurred) body above it — a plain top-anchored overlay
-              is enough (no `sticky` needed): since the scroll target above already brings this
-              whole section's top into view, the overlay's own top is already in view too. */}
-          <div className="absolute inset-0 flex items-start justify-center px-4 pt-3">
-            <div className="w-full max-w-sm">
-              <SummaryAccessGate contact={summaryContact} onSubmitContact={onSubmitSummaryContact} onVerifyOtp={onVerifySummaryOtp} />
+        {/* Only the top of the summary is shown behind the form, softly blurred and fading out — a
+            teaser sized to the form instead of a tall wall of blur. Verifying swaps in the whole
+            summary. The form itself is what sets this block's height. */}
+        <div className="relative flex min-h-[460px] items-center justify-center py-6">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+            <div className="relative select-none [mask-image:linear-gradient(to_bottom,black_45%,transparent_95%)]">
+              <div className="blur-md">
+                <ExecutiveSummaryBody result={topic.mockResult} />
+              </div>
+              <div className="absolute inset-0 bg-navy/[0.07]" />
             </div>
+          </div>
+          <div className="relative z-10 w-full max-w-sm px-4">
+            <SummaryAccessGate contact={summaryContact} onSubmitContact={onSubmitSummaryContact} onVerifyOtp={onVerifySummaryOtp} />
           </div>
         </div>
       </div>
     );
   }
 
+  const copy = framingCopy(topic.mockResult.framing);
+
   return (
     <div data-scroll-target="result" className="flex flex-col gap-5">
       <ExecutiveSummary result={topic.mockResult} />
-      <BlurredInsightPreview rows={topic.mockResult.previewRows} revealed={false} />
+
+      {/* The call to action sits ON the blurred findings, like the access form over the summary
+          above — right where the locked detail is, instead of somewhere below it that's easy to
+          miss. It goes away once the user opens the scheduling step. */}
+      <div className="relative">
+        <BlurredInsightPreview rows={topic.mockResult.previewRows} revealed={false} className="min-h-[340px]" heading={copy.tableHeading} showSign={topic.mockResult.framing !== "mismatch"} />
+        {active && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-navy/[0.07] px-4">
+            <div className="w-full max-w-md rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft">
+              <p className="text-[15px] font-medium text-navy">{copy.ctaTitle}</p>
+              <p className="mt-2 text-[13.5px] leading-relaxed text-navy-body">{copy.ctaBody}</p>
+              <button
+                type="button"
+                onClick={onOpenSchedule}
+                className="dt-button group mt-4 inline-flex h-12 items-center gap-2.5 rounded-full border border-navy bg-navy px-6 text-[14px] text-white transition-colors hover:bg-navy/90"
+              >
+                Schedule a conversation
+                <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 text-accent" aria-hidden="true">
+                  <path
+                    d="M3 8h10M9 4l4 4-4 4"
+                    stroke="currentColor"
+                    strokeWidth="1.25"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {active && accuracyOffer}
-
-      {active && (
-        <div className="rounded-2xl border border-navy-hairline bg-navy/[0.02] p-6">
-          <p className="text-[15px] font-medium text-navy">Want to see exactly where the recovery is coming from?</p>
-          <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-navy-body">
-            Schedule a conversation with the DataTwin Team to unlock the detailed recovery analysis and next steps.
-          </p>
-          <button
-            type="button"
-            onClick={onOpenSchedule}
-            className="dt-button group mt-4 inline-flex h-12 items-center gap-2.5 rounded-full border border-navy bg-navy px-6 text-[14px] text-white transition-colors hover:bg-navy/90"
-          >
-            Schedule a conversation
-            <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 text-accent" aria-hidden="true">
-              <path
-                d="M3 8h10M9 4l4 4-4 4"
-                stroke="currentColor"
-                strokeWidth="1.25"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      )}
     </div>
   );
 }

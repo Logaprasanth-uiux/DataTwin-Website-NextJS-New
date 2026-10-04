@@ -1,7 +1,9 @@
 import type { ReconciliationTopic } from "@/lib/chat/types";
+import { framingCopy } from "@/lib/chat/summaryCopy";
 import { BlurredInsightPreview } from "./BlurredInsightPreview";
 
 export function RevealStep({ topic }: { topic: ReconciliationTopic }) {
+  const copy = framingCopy(topic.mockResult.framing);
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1.5">
@@ -9,10 +11,10 @@ export function RevealStep({ topic }: { topic: ReconciliationTopic }) {
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" />
           DataTwin
         </span>
-        <p className="dt-display text-2xl font-semibold tracking-[-0.01em] text-navy">Recovery analysis unlocked</p>
+        <p className="dt-display text-2xl font-semibold tracking-[-0.01em] text-navy">{copy.revealTitle}</p>
       </div>
 
-      <BlurredInsightPreview rows={topic.mockResult.previewRows} revealed />
+      <BlurredInsightPreview rows={topic.mockResult.previewRows} revealed heading={copy.tableHeading} showSign={topic.mockResult.framing !== "mismatch"} />
 
       <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft">
         <p className="text-[13.5px] font-medium text-navy">Suggested next actions</p>

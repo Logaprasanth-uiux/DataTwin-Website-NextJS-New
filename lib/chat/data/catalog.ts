@@ -87,6 +87,9 @@ export const RECONCILIATION_CATALOG: CatalogEntry[] = [
   { id: "10.7", familyId: "10", name: "Output CGST / SGST / IGST Reconciliation", purpose: "Validate output tax by tax head and supply type.", fileIds: ["F17", "F18", "F03", "F30"] },
   { id: "10.8", familyId: "10", name: "Sales vs GSTR-1 vs GSTR-3B Consolidated", purpose: "Provide one transaction/period-level outward GST control.", fileIds: ["F17", "F18", "F03", "F30"] },
   { id: "10.9", familyId: "10", name: "Unreported Sales / Under-reported GST", purpose: "Identify book sales not reported or tax liability understated in returns.", fileIds: ["F17", "F18", "F03"] },
+  // 10.11 / 10.12 are hand-added (not rows in Reconciliation_Catalog.xlsx).
+  { id: "10.11", familyId: "10", name: "Advances Received vs GST Liability", purpose: "Confirm GST was paid on advances received from customers and that later adjustments against invoices are reported correctly.", fileIds: ["F22", "F18", "F17", "F03"] },
+  { id: "10.12", familyId: "10", name: "HSN/SAC Summary vs Sales Register", purpose: "Validate HSN/SAC-wise quantity, taxable value and tax in the GSTR-1 HSN summary against the sales register.", fileIds: ["F17", "F58", "F59", "F31"] },
   { id: "10.10", familyId: "10", name: "Duplicate / Excess Reported Sales", purpose: "Identify duplicate/over-reported outward supplies or tax liability.", fileIds: ["F17", "F18", "F03"] },
   { id: "11.1", familyId: "11", name: "GSTR-3B vs Electronic Liability Ledger", purpose: "Confirm liabilities declared in GSTR-3B are reflected in portal liability ledger.", fileIds: ["F03", "F19"] },
   { id: "11.2", familyId: "11", name: "GSTR-3B vs Electronic Credit Ledger", purpose: "Confirm ITC utilization/credit movements supporting return payment.", fileIds: ["F03", "F04"] },
