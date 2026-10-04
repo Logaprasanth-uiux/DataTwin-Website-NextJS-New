@@ -30,7 +30,7 @@ export const MOCK_ISSUE_MISSING_COUNT = MOCK_ISSUE_ROWS.filter((row) => !row.gst
 
 // Generated from the mock data above (field + counts), not a fixed string, so it stays accurate if
 // that data ever changes — e.g. "GSTIN column is missing for 4 of 10 rows — without it, those rows
-// can't be confidently matched during reconciliation."
+// cannot be confidently matched during reconciliation."
 export function describeMockFileIssue(): string {
-  return `${MOCK_ISSUE_FIELD} column is missing for ${MOCK_ISSUE_MISSING_COUNT} of ${MOCK_ISSUE_ROWS.length} rows — without it, those rows can't be confidently matched during reconciliation.`;
+  return `${MOCK_ISSUE_FIELD} column is missing for ${MOCK_ISSUE_MISSING_COUNT} of ${MOCK_ISSUE_ROWS.length} rows — without it, those rows cannot be confidently matched during reconciliation.`;
 }

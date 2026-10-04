@@ -121,3 +121,14 @@ export function saveConversation(state: ConversationState): void {
     // Best-effort only — the conversation still works for the current tab session.
   }
 }
+
+/** Removes a conversation and its index entry. */
+export function deleteConversation(id: string): void {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.removeItem(conversationKey(id));
+    writeIndex(readIndex().filter((entry) => entry.id !== id));
+  } catch {
+    // Best-effort only.
+  }
+}

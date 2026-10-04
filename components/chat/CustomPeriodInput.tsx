@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import type { CustomPeriodRange } from "@/lib/chat/types";
+import type { CustomPeriodRange, PeriodMode } from "@/lib/chat/types";
 import { formatPeriodRange } from "@/lib/chat/formatDate";
 import { MessageTurn } from "./MessageTurn";
 import { UserReveal, type RevealTracker } from "./reveal";
@@ -22,13 +22,25 @@ function pad2(value: string): string {
   return value.padStart(2, "0");
 }
 
+// Monthly: one month. Annual: one financial year (April to March), stored as that April..March range.
+function financialYearOptions(): { start: number; label: string }[] {
+  const now = new Date();
+  const currentStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return Array.from({ length: 6 }, (_, i) => {
+    const start = currentStart - i;
+    return { start, label: `FY ${start}-${String(start + 1).slice(-2)}` };
+  });
+}
+
 export function CustomPeriodInput({
+  mode,
   itemKey,
   tracker,
   resolved,
   value,
   onSubmit,
 }: {
+  mode: PeriodMode;
   itemKey: string;
   tracker: RevealTracker;
   resolved: boolean;
@@ -36,15 +48,15 @@ export function CustomPeriodInput({
   onSubmit: (range: CustomPeriodRange) => void;
 }) {
   const years = yearOptions();
+  const fyOptions = financialYearOptions();
   const [fromMonth, setFromMonth] = useState("");
   const [fromYear, setFromYear] = useState("");
-  const [toMonth, setToMonth] = useState("");
-  const [toYear, setToYear] = useState("");
+  const [fyStart, setFyStart] = useState("");
 
   if (resolved && value) {
     return (
       <div className="flex flex-col gap-3">
-        <MessageTurn speaker="DataTwin" text="Sure — what period should I look at?" />
+        <MessageTurn speaker="DataTwin" text={mode === "annual" ? "Sure — which financial year should I look at?" : "Sure — which month should I look at?"} />
         <UserReveal itemKey={`${itemKey}:resolved`} tracker={tracker}>
           <MessageTurn speaker="You" text={formatPeriodRange(value)} />
         </UserReveal>
@@ -52,14 +64,18 @@ export function CustomPeriodInput({
     );
   }
 
-  const from = fromYear && fromMonth ? `${fromYear}-${pad2(fromMonth)}` : "";
-  const to = toYear && toMonth ? `${toYear}-${pad2(toMonth)}` : "";
-  const valid = Boolean(from && to && from <= to);
+  const month = fromYear && fromMonth ? `${fromYear}-${pad2(fromMonth)}` : "";
+  const valid = mode === "annual" ? Boolean(fyStart) : Boolean(month);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!valid) return;
-    onSubmit({ from, to });
+    if (mode === "annual") {
+      const start = Number(fyStart);
+      onSubmit({ from: `${start}-04`, to: `${start + 1}-03` });
+    } else {
+      onSubmit({ from: month, to: month });
+    }
   };
 
   const selectClass =
@@ -67,75 +83,61 @@ export function CustomPeriodInput({
 
   return (
     <div className="flex flex-col gap-3">
-      <MessageTurn speaker="DataTwin" text="Sure — what period should I look at? A start and end month is all I need." />
-      {/* A single compact row rather than a bordered card with "Start"/"End" sections — this is a
-          quick conversational pick (four small selects + confirm), not a form. */}
+      <MessageTurn
+        speaker="DataTwin"
+        text={mode === "annual" ? "Sure — which financial year should I look at?" : "Sure — which month should I look at?"}
+      />
       <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-2">
-        <select
-          value={fromMonth}
-          onChange={(event) => setFromMonth(event.target.value)}
-          className={selectClass}
-          aria-label="Start month"
-        >
-          <option value="" disabled>
-            Month
-          </option>
-          {MONTHS.map((month, index) => (
-            <option key={month} value={index + 1}>
-              {month}
+        {mode === "annual" ? (
+          <select
+            value={fyStart}
+            onChange={(event) => setFyStart(event.target.value)}
+            className={selectClass}
+            aria-label="Financial year"
+          >
+            <option value="" disabled>
+              Financial year
             </option>
-          ))}
-        </select>
-        <select
-          value={fromYear}
-          onChange={(event) => setFromYear(event.target.value)}
-          className={selectClass}
-          aria-label="Start year"
-        >
-          <option value="" disabled>
-            Year
-          </option>
-          {years.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
-
-        <span aria-hidden="true" className="px-0.5 text-[13px] text-navy-faint">
-          →
-        </span>
-
-        <select
-          value={toMonth}
-          onChange={(event) => setToMonth(event.target.value)}
-          className={selectClass}
-          aria-label="End month"
-        >
-          <option value="" disabled>
-            Month
-          </option>
-          {MONTHS.map((month, index) => (
-            <option key={month} value={index + 1}>
-              {month}
-            </option>
-          ))}
-        </select>
-        <select
-          value={toYear}
-          onChange={(event) => setToYear(event.target.value)}
-          className={selectClass}
-          aria-label="End year"
-        >
-          <option value="" disabled>
-            Year
-          </option>
-          {years.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
+            {fyOptions.map((option) => (
+              <option key={option.start} value={option.start}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <>
+            <select
+              value={fromMonth}
+              onChange={(event) => setFromMonth(event.target.value)}
+              className={selectClass}
+              aria-label="Month"
+            >
+              <option value="" disabled>
+                Month
+              </option>
+              {MONTHS.map((name, index) => (
+                <option key={name} value={index + 1}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={fromYear}
+              onChange={(event) => setFromYear(event.target.value)}
+              className={selectClass}
+              aria-label="Year"
+            >
+              <option value="" disabled>
+                Year
+              </option>
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
 
         <button
           type="submit"

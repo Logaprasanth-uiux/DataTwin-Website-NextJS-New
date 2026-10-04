@@ -60,17 +60,28 @@ function OptionalFileOffer({
   tracker,
   file,
   upload,
+  canFetch,
+  fetchStage,
   onUpload,
   onAdvanceStatus,
   onRemove,
+  onChoosePortal,
+  onSubmitPortalGstin,
+  onPortalFetchComplete,
 }: {
   itemKey: string;
   tracker: RevealTracker;
   file: FileRequirement;
   upload: UploadedFile | undefined;
+  canFetch: boolean;
+  /** Set once the user chose "Fetch from GST Portal" for this file. */
+  fetchStage: PortalFetchStage | null;
   onUpload: (fileId: string, fileName: string) => void;
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemove: (fileId: string) => void;
+  onChoosePortal: () => void;
+  onSubmitPortalGstin: () => void;
+  onPortalFetchComplete: (fileName: string) => void;
 }) {
   if (upload) {
     return (
@@ -84,20 +95,31 @@ function OptionalFileOffer({
       </div>
     );
   }
+  // No message of its own: the single "a couple more files could sharpen the analysis" line above
+  // introduces every optional file, so two of them don't each speak as a separate DataTwin turn.
+  if (canFetch && fetchStage) {
+    return (
+      <PortalFetchFlow
+        itemKey={itemKey}
+        tracker={tracker}
+        file={file}
+        stage={fetchStage}
+        onSubmitGstin={onSubmitPortalGstin}
+        onFetchComplete={onPortalFetchComplete}
+      />
+    );
+  }
   return (
-    <div className="flex flex-col gap-2">
-      <MessageTurn
-        speaker="DataTwin"
-        text={`I can continue with what I have, but if you also share your ${file.name}, ${lowercaseFirst(file.why)}`}
-      />
-      <FileRequirementCard
-        requirement={file}
-        upload={upload}
-        onUpload={onUpload}
-        onAdvanceStatus={onAdvanceStatus}
-        onRemove={onRemove}
-      />
-    </div>
+    <FileRequirementCard
+      requirement={file}
+      upload={upload}
+      onUpload={(fileId, fileName) => {
+        onUpload(fileId, fileName);
+      }}
+      onAdvanceStatus={onAdvanceStatus}
+      onRemove={onRemove}
+      onChoosePortal={canFetch ? onChoosePortal : undefined}
+    />
   );
 }
 
@@ -224,6 +246,23 @@ export function FileUploadStep({
           );
         }
 
+        const canFetch = topic.portalFetchFileIds?.includes(file.fileId) ?? false;
+
+        // A portal fetch in progress renders the same way whether this is the first file or a later one.
+        if (canFetch && !upload && fileSource[file.fileId] === "portal") {
+          return (
+            <PortalFetchFlow
+              key={file.fileId}
+              itemKey={`${itemKey}:${file.fileId}`}
+              tracker={tracker}
+              file={file}
+              stage={portalFetch[file.fileId] ?? "gstin"}
+              onSubmitGstin={() => onSubmitPortalGstin(file.fileId)}
+              onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
+            />
+          );
+        }
+
         if (file.fileId === firstRequiredFileId) {
           return (
             <FileValidationFlow
@@ -239,20 +278,7 @@ export function FileUploadStep({
               onContinueAnyway={onContinueAnyway}
               onReplace={onReplaceFlagged}
               onTogglePreview={onTogglePreview}
-            />
-          );
-        }
-
-        if (topic.portalFetchFileIds?.includes(file.fileId) && fileSource[file.fileId] === "portal") {
-          return (
-            <PortalFetchFlow
-              key={file.fileId}
-              itemKey={`${itemKey}:${file.fileId}`}
-              tracker={tracker}
-              file={file}
-              stage={portalFetch[file.fileId] ?? "gstin"}
-              onSubmitGstin={() => onSubmitPortalGstin(file.fileId)}
-              onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
+              onChoosePortal={canFetch ? () => onChooseFileSource(file.fileId, "portal") : undefined}
             />
           );
         }
@@ -272,7 +298,7 @@ export function FileUploadStep({
             onAdvanceStatus={onAdvanceStatus}
             onRemove={onRemove}
             onChoosePortal={
-              topic.portalFetchFileIds?.includes(file.fileId) ? () => onChooseFileSource(file.fileId, "portal") : undefined
+              canFetch ? () => onChooseFileSource(file.fileId, "portal") : undefined
             }
           />
         );
@@ -310,9 +336,14 @@ export function FileUploadStep({
               tracker={tracker}
               file={file}
               upload={uploads[file.fileId]}
+              canFetch={topic.portalFetchFileIds?.includes(file.fileId) ?? false}
+              fetchStage={fileSource[file.fileId] === "portal" ? (portalFetch[file.fileId] ?? "gstin") : null}
               onUpload={onUpload}
               onAdvanceStatus={onAdvanceStatus}
               onRemove={onRemove}
+              onChoosePortal={() => onChooseFileSource(file.fileId, "portal")}
+              onSubmitPortalGstin={() => onSubmitPortalGstin(file.fileId)}
+              onPortalFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
             />
           ))}
 

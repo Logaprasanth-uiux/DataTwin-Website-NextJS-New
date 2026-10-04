@@ -24,6 +24,7 @@ export function FileValidationFlow({
   onContinueAnyway,
   onReplace,
   onTogglePreview,
+  onChoosePortal,
 }: {
   requirement: FileRequirement;
   upload: UploadedFile | undefined;
@@ -36,6 +37,8 @@ export function FileValidationFlow({
   onContinueAnyway: (fileId: string) => void;
   onReplace: (fileId: string) => void;
   onTogglePreview: (fileId: string) => void;
+  /** Offers "Fetch from GST Portal" on the upload prompt, for a first file that can be fetched. */
+  onChoosePortal?: () => void;
 }) {
   const onBeginValidationRef = useRef(onBeginValidation);
   useEffect(() => {
@@ -71,6 +74,7 @@ export function FileValidationFlow({
         onAdvanceStatus={onAdvanceStatus}
         onRemove={() => onReplace(requirement.fileId)}
         holdAtRecognised
+        onChoosePortal={onChoosePortal}
       />
     );
   }

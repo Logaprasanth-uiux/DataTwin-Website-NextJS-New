@@ -11,6 +11,13 @@ function formatMonthYear(value: string): string {
 }
 
 export function formatPeriodRange(range: CustomPeriodRange): string {
+  if (range.from === range.to) return formatMonthYear(range.from);
+  // A whole financial year (April to the following March) reads as "FY 2025-26".
+  const [fromYear, fromMonth] = range.from.split("-").map(Number);
+  const [toYear, toMonth] = range.to.split("-").map(Number);
+  if (fromMonth === 4 && toMonth === 3 && toYear === fromYear + 1) {
+    return `FY ${fromYear}-${String(toYear).slice(-2)}`;
+  }
   return `${formatMonthYear(range.from)} to ${formatMonthYear(range.to)}`;
 }
 

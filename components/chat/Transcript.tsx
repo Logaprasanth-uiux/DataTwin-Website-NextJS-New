@@ -15,12 +15,12 @@ import { PERIOD_OPTIONS } from "@/lib/chat/types";
 import {
   getCurrentAndPreviousFinancialYearLabels,
   getCurrentAndPreviousPeriodLabels,
-  getCurrentQuarterLabel,
 } from "@/lib/chat/formatDate";
 import { getAccuracyOffer } from "@/lib/chat/engine";
 import { AccuracyBoostCard } from "./AccuracyBoostCard";
 import { CustomPeriodInput } from "./CustomPeriodInput";
 import { FileUploadStep } from "./FileUploadStep";
+import { IntentCard } from "./IntentCard";
 import { MessageTurn } from "./MessageTurn";
 import { OptionGroup } from "./OptionGroup";
 import { AssistantReveal, createRevealTracker, UserReveal } from "./reveal";
@@ -31,6 +31,8 @@ import { VerificationStep } from "./VerificationStep";
 
 export interface TranscriptActions {
   onSelectDiscoveryOption: (turnId: string, optionId: string) => void;
+  onConfirmIntent: () => void;
+  onRejectIntent: () => void;
   onSelectPeriod: (id: PeriodOptionId) => void;
   onSubmitCustomPeriod: (range: CustomPeriodRange) => void;
   onUpload: (fileId: string, fileName: string) => void;
@@ -75,17 +77,25 @@ export function Transcript({
 
   // Computed fresh from today's real date (never hardcoded) — every period option gets a
   // contextual sublabel except "Custom period", which has no fixed range to summarise.
-  const periodOptions = useMemo(() => {
+  // Monthly reconciliations are asked one month at a time (no quarter/year options); annual ones
+  // (GSTR-9) are asked a financial year. "Year-end" on a monthly one offers the switch to annual.
+  const periodOptionsByMode = useMemo(() => {
     const { current, previous } = getCurrentAndPreviousPeriodLabels();
     const { current: currentFY, previous: previousFY } = getCurrentAndPreviousFinancialYearLabels();
-    const sublabels: Partial<Record<PeriodOptionId, string>> = {
-      "current-period": current,
-      "previous-period": previous,
-      "current-quarter": getCurrentQuarterLabel(),
-      "current-fy": currentFY,
-      "previous-fy": previousFY,
+    const labelOf = (id: PeriodOptionId) => PERIOD_OPTIONS.find((option) => option.id === id)!.label;
+    return {
+      monthly: [
+        { id: "current-period", label: "Current month", sublabel: current },
+        { id: "previous-period", label: "Previous month", sublabel: previous },
+        { id: "custom", label: "Custom month" },
+        { id: "year-end", label: labelOf("year-end"), sublabel: "GSTR-9" },
+      ],
+      annual: [
+        { id: "current-fy", label: labelOf("current-fy"), sublabel: currentFY },
+        { id: "previous-fy", label: labelOf("previous-fy"), sublabel: previousFY },
+        { id: "custom", label: "Other financial year" },
+      ],
     };
-    return PERIOD_OPTIONS.map((option) => ({ ...option, sublabel: sublabels[option.id] }));
   }, []);
 
   return (
@@ -117,6 +127,23 @@ export function Transcript({
                 onSelect={(optionId) => actions.onSelectDiscoveryOption(item.id, optionId)}
               />
             );
+          case "intent-card":
+            return (
+              <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
+                <IntentCard
+                  itemKey={item.id}
+                  tracker={tracker}
+                  label={item.label}
+                  userWords={item.userWords}
+                  problem={item.problem}
+                  intent={item.intent}
+                  checks={item.checks}
+                  resolved={item.resolved}
+                  onConfirm={actions.onConfirmIntent}
+                  onReject={actions.onRejectIntent}
+                />
+              </AssistantReveal>
+            );
           case "period-options":
             return (
               <OptionGroup
@@ -124,7 +151,7 @@ export function Transcript({
                 id={item.id}
                 tracker={tracker}
                 prompt={item.prompt}
-                options={periodOptions}
+                options={periodOptionsByMode[item.mode]}
                 selectedId={item.selectedId}
                 resolved={item.resolved}
                 onSelect={(id) => actions.onSelectPeriod(id as PeriodOptionId)}
@@ -134,6 +161,7 @@ export function Transcript({
             return (
               <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
                 <CustomPeriodInput
+                  mode={item.mode}
                   itemKey={item.id}
                   tracker={tracker}
                   resolved={item.resolved}

@@ -12,6 +12,7 @@ import {
   chooseFileSource,
   completePortalFetch,
   completeVerification,
+  confirmIntent,
   continueWithFileIssue,
   createInitialState,
   declineRemainingCheckpoints,
@@ -21,6 +22,7 @@ import {
   dismissAccuracyOffer,
   openSchedule,
   recordUpload,
+  rejectIntent,
   removeUpload,
   replaceFlaggedFile,
   scheduleMeeting,
@@ -184,7 +186,10 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
   // once one of those has actually happened (see phaseForStatus in engine.ts).
   const isMeaningful = state?.phase !== "discovery";
   useEffect(() => {
-    if (!state || !isMeaningful) return;
+    if (!state) return;
+    // Once saved, a conversation keeps saving even if it drops back into discovery (e.g. "Not
+    // quite" on the understanding card) — otherwise storage would keep the stale pre-rejection state.
+    if (!isMeaningful && !loadConversation(state.id)) return;
     saveConversation(state);
   }, [state, isMeaningful]);
 
@@ -302,6 +307,8 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
 
   const actions: TranscriptActions = {
     onSelectDiscoveryOption: (turnId, optionId) => update((prev) => selectDiscoveryOption(prev, turnId, optionId)),
+    onConfirmIntent: () => update((prev) => confirmIntent(prev)),
+    onRejectIntent: () => update((prev) => rejectIntent(prev)),
     onSelectPeriod: (id) => update((prev) => selectPeriod(prev, id)),
     onSubmitCustomPeriod: (range) => update((prev) => submitCustomPeriod(prev, range)),
     onUpload: (fileId, fileName) => update((prev) => recordUpload(prev, fileId, fileName)),

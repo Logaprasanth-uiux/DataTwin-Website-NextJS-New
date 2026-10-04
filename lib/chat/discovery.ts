@@ -1,4 +1,4 @@
-import type { CatalogEntry } from "./data/catalog";
+import { RECONCILIATION_CATALOG, type CatalogEntry } from "./data/catalog";
 import { classifyOpener, resolveIntent } from "./resolver";
 import type { DiscoveryState, DiscoveryTurn, EntryContext } from "./types";
 
@@ -73,13 +73,34 @@ function makeMessage(turns: DiscoveryTurn[], text: string): DiscoveryTurn {
   return { kind: "message", id: `d${turns.length}`, text };
 }
 
+// The catalogue names reconciliations against a ledger by its accounting abbreviation ("… GST GL").
+// In chat, that trailing "GL" reads as jargon, so it's shown as "Reconciliation" instead; the
+// catalogue itself (and the "Input GST GL" file name) is left untouched.
+const SALES_REGISTER_GST_ENTRY_ID = "10.1";
+const SALES_REGISTER_GST_LABEL = "Sales Register vs GST Reconciliation";
+
+function optionLabel(entry: CatalogEntry): string {
+  if (entry.id === SALES_REGISTER_GST_ENTRY_ID) return SALES_REGISTER_GST_LABEL;
+  return entry.name.replace(/\sGL$/, " Reconciliation");
+}
+
+// "Sales Register vs GST Reconciliation" is always offered alongside the closest matches, since it's
+// one of the most common starting points and rarely scores in the top few on vague input.
+function withSalesRegisterOption(candidates: readonly CatalogEntry[], excluded: readonly string[]): CatalogEntry[] {
+  if (candidates.some((c) => c.id === SALES_REGISTER_GST_ENTRY_ID) || excluded.includes(SALES_REGISTER_GST_ENTRY_ID)) {
+    return [...candidates];
+  }
+  const entry = RECONCILIATION_CATALOG.find((c) => c.id === SALES_REGISTER_GST_ENTRY_ID);
+  return entry ? [...candidates, entry] : [...candidates];
+}
+
 function makeOptions(turns: DiscoveryTurn[], prompt: string, candidates: readonly CatalogEntry[]): DiscoveryTurn {
   return {
     kind: "options",
     id: `d${turns.length}`,
     prompt,
     options: [
-      ...candidates.map((c) => ({ id: c.id, label: c.name })),
+      ...candidates.map((c) => ({ id: c.id, label: optionLabel(c) })),
       { id: SOMETHING_ELSE_ID, label: "Something else" },
     ],
     selectedId: null,
@@ -128,7 +149,7 @@ function continueFreeText(
   const result = resolveIntent(text, discovery.shownIds);
 
   if (result.confidence === "high" && result.top) {
-    turns.push(makeMessage(turns, `Got it — that's ${result.top.name}. Let's get the details we need.`));
+    turns.push(makeMessage(turns, `Got it — that's ${optionLabel(result.top)}. Let's get the details we need.`));
     return {
       discovery: {
         ...discovery,
@@ -142,13 +163,14 @@ function continueFreeText(
   }
 
   if (result.confidence === "medium" && result.candidates.length > 0) {
-    turns.push(makeOptions(turns, pickRound(CANDIDATE_PROMPTS, round), result.candidates));
+    const candidates = withSalesRegisterOption(result.candidates, discovery.shownIds);
+    turns.push(makeOptions(turns, pickRound(CANDIDATE_PROMPTS, round), candidates));
     return {
       discovery: {
         ...discovery,
         turns,
         attempts,
-        shownIds: [...discovery.shownIds, ...result.candidates.map((c) => c.id)],
+        shownIds: [...discovery.shownIds, ...candidates.map((c) => c.id)],
       },
       status: "continue",
     };
@@ -201,8 +223,7 @@ export function createInitialDiscovery(firstMessage: string | null, entryContext
     return { discovery: { ...empty, turns }, status: "continue" };
   }
 
-  const turns = [makeMessage(empty.turns, GENERIC_GREETING)];
-  turns.push(makeFreeText(turns, FREE_TEXT_INVITE));
+  const turns = [makeMessage(empty.turns, `${GENERIC_GREETING} ${FREE_TEXT_INVITE}`)];
   return { discovery: { ...empty, turns }, status: "continue" };
 }
 

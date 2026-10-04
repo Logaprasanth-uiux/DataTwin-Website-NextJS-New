@@ -10,6 +10,24 @@ export function getCatalogEntry(id: string | null): CatalogEntry | null {
 
 const MAX_SUPPLEMENTARY_FILES = 2;
 
+// Family 8 is the annual GSTR-9 / GSTR-9C family — everything else is reconciled month by month.
+const ANNUAL_FAMILY_ID = "8";
+export const ANNUAL_ENTRY_ID = "8.5";
+
+// The catalogue's own names read as spreadsheet row labels for a couple of entries; chat shows a
+// plainer name for these (the catalogue itself is left untouched).
+const CHAT_LABEL_OVERRIDES: Record<string, string> = {
+  [ANNUAL_ENTRY_ID]: "Books Turnover vs GSTR-9",
+};
+
+// GSTR-9 annual return, e-invoice (IRP) register and e-way bill register all come from government
+// portals, so they can be fetched instead of uploaded.
+const PORTAL_FETCHABLE_FILE_IDS = new Set(["F14", "F39", "F40"]);
+
+export function periodModeFor(reconciliationId: string | null): "monthly" | "annual" {
+  return getCatalogEntry(reconciliationId)?.familyId === ANNUAL_FAMILY_ID ? "annual" : "monthly";
+}
+
 function toRequirement(fileId: string, level: FileRequirement["level"]): FileRequirement | null {
   const def = FILE_DEFS[fileId];
   if (!def) return null;
@@ -68,6 +86,10 @@ type ReconciliationScript = Pick<
   "filesIntro" | "fileAckOverrides" | "portalFetchFileIds" | "autoAdvanceMessage" | "furtherCheckpoints"
 > & {
   requiredFileNameOverrides?: Record<string, string>;
+  /** Narrows the generically-derived required files to just these (in this order) — the rest of
+   * the catalogue entry's files are dropped rather than asked up front, so a scripted flow can
+   * introduce them as its own later rounds instead. */
+  baseFileIds?: string[];
 };
 
 // Bespoke walkthrough copy for reconciliations with a scripted journey. Everything else keeps the
@@ -75,6 +97,49 @@ type ReconciliationScript = Pick<
 // generic path already produces, so a reconciliation with no entry here behaves exactly as it did
 // before.
 const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
+  // "Gross Turnover Reconciliation - Table 5/6" — the year-end (GSTR-9) counterpart to the monthly
+  // Sales Register vs GSTR-1 flow: full-year books turnover against the annual return. Same
+  // round-by-round shape: Sales Register + GSTR-9 first, then the financial statements, the Trial
+  // Balance and the credit/debit notes as optional accuracy rounds.
+  "8.5": {
+    baseFileIds: ["F17", "F14"],
+    filesIntro:
+      "Let's start with your Sales Revenue Register for the full financial year.\n\nWhy this helps: Sets the books-side turnover baseline.",
+    fileAckOverrides: {
+      F17: "Got it. Now share your GSTR-9 for the same financial year.\n\nWhy this helps: Shows the turnover you declared in the annual return.",
+    },
+    portalFetchFileIds: ["F14"],
+    autoAdvanceMessage: "Both files are ready. Running your Books Turnover vs GSTR-9 reconciliation... ⏳",
+    furtherCheckpoints: [
+      {
+        filesIntro:
+          "Add your Annual Financial Statements for a more accurate number, or continue with what's already uploaded.\n\nWhy this helps: Ties turnover to the audited figures instead of the register alone.",
+        files: [{ fileId: "F15", name: FILE_DEFS.F15.name, level: "required", why: FILE_DEFS.F15.why }],
+        accuracyBenefit:
+          "Starts from the audited turnover, so differences between your books and the annual return are explained by real adjustments instead of showing up as gaps.",
+        autoAdvanceMessage: "Financial statements received. Refreshing your reconciliation... ⏳",
+        mockResult: generateMockResult("8.5::checkpoint-1"),
+      },
+      {
+        filesIntro:
+          "Add your Trial Balance for an even tighter number, or continue as-is.\n\nWhy this helps: Confirms revenue ledger totals behind the turnover.",
+        files: [{ fileId: "F16", name: FILE_DEFS.F16.name, level: "required", why: FILE_DEFS.F16.why }],
+        accuracyBenefit:
+          "Checks the revenue ledger balances behind your turnover, which is where unbilled or misposted sales usually surface.",
+        autoAdvanceMessage: "Trial Balance received. Recalculating... ⏳",
+        mockResult: generateMockResult("8.5::checkpoint-2"),
+      },
+      {
+        filesIntro:
+          "Last one — add your credit/debit notes for the final number, or continue as-is.\n\nWhy this helps: Adjusts turnover for returns and price changes.",
+        files: [{ fileId: "F06", name: FILE_DEFS.F06.name, level: "required", why: FILE_DEFS.F06.why }],
+        accuracyBenefit:
+          "Adjusts annual turnover for credit and debit notes issued during the year, so returns and price changes don't read as unexplained differences.",
+        autoAdvanceMessage: "All documents are in. Running your final Books Turnover vs GSTR-9 reconciliation... ⏳",
+        mockResult: generateMockResult("8.5::checkpoint-3"),
+      },
+    ],
+  },
   "1.2": {
     filesIntro:
       "Let's get started — please upload your Vendor Bill Register.\n\nWhy this helps: Sets your purchase baseline.",
@@ -169,16 +234,23 @@ export function buildResolvedTopic(reconciliationId: string): ReconciliationTopi
   const entry = getCatalogEntry(reconciliationId);
   if (!entry) return null;
   const { required, optional } = buildFileRequirements(entry);
-  const { requiredFileNameOverrides, ...script } = RECONCILIATION_SCRIPTS[entry.id] ?? {};
-  const requiredWithOverrides = requiredFileNameOverrides
-    ? required.map((f) => (requiredFileNameOverrides[f.fileId] ? { ...f, name: requiredFileNameOverrides[f.fileId] } : f))
+  const { requiredFileNameOverrides, baseFileIds, ...script } = RECONCILIATION_SCRIPTS[entry.id] ?? {};
+  const requiredBase = baseFileIds
+    ? baseFileIds.map((id) => required.find((f) => f.fileId === id)).filter((f): f is FileRequirement => Boolean(f))
     : required;
+  const requiredWithOverrides = requiredFileNameOverrides
+    ? requiredBase.map((f) => (requiredFileNameOverrides[f.fileId] ? { ...f, name: requiredFileNameOverrides[f.fileId] } : f))
+    : requiredBase;
   return {
     id: entry.id,
-    label: entry.name,
+    label: CHAT_LABEL_OVERRIDES[entry.id] ?? entry.name,
     acknowledgement: `Let's work through ${entry.name} — ${lowercaseFirst(entry.purpose)}`,
     requiredFiles: requiredWithOverrides,
-    optionalFiles: optional,
+    // Documents that can be downloaded from a government portal offer "Fetch from GST Portal"
+    // alongside upload, in every reconciliation that asks for them — a script can still set its own
+    // list explicitly (the spread below wins).
+    portalFetchFileIds: [...requiredWithOverrides, ...(baseFileIds ? [] : optional)].map((f) => f.fileId).filter((id) => PORTAL_FETCHABLE_FILE_IDS.has(id)),
+    optionalFiles: baseFileIds ? [] : optional,
     mockResult: generateMockResult(entry.id),
     ...script,
   };

@@ -28,6 +28,7 @@ function CompactFileCard({
   onAdvanceStatus,
   onRemove,
   onTogglePreview,
+  onView,
 }: {
   requirement: FileRequirement;
   upload: UploadedFile | undefined;
@@ -41,6 +42,7 @@ function CompactFileCard({
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemove: (fileId: string) => void;
   onTogglePreview: () => void;
+  onView: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   useMockFileValidation(upload, requirement.fileId, onAdvanceStatus, Boolean(validationStage));
@@ -101,13 +103,23 @@ function CompactFileCard({
 
       {upload && (
         <div className="flex items-center gap-1">
-          {hasIssue && (
+          {hasIssue ? (
             <button
               type="button"
               onClick={onTogglePreview}
               title={previewOpen ? "Hide affected data" : "View affected data"}
               aria-label={previewOpen ? "Hide affected data" : "View affected data"}
               className="rounded-md p-1 text-crimson transition-colors hover:bg-crimson/[0.08]"
+            >
+              <EyeIcon className="h-3 w-3" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onView}
+              title="View file"
+              aria-label={`View ${requirement.name}`}
+              className="rounded-md p-1 text-navy-muted transition-colors hover:bg-navy/[0.06] hover:text-accent"
             >
               <EyeIcon className="h-3 w-3" />
             </button>
@@ -142,7 +154,23 @@ function CompactFileCard({
 // real width/height to show a useful number of rows and columns rather than a tiny snippet, and so
 // opening it never reflows the panel or the conversation behind it. Dismissible via the close
 // button, the backdrop, or Escape — never disturbs the underlying chat.
-function FileIssueDrawer({ requirement, onClose }: { requirement: FileRequirement; onClose: () => void }) {
+function FileIssueDrawer({
+  requirement,
+  onClose,
+  mode = "issue",
+  fileName,
+}: {
+  requirement: FileRequirement;
+  onClose: () => void;
+  /** "preview" is the plain view of a healthy file: same mock table, nothing flagged. */
+  mode?: "issue" | "preview";
+  fileName?: string;
+}) {
+  const isIssue = mode === "issue";
+  // A healthy file has no blank GSTINs, so the preview fills the gaps with plausible values.
+  const rows = isIssue
+    ? MOCK_ISSUE_ROWS
+    : MOCK_ISSUE_ROWS.map((row, i) => ({ ...row, gstin: row.gstin || `27AABCD${1000 + i * 37}K1Z${i % 10}` }));
   // Mounts closed and transitions open on the next frame, so the slide-in actually animates
   // instead of the drawer just appearing already in place.
   const [shown, setShown] = useState(false);
@@ -169,8 +197,8 @@ function FileIssueDrawer({ requirement, onClose }: { requirement: FileRequiremen
   const handleDownload = () => {
     const csvField = (value: string) => `"${value.replace(/"/g, '""')}"`;
     const header = ["Invoice No.", "Vendor", "GSTIN", "Amount"].map(csvField).join(",");
-    const rows = MOCK_ISSUE_ROWS.map((row) => [row.invoice, row.vendor, row.gstin || "Missing", row.amount].map(csvField).join(","));
-    const csv = [header, ...rows].join("\r\n");
+    const csvRows = rows.map((row) => [row.invoice, row.vendor, row.gstin || "Missing", row.amount].map(csvField).join(","));
+    const csv = [header, ...csvRows].join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -192,15 +220,20 @@ function FileIssueDrawer({ requirement, onClose }: { requirement: FileRequiremen
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label={`Affected data — ${requirement.name}`}
+        aria-label={`${isIssue ? "Affected data" : "File preview"} — ${requirement.name}`}
         className={`fixed inset-y-0 right-0 z-[100] flex w-full max-w-md flex-col border-l border-navy-hairline bg-white shadow-soft transition-transform duration-300 ease-out sm:max-w-lg ${
           shown ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex items-start justify-between gap-3 border-b border-navy-hairline p-5">
           <div>
-            <p className="text-[10.5px] font-semibold tracking-[0.06em] text-crimson uppercase">Affected data</p>
+            <p
+              className={`text-[10.5px] font-semibold tracking-[0.06em] uppercase ${isIssue ? "text-crimson" : "text-navy-faint"}`}
+            >
+              {isIssue ? "Affected data" : "File preview"}
+            </p>
             <h3 className="mt-1 text-[15px] font-semibold text-navy">{requirement.name}</h3>
+            {!isIssue && fileName && <p className="mt-0.5 break-all text-[12px] text-navy-muted">{fileName}</p>}
           </div>
           <div className="flex flex-shrink-0 items-center gap-1">
             <button
@@ -231,17 +264,17 @@ function FileIssueDrawer({ requirement, onClose }: { requirement: FileRequiremen
                 <tr className="border-b border-navy-hairline text-navy-muted">
                   <th className="px-3 py-2 font-medium">Invoice No.</th>
                   <th className="px-3 py-2 font-medium">Vendor</th>
-                  <th className="bg-crimson/[0.08] px-3 py-2 font-medium text-crimson">GSTIN</th>
+                  <th className={`px-3 py-2 font-medium ${isIssue ? "bg-crimson/[0.08] text-crimson" : ""}`}>GSTIN</th>
                   <th className="px-3 py-2 font-medium">Amount</th>
                 </tr>
               </thead>
               <tbody className="text-navy-body">
-                {MOCK_ISSUE_ROWS.map((row) => (
+                {rows.map((row) => (
                   <tr key={row.invoice} className="border-b border-navy-hairline last:border-0">
                     <td className="px-3 py-2 whitespace-nowrap">{row.invoice}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{row.vendor}</td>
                     <td
-                      className={`px-3 py-2 whitespace-nowrap ${row.gstin ? "bg-crimson/[0.03]" : "bg-crimson/[0.08] font-medium text-crimson"}`}
+                      className={`px-3 py-2 whitespace-nowrap ${!isIssue ? "" : row.gstin ? "bg-crimson/[0.03]" : "bg-crimson/[0.08] font-medium text-crimson"}`}
                     >
                       {row.gstin || "Missing"}
                     </td>
@@ -251,11 +284,17 @@ function FileIssueDrawer({ requirement, onClose }: { requirement: FileRequiremen
               </tbody>
             </table>
           </div>
-          <p className="mt-4 text-[13px] leading-relaxed text-navy-body">
-            The highlighted <span className="font-medium text-navy">GSTIN</span> column is missing for{" "}
-            {MOCK_ISSUE_MISSING_COUNT} of {MOCK_ISSUE_ROWS.length} rows — without it, those rows can&apos;t be
-            confidently matched during reconciliation.
-          </p>
+          {isIssue ? (
+            <p className="mt-4 text-[13px] leading-relaxed text-navy-body">
+              The highlighted <span className="font-medium text-navy">GSTIN</span> column is missing for{" "}
+              {MOCK_ISSUE_MISSING_COUNT} of {MOCK_ISSUE_ROWS.length} rows — without it, those rows cannot be
+              confidently matched during reconciliation.
+            </p>
+          ) : (
+            <p className="mt-4 text-[12.5px] leading-relaxed text-navy-muted">
+              Sample view of the first {rows.length} rows.
+            </p>
+          )}
         </div>
       </aside>
     </>
@@ -289,6 +328,7 @@ export function FileContextPanel({
   onRemove: (fileId: string) => void;
   onTogglePreview: (fileId: string) => void;
 }) {
+  const [viewingId, setViewingId] = useState<string | null>(null);
   if (!topic) return null;
   const visibleRequired = visibleRequiredFiles(topic, uploads, maxRevealed);
   const requiredReady = topic.requiredFiles.every((f) => uploads[f.fileId]?.status === "ready");
@@ -304,6 +344,8 @@ export function FileContextPanel({
   const flaggedFile = files.find(
     (f) => fileValidation[f.fileId] === "issue" || fileValidation[f.fileId] === "acknowledged",
   );
+
+  const viewingFile = files.find((f) => f.fileId === viewingId && uploads[f.fileId]) ?? null;
 
   return (
     <aside className="w-full border-t border-navy-hairline bg-white/60 lg:w-72 lg:flex-shrink-0 lg:border-t-0 lg:border-l">
@@ -322,10 +364,19 @@ export function FileContextPanel({
               onAdvanceStatus={onAdvanceStatus}
               onRemove={onRemove}
               onTogglePreview={() => onTogglePreview(file.fileId)}
+              onView={() => setViewingId(file.fileId)}
             />
           ))}
         </div>
       </div>
+      {viewingFile && (
+        <FileIssueDrawer
+          mode="preview"
+          requirement={viewingFile}
+          fileName={uploads[viewingFile.fileId]?.fileName}
+          onClose={() => setViewingId(null)}
+        />
+      )}
       {flaggedFile && filePreviewOpen[flaggedFile.fileId] && (
         <FileIssueDrawer requirement={flaggedFile} onClose={() => onTogglePreview(flaggedFile.fileId)} />
       )}

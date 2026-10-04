@@ -3,14 +3,14 @@ import {
   selectDiscoveryOption as applySelectDiscoveryOption,
   submitFreeMessage as applySubmitFreeMessage,
 } from "./discovery";
-import { buildResolvedTopic } from "./reconciliation";
-import { generateConversationTitle, PLACEHOLDER_TITLE } from "./title";
+import { buildIntentSummary, userWordsForIntent } from "./intents";
+import { ANNUAL_ENTRY_ID, buildResolvedTopic, periodModeFor } from "./reconciliation";
+import { PLACEHOLDER_TITLE } from "./title";
 import { formatPeriodRange } from "./formatDate";
 import type {
   ContactDetails,
   ConversationState,
   CustomPeriodRange,
-  DiscoveryTurn,
   EntryContext,
   FileRequirement,
   FileSourceChoice,
@@ -76,9 +76,9 @@ export function createInitialState(
 ): ConversationState {
   const now = Date.now();
   const { discovery, status } = createInitialDiscovery(firstMessage, entryContext);
-  return {
+  const initial: ConversationState = {
     id,
-    title: generateConversationTitle(firstMessage),
+    title: PLACEHOLDER_TITLE,
     createdAt: now,
     updatedAt: now,
     firstMessage,
@@ -105,33 +105,26 @@ export function createInitialState(
     portalSessionExpiresAt: null,
     accuracyExtras: [],
     accuracyDismissed: false,
+    intentConfirmed: status === "resolved" ? false : undefined,
   };
-}
-
-function isUserTurn(turn: DiscoveryTurn): turn is Extract<DiscoveryTurn, { kind: "user" }> {
-  return turn.kind === "user";
+  // Named only once the intent is settled — never from the raw first message ("Hi issue").
+  return status === "resolved" ? { ...initial, title: deriveConversationTitle(initial) } : initial;
 }
 
 // A conversation's title starts as "New conversation" (see createInitialState) and only becomes
-// meaningful once there's something to name it after — the identified reconciliation's own
-// business-friendly label, or (discovery ended in the graceful "connect with the team" fallback,
-// with no specific reconciliation matched) whatever the user most recently described, using the
-// same heuristic the hero prompt's own first message already goes through.
+// meaningful once the intent is finalized — the identified reconciliation's own business-friendly
+// label. If discovery ends in the graceful "connect with the team" fallback with no specific
+// reconciliation matched, it gets a neutral title rather than echoing a raw message like "Hi".
+const FALLBACK_TITLE = "General enquiry";
+
 function deriveConversationTitle(state: ConversationState): string {
   const topic = getResolvedTopic(state.discovery.resolvedId);
-  if (topic) return topic.label;
-
-  const lastUserTurn = [...state.discovery.turns].reverse().find(isUserTurn);
-  if (lastUserTurn) return generateConversationTitle(lastUserTurn.text);
-
-  return state.firstMessage ? generateConversationTitle(state.firstMessage) : state.title;
+  return topic ? topic.label : FALLBACK_TITLE;
 }
 
 function touch(state: ConversationState): ConversationState {
-  // Recomputed only while the title is still the generic placeholder (a hero-launched
-  // conversation already has a real, user-phrased title from the moment it's created — that's
-  // left alone even after it resolves). Once it's been replaced with something real, it stays —
-  // no need to keep re-deriving it (rebuilding the resolved topic) on every single action.
+  // Recomputed only while the title is still the generic placeholder; once it's been replaced with
+  // something real it stays — no need to keep re-deriving it on every single action.
   const needsTitle = state.phase !== "discovery" && state.title === PLACEHOLDER_TITLE;
   const title = needsTitle ? deriveConversationTitle(state) : state.title;
   return { ...state, updatedAt: Date.now(), title };
@@ -143,9 +136,66 @@ function phaseForStatus(status: "continue" | "resolved" | "fallback"): Conversat
   return "discovery";
 }
 
+// Landing on a reconciliation always pauses at the "here's what I understood" card first.
+function intentGate(status: "continue" | "resolved" | "fallback"): { intentConfirmed: boolean | undefined } {
+  return { intentConfirmed: status === "resolved" ? false : undefined };
+}
+
+// The follow-up asked when a monthly reconciliation's user picks "Year-end (annual)": year-end runs
+// against GSTR-9 instead of GSTR-1, so confirm before switching to the annual flow.
+const YEAR_ROUTE_TURN_ID = "year-route";
+
+function answerYearRoute(state: ConversationState, optionId: string): ConversationState {
+  if (optionId !== "yes") return touch({ ...state, selectedPeriodId: null });
+  const topic = getResolvedTopic(ANNUAL_ENTRY_ID);
+  return touch({
+    ...state,
+    title: topic?.label ?? state.title,
+    phase: "period-select",
+    selectedPeriodId: null,
+    customPeriodRange: null,
+    checkpointIndex: 0,
+    intentConfirmed: false,
+    discovery: {
+      ...state.discovery,
+      resolvedId: ANNUAL_ENTRY_ID,
+      shownIds: [...state.discovery.shownIds, ANNUAL_ENTRY_ID],
+    },
+  });
+}
+
 export function selectDiscoveryOption(state: ConversationState, turnId: string, optionId: string): ConversationState {
+  if (turnId === YEAR_ROUTE_TURN_ID) return answerYearRoute(state, optionId);
   const { discovery, status } = applySelectDiscoveryOption(state.discovery, turnId, optionId);
-  return touch({ ...state, discovery, phase: phaseForStatus(status) });
+  return touch({ ...state, discovery, phase: phaseForStatus(status), ...intentGate(status) });
+}
+
+export function confirmIntent(state: ConversationState): ConversationState {
+  if (state.intentConfirmed !== false) return state;
+  return touch({ ...state, intentConfirmed: true });
+}
+
+// "Not quite" — back to discovery, with the rejected reconciliation already in `shownIds` so the
+// resolver won't offer it straight back.
+export function rejectIntent(state: ConversationState): ConversationState {
+  if (state.intentConfirmed !== false) return state;
+  const turns = [
+    ...state.discovery.turns,
+    { kind: "user" as const, id: `d${state.discovery.turns.length}`, text: "Not quite — that's not what I meant." },
+  ];
+  turns.push({
+    kind: "freetext",
+    id: `d${turns.length}`,
+    prompt: "Sorry about that — tell me more about what you're seeing, and I'll take another look.",
+    value: null,
+  });
+  return touch({
+    ...state,
+    phase: "discovery",
+    intentConfirmed: undefined,
+    selectedPeriodId: null,
+    discovery: { ...state.discovery, turns, resolvedId: null },
+  });
 }
 
 // A short, varied acknowledgement for a composer message sent once a reconciliation is already
@@ -179,7 +229,7 @@ export function submitChatMessage(state: ConversationState, text: string): Conve
 
   if (state.phase === "discovery") {
     const { discovery, status } = applySubmitFreeMessage(state.discovery, trimmed);
-    return touch({ ...state, discovery, phase: phaseForStatus(status) });
+    return touch({ ...state, discovery, phase: phaseForStatus(status), ...intentGate(status) });
   }
 
   const topic = getResolvedTopic(state.discovery.resolvedId);
@@ -189,6 +239,8 @@ export function submitChatMessage(state: ConversationState, text: string): Conve
 }
 
 export function selectPeriod(state: ConversationState, periodId: PeriodOptionId): ConversationState {
+  // "Year-end" isn't a period to analyse — it opens the switch-to-GSTR-9 question instead.
+  if (periodId === "year-end") return touch({ ...state, selectedPeriodId: periodId });
   const phase = periodId === "custom" ? "custom-period" : "files";
   return touch({ ...state, selectedPeriodId: periodId, phase });
 }
@@ -547,13 +599,44 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
     return finish();
   }
 
+  const summary = buildIntentSummary(topic);
+  const intentPending = state.intentConfirmed === false;
+  push({
+    kind: "intent-card",
+    id: "intent-card",
+    label: topic.label,
+    userWords: userWordsForIntent(state),
+    ...summary,
+    resolved: !intentPending,
+  });
+  if (intentPending) return finish();
+
+  const mode = periodModeFor(topic.id);
+  const yearEndPicked = state.selectedPeriodId === "year-end";
   push({
     kind: "period-options",
     id: "period-select",
+    mode,
     prompt: "Which period would you like to analyse?",
     selectedId: state.selectedPeriodId,
-    resolved: state.phase !== "period-select",
+    resolved: state.phase !== "period-select" || yearEndPicked,
   });
+
+  if (state.phase === "period-select" && yearEndPicked) {
+    push({
+      kind: "discovery-options",
+      id: YEAR_ROUTE_TURN_ID,
+      prompt:
+        "Year-end checks use your annual return (GSTR-9) instead of GSTR-1, so I'd run Books Turnover vs GSTR-9 for the full financial year. Is that okay?",
+      options: [
+        { id: "yes", label: "Yes, run the year-end check" },
+        { id: "no", label: "No, stay with a single month" },
+      ],
+      selectedId: null,
+      resolved: false,
+    });
+    return finish();
+  }
 
   if (state.phase === "period-select") return finish();
 
@@ -561,6 +644,7 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
     push({
       kind: "custom-period-input",
       id: "custom-period",
+      mode,
       resolved: state.phase !== "custom-period",
       value: state.customPeriodRange,
     });
@@ -595,7 +679,9 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
       id: `files-ack-${round}`,
       text:
         effectiveTopic.filesIntro ??
-        (firstNewFile ? `Let's start with your ${firstNewFile.name}.` : "Let's see what I have to work with."),
+        (firstNewFile
+          ? `Let's start with your ${firstNewFile.name}.\n\nWhy this helps: ${firstNewFile.why}`
+          : "Let's see what I have to work with."),
     });
     push({
       kind: "file-upload",

@@ -113,7 +113,13 @@ export const PERIOD_OPTIONS = [
   { id: "current-fy", label: "Current financial year" },
   { id: "previous-fy", label: "Previous financial year" },
   { id: "custom", label: "Custom period" },
+  // Only offered on monthly reconciliations: asks whether to switch to the annual (GSTR-9) flow.
+  { id: "year-end", label: "Year-end (annual)" },
 ] as const;
+
+// Monthly reconciliations (e.g. Sales Register vs GSTR-1) run on one month at a time; annual ones
+// (the GSTR-9 family) on a whole financial year. Decides which period options are offered.
+export type PeriodMode = "monthly" | "annual";
 
 export type PeriodOptionId = (typeof PERIOD_OPTIONS)[number]["id"];
 
@@ -317,6 +323,11 @@ export interface ConversationState {
   accuracyExtras?: number[];
   /** True once the user chose "continue without" on the accuracy card — it stays hidden. */
   accuracyDismissed?: boolean;
+  /** The "here's what I understood" summary shown once a reconciliation is identified (see
+   * lib/chat/intents.ts). `false` = shown, awaiting the user's confirmation — the period question
+   * is held back until then; `true` = confirmed. Absent on conversations saved before this step
+   * existed, which are treated as already confirmed. */
+  intentConfirmed?: boolean;
 }
 
 export interface ConversationSummary {
@@ -342,13 +353,24 @@ export type TranscriptItem =
       resolved: boolean;
     }
   | {
+      kind: "intent-card";
+      id: string;
+      label: string;
+      userWords: string | null;
+      problem: string;
+      intent: string;
+      checks: string[];
+      resolved: boolean;
+    }
+  | {
       kind: "period-options";
       id: string;
+      mode: PeriodMode;
       prompt: string;
       selectedId: PeriodOptionId | null;
       resolved: boolean;
     }
-  | { kind: "custom-period-input"; id: string; resolved: boolean; value: CustomPeriodRange | null }
+  | { kind: "custom-period-input"; id: string; mode: PeriodMode; resolved: boolean; value: CustomPeriodRange | null }
   | {
       kind: "file-upload";
       id: string;

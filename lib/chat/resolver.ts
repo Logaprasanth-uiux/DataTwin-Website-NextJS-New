@@ -163,6 +163,26 @@ function matchesSalesRegisterGstScriptedTrigger(userTokens: ReadonlySet<string>)
  * describing a problem — so the reply can answer *that*, rather than treating every message as a
  * failed reconciliation match and reusing the same clarifying prompt regardless of what was said.
  * `null` means "treat this as a real attempt" — resolveIntent decides what happens next. */
+// Year-end reconciliation runs against the annual return (GSTR-9), not GSTR-1 — so any mention of
+// the annual return or a year-end/annual check goes to the Books Turnover vs GSTR-9 flow, ahead of
+// the sales-register trigger above (which would otherwise claim "sales register vs GSTR-9").
+const ANNUAL_SCRIPTED_ENTRY_ID = "8.5";
+
+function matchesAnnualScriptedTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
+  const annual =
+    userTokens.has("annual") ||
+    userTokens.has("yearly") ||
+    userTokens.has("year-end") ||
+    userTokens.has("yearend") ||
+    userTokens.has("gstr-9") ||
+    userTokens.has("gstr9") ||
+    userTokens.has("gstr-9c") ||
+    userTokens.has("gstr9c") ||
+    (userTokens.has("year") && userTokens.has("end"));
+  if (!annual) return null;
+  return INDEX.find((i) => i.entry.id === ANNUAL_SCRIPTED_ENTRY_ID)?.entry ?? null;
+}
+
 export function classifyOpener(text: string): OpenerKind {
   const trimmed = text.trim();
   if (tokenize(trimmed).length === 0) return "greeting";
@@ -181,7 +201,9 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
   const excluded = new Set(excludeIds);
 
   const scriptedMatch =
-    matchesGstr2bScriptedTrigger(userTokenSet) ?? matchesSalesRegisterGstScriptedTrigger(userTokenSet);
+    matchesAnnualScriptedTrigger(userTokenSet) ??
+    matchesGstr2bScriptedTrigger(userTokenSet) ??
+    matchesSalesRegisterGstScriptedTrigger(userTokenSet);
   if (scriptedMatch && !excluded.has(scriptedMatch.id)) {
     return { confidence: "high", top: scriptedMatch, candidates: [] };
   }
