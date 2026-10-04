@@ -866,6 +866,14 @@ button:not(:disabled),
   transition: opacity 300ms ease;
 }
 
+/* Phones only: a very light line under the header at all times, so it never reads as merging into the page.
+   Tinted from --navy, so it follows the theme. Doubled class beats the header's own after:bg utilities. */
+@media (max-width: 639px) {
+  .dt-header.dt-header::after {
+    background-color: color-mix(in srgb, var(--navy) 8%, transparent);
+  }
+}
+
 [data-theme="dark"] .dt-header[data-over-hero="true"] {
   background-color: transparent;
   -webkit-backdrop-filter: none;
