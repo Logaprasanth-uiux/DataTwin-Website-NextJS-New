@@ -422,7 +422,11 @@ export function visibleRequiredFiles(
 
 export function beginVerification(state: ConversationState): ConversationState {
   if (!requiredFilesReady(state)) return state;
-  return touch({ ...state, phase: "verifying" });
+  // Optional documents added before the run (see OptionalDocsOffer) count towards the first
+  // result, the same way ones added later from the "improve accuracy" card do.
+  const { pending } = getAccuracyOffer(state);
+  const accuracyExtras = pending.length > 0 ? [...(state.accuracyExtras ?? []), ...pending] : state.accuracyExtras;
+  return touch({ ...state, accuracyExtras, phase: "verifying" });
 }
 
 // A multi-checkpoint scripted reconciliation (see ReconciliationTopic.furtherCheckpoints) doesn't
@@ -433,14 +437,10 @@ export function beginVerification(state: ConversationState): ConversationState {
 // declineRemainingCheckpoints below) all live in that ONE turn. Only the true final round goes
 // straight to "result", exactly as every other, non-checkpointed reconciliation already does.
 export function completeVerification(state: ConversationState): ConversationState {
-  const topic = getResolvedTopic(state.discovery.resolvedId);
-  const checkpointIndex = state.checkpointIndex ?? 0;
-  const hasMoreCheckpoints = topic ? checkpointIndex < totalCheckpointCount(topic) - 1 : false;
-  return touch(
-    hasMoreCheckpoints
-      ? { ...state, checkpointIndex: checkpointIndex + 1, phase: "files" }
-      : { ...state, phase: "result" },
-  );
+  // Straight to the result after the required documents. Every further document is optional, so
+  // they are all offered together on the result's "improve accuracy" card (see getAccuracyOffer)
+  // rather than asked for one at a time in the conversation first.
+  return touch({ ...state, phase: "result" });
 }
 
 // The "continue with the existing uploaded documents alone" way out of an offered checkpoint round
@@ -491,10 +491,6 @@ export function applyAccuracyExtras(state: ConversationState): ConversationState
   const { pending } = getAccuracyOffer(state);
   if (pending.length === 0) return state;
   return touch({ ...state, accuracyExtras: [...(state.accuracyExtras ?? []), ...pending] });
-}
-
-export function dismissAccuracyOffer(state: ConversationState): ConversationState {
-  return touch({ ...state, accuracyDismissed: true });
 }
 
 // The result topic with any card-added documents folded in: their files count as provided and the

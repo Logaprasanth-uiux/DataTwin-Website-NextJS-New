@@ -68,5 +68,8 @@ export const FILE_DEFS: Record<string, FileDef> = {
   // F58/F59 are hand-added for the HSN/SAC reconciliation (10.12) — not rows in File_Requirements.xlsx.
   F58: { id: "F58", name: "GSTR-1 HSN Summary", level: "required", why: "Provides the HSN/SAC-wise quantity, taxable value and tax reported in GSTR-1 (Table 12)." },
   F59: { id: "F59", name: "HSN/SAC Master", level: "optional", why: "Maps each item or service to its HSN/SAC code and GST rate, so wrong or missing codes can be caught at source." },
+  // F60/F61 are hand-added for the export/SEZ reconciliations (10.13, 10.14) — not rows in File_Requirements.xlsx.
+  F60: { id: "F60", name: "Shipping Bill Data", level: "optional", why: "Provides shipping bill numbers, dates and values for export invoices, so they can be matched to GSTR-1 and the refund." },
+  F61: { id: "F61", name: "LUT Details", level: "optional", why: "Provides the Letter of Undertaking number and validity, so exports made without paying IGST can be confirmed as covered." },
   F57: { id: "F57", name: "DRC Response Register", level: "optional", why: "Tracks reasons, responses, payments/reversals and closure evidence for DRC intimations." },
 };

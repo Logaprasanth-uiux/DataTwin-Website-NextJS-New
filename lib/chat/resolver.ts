@@ -206,6 +206,39 @@ function matchesHsnSacScriptedTrigger(userTokens: ReadonlySet<string>): CatalogE
   return INDEX.find((i) => i.entry.id === HSN_SAC_SCRIPTED_ENTRY_ID)?.entry ?? null;
 }
 
+// e-Invoice (IRN) checked against both the sales register and GSTR-1, and exports / SEZ supplies
+// in their two kinds (with LUT, with payment of IGST). Checked ahead of the sales-register trigger.
+// "e-way bill" mentions are left to their own reconciliation. An export described without saying
+// which kind gets both offered, rather than guessing.
+const E_INVOICE_SCRIPTED_ENTRY_ID = "14.8";
+const EXPORTS_LUT_ENTRY_ID = "10.13";
+const EXPORTS_IGST_ENTRY_ID = "10.14";
+
+function entryById(id: string): CatalogEntry | null {
+  return INDEX.find((i) => i.entry.id === id)?.entry ?? null;
+}
+
+function matchesEInvoiceScriptedTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
+  const eInvoice = ["e-invoice", "einvoice", "e-invoices", "einvoices", "irn", "irp"].some((t) => userTokens.has(t));
+  const eWayBill = ["e-way", "eway", "ewb", "e-waybill", "ewaybill"].some((t) => userTokens.has(t));
+  if (!eInvoice || eWayBill) return null;
+  return entryById(E_INVOICE_SCRIPTED_ENTRY_ID);
+}
+
+function matchesExportsScriptedTrigger(userTokens: ReadonlySet<string>): ResolveResult | null {
+  const exportLike = ["export", "exports", "exported", "sez", "zero-rated", "shipping"].some((t) => userTokens.has(t));
+  if (!exportLike) return null;
+  const lut = entryById(EXPORTS_LUT_ENTRY_ID);
+  const igst = entryById(EXPORTS_IGST_ENTRY_ID);
+  if (!lut || !igst) return null;
+  const mentionsLut = userTokens.has("lut");
+  const withoutLut = mentionsLut && (userTokens.has("without") || userTokens.has("no") || userTokens.has("not"));
+  const paysIgst = (userTokens.has("igst") && (userTokens.has("paid") || userTokens.has("payment") || userTokens.has("pay"))) || userTokens.has("refund");
+  if (withoutLut || paysIgst) return { confidence: "high", top: igst, candidates: [] };
+  if (mentionsLut) return { confidence: "high", top: lut, candidates: [] };
+  return { confidence: "medium", top: lut, candidates: [lut, igst] };
+}
+
 export function classifyOpener(text: string): OpenerKind {
   const trimmed = text.trim();
   if (tokenize(trimmed).length === 0) return "greeting";
@@ -223,10 +256,16 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
   const userTokenSet = new Set(userTokens);
   const excluded = new Set(excludeIds);
 
+  const exportsMatch = matchesExportsScriptedTrigger(userTokenSet);
+  if (exportsMatch && !matchesAnnualScriptedTrigger(userTokenSet) && !excluded.has(exportsMatch.top?.id ?? "")) {
+    return exportsMatch;
+  }
+
   const scriptedMatch =
     matchesAnnualScriptedTrigger(userTokenSet) ??
     matchesHsnSacScriptedTrigger(userTokenSet) ??
     matchesAdvancesScriptedTrigger(userTokenSet) ??
+    matchesEInvoiceScriptedTrigger(userTokenSet) ??
     matchesGstr2bScriptedTrigger(userTokenSet) ??
     matchesSalesRegisterGstScriptedTrigger(userTokenSet);
   if (scriptedMatch && !excluded.has(scriptedMatch.id)) {

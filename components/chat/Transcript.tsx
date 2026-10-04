@@ -51,7 +51,6 @@ export interface TranscriptActions {
   onDeclineCheckpoint: () => void;
   onOpenSchedule: () => void;
   onRefreshAccuracy: () => void;
-  onDismissAccuracy: () => void;
   onScheduleMeeting: (contact: ContactDetails, meeting: ScheduledMeeting) => void;
   onSubmitSummaryContact: (contact: ContactDetails) => void;
   onVerifySummaryOtp: () => void;
@@ -243,7 +242,6 @@ export function Transcript({
                         onSubmitPortalGstin={actions.onSubmitPortalGstin}
                         onPortalFetchComplete={actions.onPortalFetchComplete}
                         onRefresh={actions.onRefreshAccuracy}
-                        onDismiss={actions.onDismissAccuracy}
                       />
                     );
                   })()}

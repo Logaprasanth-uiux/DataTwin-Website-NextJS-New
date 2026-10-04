@@ -11,6 +11,7 @@ import type {
 import { FileRequirementCard } from "./FileRequirementCard";
 import { FileValidationFlow } from "./FileValidationFlow";
 import { MessageTurn } from "./MessageTurn";
+import { OptionalDocsOffer } from "./OptionalDocsOffer";
 import { PortalFetchFlow } from "./PortalFetchFlow";
 import { UserReveal, type RevealTracker } from "./reveal";
 
@@ -314,7 +315,27 @@ export function FileUploadStep({
         </button>
       )}
 
-      {requiredReady && topic.autoAdvanceMessage && (
+      {requiredReady && topic.autoAdvanceMessage && startIndex === 0 && (topic.furtherCheckpoints?.length ?? 0) > 0 && (
+        <OptionalDocsOffer
+          itemKey={`${itemKey}:optional`}
+          tracker={tracker}
+          checkpoints={topic.furtherCheckpoints ?? []}
+          uploads={uploads}
+          fileSource={fileSource}
+          portalFetch={portalFetch}
+          resolved={resolved}
+          runMessage={topic.autoAdvanceMessage}
+          onUpload={onUpload}
+          onAdvanceStatus={onAdvanceStatus}
+          onRemove={onRemove}
+          onChooseFileSource={onChooseFileSource}
+          onSubmitPortalGstin={onSubmitPortalGstin}
+          onPortalFetchComplete={onPortalFetchComplete}
+          onRun={onContinue}
+        />
+      )}
+
+      {requiredReady && topic.autoAdvanceMessage && !(startIndex === 0 && (topic.furtherCheckpoints?.length ?? 0) > 0) && (
         <AutoAdvanceNotice message={topic.autoAdvanceMessage} onAdvance={onContinue} />
       )}
 

@@ -90,6 +90,10 @@ export const RECONCILIATION_CATALOG: CatalogEntry[] = [
   // 10.11 / 10.12 are hand-added (not rows in Reconciliation_Catalog.xlsx).
   { id: "10.11", familyId: "10", name: "Advances Received vs GST Liability", purpose: "Confirm GST was paid on advances received from customers and that later adjustments against invoices are reported correctly.", fileIds: ["F22", "F18", "F17", "F03"] },
   { id: "10.12", familyId: "10", name: "HSN/SAC Summary vs Sales Register", purpose: "Validate HSN/SAC-wise quantity, taxable value and tax in the GSTR-1 HSN summary against the sales register.", fileIds: ["F17", "F58", "F59", "F31"] },
+  // 10.13 / 10.14 / 14.8 are hand-added (not rows in Reconciliation_Catalog.xlsx).
+  { id: "10.13", familyId: "10", name: "Exports / SEZ with LUT vs GSTR-1", purpose: "Confirm zero-rated exports and SEZ supplies made under a Letter of Undertaking are reported correctly in GSTR-1 with no IGST paid.", fileIds: ["F17", "F18", "F24", "F61", "F60", "F03"] },
+  { id: "10.14", familyId: "10", name: "Exports / SEZ with IGST Payment vs GSTR-1 / GSTR-3B", purpose: "Confirm IGST paid on exports and SEZ supplies is reported in GSTR-1 and GSTR-3B, and identify the refund that can be claimed back.", fileIds: ["F17", "F18", "F03", "F24", "F60", "F44"] },
+  { id: "14.8", familyId: "14", name: "Sales Register vs e-Invoice vs GSTR-1", purpose: "Confirm every invoice in the sales register has a matching e-invoice (IRN) and is reported in GSTR-1 with the same values.", fileIds: ["F17", "F39", "F18", "F31"] },
   { id: "10.10", familyId: "10", name: "Duplicate / Excess Reported Sales", purpose: "Identify duplicate/over-reported outward supplies or tax liability.", fileIds: ["F17", "F18", "F03"] },
   { id: "11.1", familyId: "11", name: "GSTR-3B vs Electronic Liability Ledger", purpose: "Confirm liabilities declared in GSTR-3B are reflected in portal liability ledger.", fileIds: ["F03", "F19"] },
   { id: "11.2", familyId: "11", name: "GSTR-3B vs Electronic Credit Ledger", purpose: "Confirm ITC utilization/credit movements supporting return payment.", fileIds: ["F03", "F04"] },

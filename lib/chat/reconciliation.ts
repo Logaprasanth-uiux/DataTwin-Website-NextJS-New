@@ -99,6 +99,112 @@ type ReconciliationScript = Pick<
 // generic path already produces, so a reconciliation with no entry here behaves exactly as it did
 // before.
 const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
+  // "Sales Register vs e-Invoice vs GSTR-1": the e-invoice (IRN) register as a third document that
+  // has to agree with both the books and the return. Credit/debit notes as the optional round.
+  "14.8": {
+    baseFileIds: ["F17", "F39", "F18"],
+    requiredFileNameOverrides: { F18: "GSTR-1", F39: "e-Invoice (IRP) Register" },
+    requiredFileWhyOverrides: {
+      F39: "Lists every invoice registered on the e-invoice portal with its IRN, so each can be matched to your books and to GSTR-1.",
+      F18: "Shows the invoices you reported for the period, to confirm each e-invoiced sale was reported with the same values.",
+    },
+    filesIntro:
+      "Let's start with your Sales Revenue Register for the period.\n\nWhy this helps: Sets the books-side invoice list.",
+    fileAckOverrides: {
+      F17: "Got it. Now share your e-Invoice (IRP) Register for the same period.\n\nWhy this helps: Shows which invoices were registered and their IRNs.",
+      F39: "Got it. Now share your GSTR-1 for the same period.\n\nWhy this helps: Confirms every e-invoiced sale was reported.",
+    },
+    portalFetchFileIds: ["F39", "F18"],
+    autoAdvanceMessage: "All three files are ready. Running your Sales Register vs e-Invoice vs GSTR-1 reconciliation... ⏳",
+    furtherCheckpoints: [
+      {
+        filesIntro: "Add your credit/debit notes for a more accurate number.",
+        files: [{ fileId: "F31", name: FILE_DEFS.F31.name, level: "required", why: FILE_DEFS.F31.why }],
+        accuracyBenefit:
+          "Ties each credit or debit note to its e-invoice, so notes that were e-reported stop showing up as unmatched.",
+        mockResult: generateMockResult("14.8::checkpoint-1"),
+      },
+    ],
+  },
+  // Zero-rated exports and supplies to SEZ units come in two kinds. This one: made under a Letter
+  // of Undertaking, so no IGST is paid. Sales Register + GSTR-1 first; the export register, LUT
+  // details and shipping bills as optional documents.
+  "10.13": {
+    baseFileIds: ["F17", "F18"],
+    requiredFileNameOverrides: { F18: "GSTR-1" },
+    requiredFileWhyOverrides: {
+      F17: "Lists your sales for the period, including export and SEZ invoices marked as made under LUT.",
+      F18: "Shows the exports and SEZ supplies you reported, to confirm they were reported as zero-rated with no IGST.",
+    },
+    filesIntro:
+      "Let's start with your Sales Revenue Register for the period, with export and SEZ invoices marked as made under LUT.\n\nWhy this helps: Sets the books-side list of LUT exports.",
+    fileAckOverrides: {
+      F17: "Got it. Now share your GSTR-1 for the same period.\n\nWhy this helps: Shows how those exports were reported.",
+    },
+    portalFetchFileIds: ["F18"],
+    autoAdvanceMessage: "Both files are ready. Running your Exports / SEZ with LUT reconciliation... ⏳",
+    furtherCheckpoints: [
+      {
+        filesIntro: "Add your Export / SEZ Register.",
+        files: [{ fileId: "F24", name: "Export / SEZ Register", level: "required", why: "Lists export and SEZ invoices with their destination and treatment, so each can be checked against GSTR-1." }],
+        accuracyBenefit: "Confirms every export and SEZ invoice is reported in the right GSTR-1 table, and none is reported as taxable.",
+        mockResult: generateMockResult("10.13::checkpoint-1"),
+      },
+      {
+        filesIntro: "Add your LUT details.",
+        files: [{ fileId: "F61", name: FILE_DEFS.F61.name, level: "required", why: FILE_DEFS.F61.why }],
+        accuracyBenefit: "Confirms each export made without paying IGST falls within a valid LUT.",
+        mockResult: generateMockResult("10.13::checkpoint-2"),
+      },
+      {
+        filesIntro: "Add your shipping bill data.",
+        files: [{ fileId: "F60", name: FILE_DEFS.F60.name, level: "required", why: FILE_DEFS.F60.why }],
+        accuracyBenefit: "Matches each export invoice to its shipping bill, so exports without one are flagged.",
+        mockResult: generateMockResult("10.13::checkpoint-3"),
+      },
+    ],
+  },
+  // The other kind: IGST is paid on the export or SEZ supply and claimed back as a refund later.
+  // Sales Register, GSTR-1 and GSTR-3B first (what was reported and what was paid); the export
+  // register, shipping bills and refund working as optional documents. The refund filing itself
+  // is covered by the refund reconciliations (family 15) and can be linked from here later.
+  "10.14": {
+    baseFileIds: ["F17", "F18", "F03"],
+    requiredFileNameOverrides: { F18: "GSTR-1", F03: "GSTR-3B" },
+    requiredFileWhyOverrides: {
+      F17: "Lists your sales for the period, including export and SEZ invoices marked as made with payment of IGST.",
+      F18: "Shows the IGST you reported on exports and SEZ supplies.",
+      F03: "Shows the IGST you actually paid, which is what you can claim back as a refund.",
+    },
+    filesIntro:
+      "Let's start with your Sales Revenue Register for the period, with export and SEZ invoices marked as made with payment of IGST.\n\nWhy this helps: Sets the books-side list of exports on which IGST was paid.",
+    fileAckOverrides: {
+      F17: "Got it. Now share your GSTR-1 for the same period.\n\nWhy this helps: Shows the IGST reported on those exports.",
+      F18: "Got it. Now share your GSTR-3B for the same period.\n\nWhy this helps: Shows the IGST actually paid.",
+    },
+    portalFetchFileIds: ["F18", "F03"],
+    autoAdvanceMessage: "All three files are ready. Running your Exports / SEZ with IGST Payment reconciliation... ⏳",
+    furtherCheckpoints: [
+      {
+        filesIntro: "Add your Export / SEZ Register.",
+        files: [{ fileId: "F24", name: "Export / SEZ Register", level: "required", why: "Lists export and SEZ invoices with their destination and treatment, so each can be checked against GSTR-1." }],
+        accuracyBenefit: "Confirms every export on which IGST was paid is reported in the right table and counted towards the refund.",
+        mockResult: generateMockResult("10.14::checkpoint-1"),
+      },
+      {
+        filesIntro: "Add your shipping bill data.",
+        files: [{ fileId: "F60", name: FILE_DEFS.F60.name, level: "required", why: FILE_DEFS.F60.why }],
+        accuracyBenefit: "Matches each export to its shipping bill, which the refund depends on.",
+        mockResult: generateMockResult("10.14::checkpoint-2"),
+      },
+      {
+        filesIntro: "Add your refund eligibility working.",
+        files: [{ fileId: "F44", name: FILE_DEFS.F44.name, level: "required", why: FILE_DEFS.F44.why }],
+        accuracyBenefit: "Compares the refund you've worked out with the IGST found in your returns, before you file.",
+        mockResult: generateMockResult("10.14::checkpoint-3"),
+      },
+    ],
+  },
   // "Advances Received vs GST Liability": advances taken from customers are taxable when received,
   // reported in GSTR-1 (advance table) and paid through GSTR-3B, then adjusted when the invoice is
   // raised. Advance Register + GSTR-1 first; the sales register and GSTR-3B as accuracy rounds.

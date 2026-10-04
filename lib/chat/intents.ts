@@ -108,7 +108,43 @@ const HSN_SAC: IntentSummary = {
   ],
 };
 
+const E_INVOICE_THREE_WAY: IntentSummary = {
+  problem:
+    "Your sales register, your e-invoices (IRN) and what's reported in GSTR-1 may not agree, so some invoices could be missing an IRN, missing from GSTR-1, or reported with different values.",
+  intent: "Make sure every invoice that needs an e-invoice has one, and that each is reported in GSTR-1 with the same values as your books.",
+  checks: [
+    "Every sales register invoice has a matching IRN, and every IRN is in your books",
+    "Every e-invoice is reported in GSTR-1 with the same value and tax",
+    "Cancelled IRNs still active in the register or in GSTR-1",
+  ],
+};
+
+const EXPORTS_LUT: IntentSummary = {
+  problem:
+    "Exports and supplies to SEZ units made under a Letter of Undertaking (LUT) may not be reported correctly in GSTR-1, or IGST may have been paid on them by mistake.",
+  intent: "Confirm every LUT export is reported as zero-rated with no IGST, and that nothing was reported as a normal taxable sale.",
+  checks: [
+    "Export and SEZ invoices in your sales register vs the export and SEZ tables in GSTR-1",
+    "No IGST paid or reported on invoices made under LUT",
+    "Invoices marked as LUT exports but reported as taxable (or the reverse)",
+  ],
+};
+
+const EXPORTS_IGST: IntentSummary = {
+  problem:
+    "IGST paid on exports and supplies to SEZ units may not match between your sales register, GSTR-1 and GSTR-3B, so the refund you can claim back may be wrong.",
+  intent: "Confirm the IGST paid on exports is reported and paid correctly, and find the refund you can claim back.",
+  checks: [
+    "IGST on export and SEZ invoices in your register vs GSTR-1",
+    "IGST reported in GSTR-1 vs IGST actually paid in GSTR-3B",
+    "Refund-eligible IGST not yet claimed",
+  ],
+};
+
 const OVERRIDES: Record<string, IntentSummary> = {
+  "14.8": E_INVOICE_THREE_WAY,
+  "10.13": EXPORTS_LUT,
+  "10.14": EXPORTS_IGST,
   "10.11": ADVANCES,
   "10.12": HSN_SAC,
   "8.5": ANNUAL_TURNOVER,

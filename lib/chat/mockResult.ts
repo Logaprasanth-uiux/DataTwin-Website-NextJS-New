@@ -75,7 +75,7 @@ const ALL_OUTPUTS = Object.values(RECOVERY_OUTPUT_DEFS);
 // framing (which is what the Sales Register vs GSTR-1 summary uses and stays as it was).
 const EXPOSURE_RECONCILIATIONS = new Set(["8.3", "8.5", "10.3", "10.9", "10.11", "18.1"]);
 const MISMATCH_RECONCILIATIONS = new Set([
-  "10.5", "10.7", "10.12", "14.1", "14.2", "14.3", "14.5", "14.6", "14.7",
+  "10.5", "10.7", "10.12", "10.13", "14.8", "14.1", "14.2", "14.3", "14.5", "14.6", "14.7",
 ]);
 
 function framingFor(reconciliationId: string): SummaryFraming {

@@ -37,7 +37,6 @@ export function AccuracyBoostCard({
   onSubmitPortalGstin,
   onPortalFetchComplete,
   onRefresh,
-  onDismiss,
 }: {
   itemKey: string;
   tracker: RevealTracker;
@@ -55,7 +54,6 @@ export function AccuracyBoostCard({
   onSubmitPortalGstin: (fileId: string) => void;
   onPortalFetchComplete: (fileId: string, fileName: string) => void;
   onRefresh: () => void;
-  onDismiss: () => void;
 }) {
   const [refreshing, setRefreshing] = useState(false);
   const onRefreshRef = useRef(onRefresh);
@@ -151,21 +149,11 @@ export function AccuracyBoostCard({
         </div>
       )}
 
-      {appliedCount > 0 && !refreshing && (
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="w-fit text-[13.5px] font-medium text-navy-muted underline decoration-navy-hairline underline-offset-4 transition-colors hover:text-navy"
-        >
-          Continue without {missingNames}
-        </button>
-      )}
-
-      {appliedCount === 0 && (
-        <p className="text-[12.5px] text-navy-faint">
-          You can skip this. Scheduling a conversation below works with what you&apos;ve already shared.
-        </p>
-      )}
+      <p className="text-[12.5px] text-navy-faint">
+        {appliedCount === 0
+          ? "You can skip this. Scheduling a conversation above works with what you’ve already shared."
+          : "These are optional. The result above is complete without them."}
+      </p>
     </div>
   );
 }
