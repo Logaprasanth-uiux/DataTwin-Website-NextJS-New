@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LossIndicator } from "../LossIndicator";
 import { useEstimateLaunch } from "./MegaMenu";
 import { LearningPanel, PlatformPanel, ProductsPanel } from "./MegaPanels";
 import { MENU_TRIGGERS, type MenuKey } from "./menu-data";
@@ -22,6 +23,9 @@ export function MobileMenu({
   return (
     <nav className="dt-mega max-h-[calc(100dvh-5rem)] overflow-y-auto border-t border-navy-hairline lg:hidden">
       <div className="mx-auto flex max-w-[1200px] flex-col px-6 py-2 sm:px-8">
+        <div className="py-3">
+          <LossIndicator variant="menu" onNavigate={onClose} />
+        </div>
         {MENU_TRIGGERS.map(({ key, label }) => {
           const isOpen = expanded === key;
           const Panel = PANELS[key];

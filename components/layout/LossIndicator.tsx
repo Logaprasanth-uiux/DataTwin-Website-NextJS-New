@@ -46,32 +46,85 @@ function useTweenedNumber(target: number, durationMs: number) {
 //   phones, 150px from sm), so the header does not get more crowded.
 // The pill holds the trend-loss icon, an organisation icon (this is the organisation's leakage) and the
 // running loss. Hover only strengthens the relationship (border and arrow), it is not needed to understand it.
-export function LossIndicator() {
-  const [loss, setLoss] = useState(INITIAL_LOSS);
+//
+// `variant="menu"` is the phone version: the header no longer carries it below `lg`, so the mobile menu
+// shows it as a full-width card at the top of the sheet. It keeps ticking, and picks up the running figure
+// (see `runningLoss`) so reopening the menu does not wind the number back to its starting value.
+let pageStartedAt: number | null = null;
+
+function runningLoss() {
+  if (pageStartedAt === null) return INITIAL_LOSS;
+  return INITIAL_LOSS + Math.floor((Date.now() - pageStartedAt) / TICK_MS) * LOSS_PER_TICK;
+}
+
+export function LossIndicator({
+  variant = "header",
+  onNavigate,
+}: {
+  variant?: "header" | "menu";
+  onNavigate?: () => void;
+}) {
+  const isMenu = variant === "menu";
+  // The menu card only mounts on a tap, so reading the clock in its initialiser cannot cause a hydration
+  // mismatch; the header one always starts from the same value the server rendered.
+  const [loss, setLoss] = useState(() => (isMenu ? runningLoss() : INITIAL_LOSS));
   const displayedLoss = useTweenedNumber(loss, TWEEN_MS);
   const currencyKey = useSyncExternalStore(subscribeNever, detectCurrencyKey, getKeyOnServer);
   const formatter = useMemo(() => createCurrencyFormatter(currencyKey ?? "en-US|USD"), [currencyKey]);
   const { onClick } = useChatLaunch("leakage");
 
   useEffect(() => {
+    if (!isMenu && pageStartedAt === null) pageStartedAt = Date.now();
     const id = window.setInterval(() => {
       setLoss((prev) => prev + LOSS_PER_TICK + (Math.random() * 2 - 1) * LOSS_JITTER);
     }, TICK_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [isMenu]);
 
   const formatted = formatter.format(-displayedLoss);
+
+  const label = currencyKey ? `Stop the leakage. Illustrative loss so far, ${formatted}.` : "Stop the leakage";
+  const handleClick = (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    onNavigate?.();
+    onClick();
+  };
+
+  if (isMenu) {
+    return (
+      <a
+        href="#contact"
+        onClick={handleClick}
+        aria-label={label}
+        title="Illustrative example — not live customer data"
+        className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-navy-hairline bg-accent/[0.05] px-4 py-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        <span className="flex flex-col gap-2">
+          <span className="text-[13px] leading-none font-semibold text-navy">Stop the leakage</span>
+          <span className="flex items-center gap-2">
+            <TrendIcon className="h-4 w-4 flex-shrink-0 text-loss" />
+            <OrgIcon className="h-4 w-4 flex-shrink-0 text-navy-muted" />
+            <span
+              className={`text-[15px] leading-none font-medium whitespace-nowrap tabular-nums text-loss transition-opacity duration-300 ${
+                currencyKey ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              {formatted}
+            </span>
+          </span>
+        </span>
+        <ArrowIcon className="h-4 w-4 flex-shrink-0 text-accent transition-transform duration-200 group-hover:translate-x-0.5" />
+      </a>
+    );
+  }
 
   return (
     <a
       href="#contact"
-      onClick={(event) => {
-        event.preventDefault();
-        onClick();
-      }}
-      aria-label={currencyKey ? `Stop the leakage. Illustrative loss so far, ${formatted}.` : "Stop the leakage"}
+      onClick={handleClick}
+      aria-label={label}
       title="Illustrative example — not live customer data"
-      className="group flex flex-shrink-0 flex-col items-start gap-1 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent xl:flex-row xl:items-center xl:gap-3"
+      className="group hidden flex-shrink-0 flex-col items-start gap-1 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent lg:flex xl:flex-row xl:items-center xl:gap-3"
     >
       <span className="flex items-center gap-1.5 pl-1 text-[11px] leading-none font-semibold tracking-[0.01em] whitespace-nowrap text-navy xl:pl-0 xl:text-[13px]">
         Stop the leakage
