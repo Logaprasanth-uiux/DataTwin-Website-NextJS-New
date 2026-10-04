@@ -4,6 +4,7 @@ import { RecoveryCtaButton } from "@/components/chat/RecoveryCtaButton";
 import { CtaLink } from "@/components/ui/CtaLink";
 import { LongSectionContextLabel } from "@/components/ui/LongSectionContextLabel";
 import { DashboardShowcase } from "./DashboardShowcase";
+import { EngineDiagram } from "./EngineDiagram";
 import { PlatformIcon } from "./PlatformIcons";
 import { AiCallout, FeatureCard, StageHeader } from "./PlatformParts";
 import { ACQUISITION, ACROSS, AI_NATIVE, DASHBOARDS, HERO_PROOF, PROCESSING } from "./platform-data";
@@ -101,28 +102,18 @@ export function EngineSection() {
             <span className="block text-navy">Every solution runs on it.</span>
           </CenteredHeader>
 
-          <figure className="dt-reveal mt-16 sm:mt-20">
-            <figcaption className="flex items-center justify-center gap-4">
+          <div className="dt-reveal mt-16 sm:mt-20">
+            <p className="flex items-center justify-center gap-4">
               <span aria-hidden="true" className="h-px w-8 bg-accent" />
               <span className="dt-eyebrow">The shared engine</span>
               <span className="dt-display text-[15px] font-semibold text-navy">Shared by every product.</span>
               <span aria-hidden="true" className="h-px w-8 bg-accent" />
-            </figcaption>
+            </p>
 
-            {/* Diagram placeholder: replace this block with the engine diagram. */}
-            <div
-              data-placeholder="engine-diagram"
-              className="mt-8 flex bg-cream-50 aspect-[4/3] w-full flex-col items-center justify-center rounded-[28px] border border-dashed border-navy-hairline p-6 text-center sm:aspect-[16/8]"
-            >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full border border-navy-hairline bg-white text-navy">
-                <PlatformIcon name="layers" className="h-6 w-6" />
-              </span>
-              <p className="dt-display mt-5 text-[1.25rem] font-semibold text-navy">Engine diagram</p>
-              <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-navy-muted">
-                Placeholder. The shared-engine visual goes here.
-              </p>
+            <div className="mt-8">
+              <EngineDiagram />
             </div>
-          </figure>
+          </div>
 
           <p className="dt-body dt-reveal mx-auto mt-12 max-w-3xl text-center text-[17px] text-balance sm:mt-14 sm:text-lg">
             Custom build, SaaS or spreadsheet, it does not matter. We plug in, clean up and lock down
