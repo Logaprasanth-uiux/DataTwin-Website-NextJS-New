@@ -35,7 +35,7 @@ export function Section({
   }
 
   return (
-    <section id={id} className="w-full px-3 sm:px-5 lg:px-8">
+    <section id={id} className="w-full px-0 sm:px-5 lg:px-8">
       <div
         className={`dt-section-clip rounded-section ${backgroundClass} ${className}`.trim()}
       >

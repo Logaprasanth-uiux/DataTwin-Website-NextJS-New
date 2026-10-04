@@ -5,6 +5,9 @@ import { useState, useSyncExternalStore } from "react";
 import { Container } from "./Container";
 import { LossIndicator } from "./LossIndicator";
 import { Logo } from "./Logo";
+import { MegaMenu, MegaScrim } from "./mega-menu/MegaMenu";
+import { MobileMenu } from "./mega-menu/MobileMenu";
+import type { MenuKey } from "./mega-menu/menu-data";
 
 const SCROLL_THRESHOLD = 8;
 
@@ -27,21 +30,26 @@ const getOverHero = () => {
 };
 const getOverHeroOnServer = () => true;
 
+// Platform, Products and Learning Centre are the mega menu (./mega-menu); these stay plain links.
 const NAV_LINKS = [
-  { label: "Platform", href: "#platform" },
-  { label: "Products", href: "#products" },
-  { label: "Learning Center", href: "#learning-center" },
   { label: "Customers", href: "#customers" },
   { label: "Contact", href: "#contact" },
 ];
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<MenuKey | null>(null);
   const scrolled = useSyncExternalStore(subscribeToScroll, getScrolled, getScrolledOnServer);
   const overHero = useSyncExternalStore(subscribeToScroll, getOverHero, getOverHeroOnServer);
 
   return (
+    <>
+    {openMenu && <MegaScrim onClose={() => setOpenMenu(null)} />}
     <header
+      onMouseLeave={() => setOpenMenu(null)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setOpenMenu(null);
+      }}
       data-over-hero={overHero}
       className={`dt-header sticky top-0 z-50 w-full bg-white/85 backdrop-blur-[16px] after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:content-[''] after:transition-colors after:duration-300 ${
         scrolled ? "after:bg-[rgba(27,44,70,0.03)]" : "after:bg-transparent"
@@ -53,6 +61,7 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex">
+          <MegaMenu openMenu={openMenu} setOpenMenu={setOpenMenu} />
           {NAV_LINKS.map((link) => (
             <a
               key={link.label}
@@ -79,23 +88,9 @@ export function Navbar() {
         </div>
       </Container>
 
-      {open && (
-        <nav className="border-t border-navy-hairline lg:hidden">
-          <Container className="flex flex-col gap-1 px-6 py-4 sm:px-8">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="dt-nav-link py-2 transition-colors hover:text-navy"
-              >
-                {link.label}
-              </a>
-            ))}
-          </Container>
-        </nav>
-      )}
+      {open && <MobileMenu links={NAV_LINKS} onClose={() => setOpen(false)} />}
     </header>
+    </>
   );
 }
 

@@ -116,7 +116,9 @@ Type roles (defined in `globals.css`):
 | 8 | Next steps | `white` | Yes |
 | 9 | Final CTA + Footer | `canvas` | Yes |
 
-Other route: `/chat` (guided recovery chat flow — see §9).
+Other routes: `/chat` (guided recovery chat flow — see §9) and `/platform` (Platform Overview).
+
+**`/platform`** (`app/platform/page.tsx`, components in `components/platform/`, copy in `platform-data.ts`), built from the same `Section`/`Container`/`CtaLink` primitives. Hero uses `id="hero"` so the header behaves as on the homepage. Order: Hero (`canvas`) → Shared engine (`white`, diagram placeholder `[data-placeholder="engine-diagram"]`) → 01 Acquisition (`cream-gradient`) → 02 Processing (`navy`) → 03 Dashboards (`white`, tabbed illustrative dashboards) → AI-native (`cream-gradient`) → Across the platform (`white`) → global `FinalCta` + `Footer`. "Security" / "How AI is used" links are `#` anchors until those pages exist.
 
 ---
 
@@ -147,6 +149,13 @@ Pill button with trailing arrow icon (16×16, stroke 1.25). Renders `<a href>` o
 | `solid` | h-12, px-7 | `--navy` | white | Primary/final CTA. On dark canvas: amber fill, navy text/arrow |
 
 All: `text-[14px]`, weight 600, `rounded-full`, `transition-colors`, arrow gap 10px.
+
+### Mega menu (header)
+Platform, Products and Learning Centre open one shared panel (`components/layout/mega-menu/`; copy and links in `menu-data.ts`, links are `#` placeholders). Customers and Contact remain plain links.
+- Panel: always the **light** surface (white → cream gradient, hairline border, 28px radius, soft shadow), even over the dark Hero; it re-declares the light ink tokens (`.dt-mega`). Navy feature cards inside (DARP, estimate promo) use `.dt-mega-dark`. Page behind is dimmed with a soft navy scrim + 2px blur (desktop only).
+- Open on hover (110ms intent) or click; Esc, outside click or leaving the header close it; ArrowDown on a trigger moves focus into the panel. Below `lg` it becomes an accordion sheet.
+- Motion: panel 220ms fade/rise, columns stagger 45ms (`.dt-mega-item`, `--i`), platform flow line draws, promo drips; all only under `prefers-reduced-motion: no-preference`.
+- "Discover Your Number" (promo button and the Learning Centre tool row) launches the chat with `entryContext: "recovery-cta"`.
 
 ### Section context label (`.dt-context-marker`)
 Amber editorial marker, width fits text, solid amber behind text then eased fade to transparent (fade length 7rem mobile / 14rem ≥640px). Text colour `--canvas`. Fixed brand colours in both themes. Sticky-friendly (sections use `overflow: clip`, not `hidden`).

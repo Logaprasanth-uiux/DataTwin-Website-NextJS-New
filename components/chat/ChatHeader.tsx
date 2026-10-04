@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/layout/Logo";
+import { HeaderThemeToggle } from "@/components/theme/ThemeToggle";
 
 // The conversation title now lives in the conversations panel (see ConversationsPanel), so the
 // header is free to do what a header actually needs to: identify DataTwin and offer a clear way
@@ -51,14 +52,18 @@ export function ChatHeader({ onToggleConversations }: { onToggleConversations?: 
           <Logo className="h-5 w-auto" />
         </div>
 
-        <button
-          type="button"
-          onClick={handleBackToDataTwin}
-          className="group flex flex-shrink-0 items-center gap-1.5 text-[13px] font-medium text-navy-muted transition-colors hover:text-navy"
-        >
-          <BackIcon className="h-3.5 w-3.5 text-accent transition-transform duration-200 group-hover:-translate-x-0.5" />
-          Back to DataTwin
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleBackToDataTwin}
+            className="group flex flex-shrink-0 items-center gap-1.5 text-[13px] font-medium text-navy-muted transition-colors hover:text-navy"
+          >
+            <BackIcon className="h-3.5 w-3.5 text-accent transition-transform duration-200 group-hover:-translate-x-0.5" />
+            Back to DataTwin
+          </button>
+          {/* Phones only: the floating toggle is hidden on this page (it would sit on the Send button). */}
+          <HeaderThemeToggle className="sm:hidden" />
+        </div>
       </div>
     </header>
   );

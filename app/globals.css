@@ -162,9 +162,9 @@ button:not(:disabled),
   letter-spacing: -0.005em;
 }
 
-/* A thin, low-contrast scrollbar for the Chat conversation viewport specifically — not a global
-   reset, so the page/browser scrollbar and every other scroll region (Conversations panel, file
-   panel) keep their default appearance. Firefox reads `scrollbar-width`/`scrollbar-color`;
+/* A thin, low-contrast scrollbar for the Chat conversation viewport and the Conversations panel —
+   not a global reset, so the page/browser scrollbar and other scroll regions keep their default
+   appearance. Firefox reads `scrollbar-width`/`scrollbar-color`;
    Chrome/Safari/Edge read the `::-webkit-scrollbar*` pseudo-elements — both are needed for the
    same effect. Colours are the theme's own ink tokens (not fixed values), so this stays correct
    in dark mode too. The track is transparent (no visible channel); the thumb is a faint tint of
@@ -823,7 +823,7 @@ button:not(:disabled),
    it, so its dark panel lines up with the Hero card edge to edge. */
 .dt-header,
 .dt-main {
-  --dt-inset: 0.75rem;
+  --dt-inset: 0; /* full-bleed on phones: no side gap */
 }
 
 @media (min-width: 640px) {
@@ -1008,4 +1008,95 @@ button:not(:disabled),
     transition-duration: 450ms;
     transition-timing-function: ease;
   }
+}
+
+/* Mega menu (components/layout/mega-menu). The panel is always the light surface, even while the header
+   above it is the dark Hero panel, so it re-declares the light ink tokens; .dt-mega-dark re-points them to
+   the on-dark values for the navy cards inside it. Base styles are the final static state; the entrance
+   motion below is layered on only under prefers-reduced-motion: no-preference. */
+.dt-mega {
+  --navy: #041e3c;
+  --navy-muted: color-mix(in srgb, var(--navy) 62%, transparent);
+  --navy-body: color-mix(in srgb, var(--navy) 70%, transparent);
+  --navy-faint: color-mix(in srgb, var(--navy) 34%, transparent);
+  --navy-hairline: color-mix(in srgb, var(--navy) 16%, transparent);
+  --navy-divider: color-mix(in srgb, var(--navy) 9%, transparent);
+  --shadow-soft: 0 1px 2px rgba(27, 44, 70, 0.05);
+  --eyebrow-accent: var(--crimson);
+  color: var(--navy);
+  background: linear-gradient(to bottom, #fff, var(--cream-50) 45%, var(--cream-100));
+}
+
+.dt-mega-panel {
+  box-shadow: 0 28px 64px -24px rgba(4, 30, 60, 0.4);
+}
+
+.dt-mega .dt-mega-dark {
+  --navy: var(--ink-on-dark);
+  --navy-muted: color-mix(in srgb, var(--navy) 68%, transparent);
+  --navy-body: color-mix(in srgb, var(--navy) 76%, transparent);
+  --navy-faint: color-mix(in srgb, var(--navy) 46%, transparent);
+  --navy-hairline: color-mix(in srgb, var(--navy) 18%, transparent);
+  --navy-divider: color-mix(in srgb, var(--navy) 11%, transparent);
+  --eyebrow-accent: var(--accent);
+  background-color: var(--canvas);
+}
+
+.dt-mega-scrim {
+  background: rgba(4, 30, 60, 0.22);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+@keyframes dt-mega-panel-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes dt-mega-item-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes dt-mega-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dt-mega-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes dt-mega-pop {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes dt-mega-drip {
+  from { stroke-dashoffset: 0; opacity: 0.9; }
+  to { stroke-dashoffset: -16; opacity: 0.35; }
+}
+
+.dt-mega-draw {
+  stroke-dasharray: 1;
+}
+
+.dt-mega-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dt-mega-panel { animation: dt-mega-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .dt-mega-scrim { animation: dt-mega-scrim-in 220ms ease both; }
+
+  .dt-mega-item {
+    animation: dt-mega-item-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 45ms + 60ms);
+  }
+
+  .dt-mega-draw { animation: dt-mega-draw 700ms cubic-bezier(0.22, 1, 0.36, 1) 280ms both; }
+  .dt-mega-pop { animation: dt-mega-pop 380ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 180ms + 160ms); }
+  .dt-mega-drip { animation: dt-mega-drip 1800ms linear infinite; animation-delay: calc(var(--i, 0) * -500ms); }
 }
