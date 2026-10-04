@@ -1,5 +1,6 @@
 import { RECONCILIATION_CATALOG, type CatalogEntry } from "./data/catalog";
-import { classifyOpener, resolveIntent } from "./resolver";
+import { AREAS, AREA_BY_ID, type AreaId } from "./areas";
+import { areaOfEntry, classifyOpener, guessAreaFromText, rankInArea, resolveIntent } from "./resolver";
 import type { DiscoveryState, DiscoveryTurn, EntryContext } from "./types";
 
 // Progressive, free-form reconciliation discovery: "Something else" (and generic/casual openers)
@@ -107,6 +108,25 @@ function makeOptions(turns: DiscoveryTurn[], prompt: string, candidates: readonl
   };
 }
 
+const AREA_PREFIX = "area:";
+const ASK_AREA_PROMPTS = [
+  "Which side of your GST is this about?",
+  "Let me narrow it down — which side is this about?",
+];
+
+function makeAreaOptions(turns: DiscoveryTurn[], prompt: string, areaIds: readonly AreaId[]): DiscoveryTurn {
+  return {
+    kind: "options",
+    id: `d${turns.length}`,
+    prompt,
+    options: [
+      ...areaIds.map((id) => ({ id: `${AREA_PREFIX}${id}`, label: AREA_BY_ID[id].label })),
+      { id: SOMETHING_ELSE_ID, label: "Something else" },
+    ],
+    selectedId: null,
+  };
+}
+
 function makeFreeText(turns: DiscoveryTurn[], prompt: string): DiscoveryTurn {
   return { kind: "freetext", id: `d${turns.length}`, prompt, value: null };
 }
@@ -162,18 +182,40 @@ function continueFreeText(
     };
   }
 
-  if (result.confidence === "medium" && result.candidates.length > 0) {
-    const candidates = withSalesRegisterOption(result.candidates, discovery.shownIds);
-    turns.push(makeOptions(turns, pickRound(CANDIDATE_PROMPTS, round), candidates));
+  // The side is clear only when the message points at it by its own words (see areas.ts). Close
+  // matches alone don't settle it — the catalogue has far more purchase-side checks than sales-side
+  // ones, so vague wording tends to rank purchase checks first whichever side the user meant.
+  const guessedArea = guessAreaFromText(text);
+  const candidateAreas = [...new Set(result.candidates.map(areaOfEntry))];
+
+  const offerCandidates = (candidates: CatalogEntry[], prompt: string): DiscoveryOutcome => {
+    turns.push(makeOptions(turns, prompt, candidates));
     return {
-      discovery: {
-        ...discovery,
-        turns,
-        attempts,
-        shownIds: [...discovery.shownIds, ...candidates.map((c) => c.id)],
-      },
+      discovery: { ...discovery, turns, attempts, shownIds: [...discovery.shownIds, ...candidates.map((c) => c.id)] },
       status: "continue",
     };
+  };
+
+  if (guessedArea && (result.confidence === "medium" || result.confidence === "low")) {
+    const inArea = result.candidates.filter((c) => areaOfEntry(c) === guessedArea);
+    let candidates = inArea.length > 0 ? inArea : rankInArea(text, guessedArea, discovery.shownIds);
+    if (guessedArea === "sales") candidates = withSalesRegisterOption(candidates, discovery.shownIds);
+    if (candidates.length > 0) return offerCandidates(candidates, pickRound(CANDIDATE_PROMPTS, round));
+  }
+
+  // Small talk or an unrelated question ("what's the weather today") has nothing to place on any
+  // side — a gentle pointer back to what DataTwin does, not a question about sides.
+  if (!guessedArea && result.confidence === "low" && result.anySignal === false) {
+    return askAgainOrFallback(CLARIFY_PROMPTS);
+  }
+
+  if (!guessedArea && (result.confidence === "medium" || result.confidence === "low")) {
+    // Nothing points at a particular side: ask which, rather than guessing. When close matches
+    // already span two or more sides, only those are offered.
+    if (attempts >= MAX_ATTEMPTS) return askAgainOrFallback(CLARIFY_PROMPTS);
+    const areaIds = candidateAreas.length >= 2 ? candidateAreas : AREAS.map((a) => a.id);
+    turns.push(makeAreaOptions(turns, pickRound(ASK_AREA_PROMPTS, round), areaIds));
+    return { discovery: { ...discovery, turns, attempts }, status: "continue" };
   }
 
   // Nothing matched — could be a genuinely unrelated message or just too vague to place yet;
@@ -228,10 +270,28 @@ export function createInitialDiscovery(firstMessage: string | null, entryContext
 }
 
 /** The user picked one of the presented candidates, or "Something else". */
-export function selectDiscoveryOption(discovery: DiscoveryState, turnId: string, optionId: string): DiscoveryOutcome {
+export function selectDiscoveryOption(
+  discovery: DiscoveryState,
+  turnId: string,
+  optionId: string,
+  fallbackText: string | null = null,
+): DiscoveryOutcome {
   const turns = discovery.turns.map((turn) =>
     turn.id === turnId && turn.kind === "options" ? { ...turn, selectedId: optionId } : turn,
   );
+
+  // The user picked a side: offer the closest checks on that side, scored against what they said.
+  if (optionId.startsWith(AREA_PREFIX)) {
+    const areaId = optionId.slice(AREA_PREFIX.length) as AreaId;
+    const lastUser = [...turns].reverse().find((turn) => turn.kind === "user");
+    const text = (lastUser && lastUser.kind === "user" ? lastUser.text : fallbackText) ?? "";
+    const candidates = rankInArea(text, areaId, discovery.shownIds);
+    turns.push(makeOptions(turns, `Got it — ${AREA_BY_ID[areaId].label}. Which of these is closest?`, candidates));
+    return {
+      discovery: { ...discovery, turns, shownIds: [...discovery.shownIds, ...candidates.map((c) => c.id)] },
+      status: "continue",
+    };
+  }
 
   if (optionId !== SOMETHING_ELSE_ID) {
     turns.push(makeMessage(turns, "Got it — let's get the details we need."));

@@ -1,4 +1,5 @@
 import { RECONCILIATION_CATALOG } from "./data/catalog";
+import { FLOW_BY_ID } from "./flows";
 import { RECON_TO_OUTPUTS, RECOVERY_OUTPUT_DEFS, type RecoveryOutputDef } from "./data/recoveryOutputs";
 import type { RecoveryBucket, RecoveryPreviewRow, SummaryFraming, TopicMockResult } from "./types";
 
@@ -80,6 +81,8 @@ const MISMATCH_RECONCILIATIONS = new Set([
 
 function framingFor(reconciliationId: string): SummaryFraming {
   const baseId = reconciliationId.split("::")[0];
+  const configured = FLOW_BY_ID[baseId]?.framing;
+  if (configured) return configured;
   if (EXPOSURE_RECONCILIATIONS.has(baseId)) return "exposure";
   if (MISMATCH_RECONCILIATIONS.has(baseId)) return "mismatch";
   return "recovery";

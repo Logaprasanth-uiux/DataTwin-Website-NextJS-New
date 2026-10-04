@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "playground:generate": "npx --yes tsx scripts/generate-playground-flow.ts"
   },
   "dependencies": {
     "next": "16.3.5",

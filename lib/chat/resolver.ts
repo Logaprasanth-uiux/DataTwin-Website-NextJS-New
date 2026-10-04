@@ -1,5 +1,7 @@
 import { RECONCILIATION_CATALOG, type CatalogEntry } from "./data/catalog";
 import { RECONCILIATION_FAMILIES } from "./data/families";
+import { AREAS, AREA_BY_ID, areaOfFamily, type AreaId } from "./areas";
+import { FLOWS } from "./flows";
 
 // A deterministic, data-driven stand-in for a real intent-matching model. It scores every catalogue
 // entry by how many meaningful words the user's text shares with that entry's name/family/purpose
@@ -26,6 +28,8 @@ function tokenize(text: string): string[] {
     .replace(/[^a-z0-9\s/-]/g, " ")
     .split(/\s+/)
     .map((t) => t.replace(/^-+|-+$/g, ""))
+    // A bare "2B", "2A" or "3B" is shorthand for the return — keep it, as the return's name.
+    .map((t) => (/^(2a|2b|3b)$/.test(t) ? `gstr-${t}` : t))
     .filter((t) => t.length > 2 && !STOPWORDS.has(t));
 }
 
@@ -104,6 +108,9 @@ export interface ResolveResult {
   /** Ranked, deduped candidates to present as options. Empty when confidence is "high" (no need
    * to ask) or "low" (nothing meaningful matched). */
   candidates: CatalogEntry[];
+  /** False when nothing in the message overlapped with the catalogue at all (small talk, an
+   * unrelated question) — as opposed to a GST-sounding message that's merely too vague to place. */
+  anySignal?: boolean;
 }
 
 const MEDIUM_SCORE_THRESHOLD = 2;
@@ -239,6 +246,23 @@ function matchesExportsScriptedTrigger(userTokens: ReadonlySet<string>): Resolve
   return { confidence: "medium", top: lut, candidates: [lut, igst] };
 }
 
+// Purchase-side, payment, cross-year and annual flows (see flows.ts) each list the phrases that
+// mean them. When several flows match, the one whose matching phrase uses the most words wins
+// (so "bill of entry vs GSTR-2B" is the import flow, not the plain purchase-vs-2B one); a tie goes
+// to whichever comes first in that list.
+function matchesFlowTrigger(userTokens: ReadonlySet<string>, excluded: ReadonlySet<string>): CatalogEntry | null {
+  let best: { id: string; size: number } | null = null;
+  for (const flow of FLOWS) {
+    if (excluded.has(flow.id) || !flow.triggers) continue;
+    for (const set of flow.triggers) {
+      if (set.every((token) => userTokens.has(token)) && (!best || set.length > best.size)) {
+        best = { id: flow.id, size: set.length };
+      }
+    }
+  }
+  return best ? entryById(best.id) : null;
+}
+
 export function classifyOpener(text: string): OpenerKind {
   const trimmed = text.trim();
   if (tokenize(trimmed).length === 0) return "greeting";
@@ -251,7 +275,7 @@ export function classifyOpener(text: string): OpenerKind {
 export function resolveIntent(text: string, excludeIds: readonly string[] = []): ResolveResult {
   const userTokens = tokenize(text);
   if (userTokens.length === 0) {
-    return { confidence: "low", top: null, candidates: [] };
+    return { confidence: "low", top: null, candidates: [], anySignal: false };
   }
   const userTokenSet = new Set(userTokens);
   const excluded = new Set(excludeIds);
@@ -260,6 +284,9 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
   if (exportsMatch && !matchesAnnualScriptedTrigger(userTokenSet) && !excluded.has(exportsMatch.top?.id ?? "")) {
     return exportsMatch;
   }
+
+  const flowMatch = matchesFlowTrigger(userTokenSet, excluded);
+  if (flowMatch) return { confidence: "high", top: flowMatch, candidates: [] };
 
   const scriptedMatch =
     matchesAnnualScriptedTrigger(userTokenSet) ??
@@ -278,7 +305,7 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
     .sort((a, b) => b.score - a.score);
 
   if (scored.length === 0) {
-    return { confidence: "low", top: null, candidates: [] };
+    return { confidence: "low", top: null, candidates: [], anySignal: false };
   }
 
   const first = scored[0];
@@ -290,7 +317,7 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
   }
 
   if (first.score < MEDIUM_SCORE_THRESHOLD) {
-    return { confidence: "low", top: null, candidates: [] };
+    return { confidence: "low", top: null, candidates: [], anySignal: true };
   }
 
   return {
@@ -298,4 +325,42 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
     top: first.entry,
     candidates: scored.slice(0, CANDIDATE_COUNT).map((s) => s.entry),
   };
+}
+
+// --- Sides of GST (see areas.ts) -------------------------------------------------------------
+
+export function areaOfEntry(entry: CatalogEntry): AreaId {
+  return areaOfFamily(entry.familyId);
+}
+
+/** The side a message clearly points at: the one with the most keyword hits, as long as it beats the
+ * runner-up. `null` when nothing points anywhere, or two sides tie — i.e. it's genuinely unclear. */
+export function guessAreaFromText(text: string): AreaId | null {
+  const tokens = new Set(tokenize(text));
+  const hits = AREAS.map((area) => ({ id: area.id, count: area.keywords.filter((k) => tokens.has(k)).length }))
+    .filter((h) => h.count > 0)
+    .sort((a, b) => b.count - a.count);
+  if (hits.length === 0) return null;
+  if (hits.length > 1 && hits[0].count === hits[1].count) return null;
+  return hits[0].id;
+}
+
+/** The closest checks within one side for a message — scored the same way as everywhere else, but
+ * only among that side's checks. Falls back to the side's usual starting points when the message
+ * has nothing specific to score. */
+export function rankInArea(text: string, areaId: AreaId, excludeIds: readonly string[], limit = 3): CatalogEntry[] {
+  const excluded = new Set(excludeIds);
+  const userTokens = tokenize(text);
+  const scored = INDEX.filter((i) => areaOfEntry(i.entry) === areaId && !excluded.has(i.entry.id))
+    .map((i) => ({ entry: i.entry, score: scoreEntry(userTokens, i) }))
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((s) => s.entry);
+  if (scored.length > 0) return scored;
+  return AREA_BY_ID[areaId].starters
+    .filter((id) => !excluded.has(id))
+    .map((id) => entryById(id))
+    .filter((e): e is CatalogEntry => e !== null)
+    .slice(0, limit);
 }

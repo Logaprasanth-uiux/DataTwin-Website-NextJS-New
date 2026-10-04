@@ -71,5 +71,10 @@ export const FILE_DEFS: Record<string, FileDef> = {
   // F60/F61 are hand-added for the export/SEZ reconciliations (10.13, 10.14) — not rows in File_Requirements.xlsx.
   F60: { id: "F60", name: "Shipping Bill Data", level: "optional", why: "Provides shipping bill numbers, dates and values for export invoices, so they can be matched to GSTR-1 and the refund." },
   F61: { id: "F61", name: "LUT Details", level: "optional", why: "Provides the Letter of Undertaking number and validity, so exports made without paying IGST can be confirmed as covered." },
+  // F62-F64 are hand-added for the capital goods, demand/order and cross-year checks (17.8, 18.6,
+  // 8.16) — not rows in File_Requirements.xlsx.
+  F62: { id: "F62", name: "Fixed Asset Register", level: "required", why: "Lists assets capitalised in the period, with their cost and GST, so ITC on capital goods can be matched to additions." },
+  F63: { id: "F63", name: "Demand & Order Register", level: "required", why: "Lists demands, notices and orders raised against you, with amounts, due dates and status." },
+  F64: { id: "F64", name: "Next-Year Reported Items Register", level: "required", why: "Lists this year's invoices, credit notes, amendments and ITC that were reported in the following year's returns." },
   F57: { id: "F57", name: "DRC Response Register", level: "optional", why: "Tracks reasons, responses, payments/reversals and closure evidence for DRC intimations." },
 };

@@ -1,5 +1,6 @@
 import { RECONCILIATION_CATALOG, type CatalogEntry } from "./data/catalog";
 import { FILE_DEFS } from "./data/files";
+import { FLOW_BY_ID, type FlowConfig } from "./flows";
 import { generateMockResult } from "./mockResult";
 import type { FileRequirement, ReconciliationCheckpoint, ReconciliationTopic } from "./types";
 
@@ -326,15 +327,6 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
       },
     ],
   },
-  "1.2": {
-    filesIntro:
-      "Let's get started — please upload your Vendor Bill Register.\n\nWhy this helps: Sets your purchase baseline.",
-    fileAckOverrides: {
-      F05: "Got it. Now share your GSTR-2B Detail.\n\nWhy this helps: Flags claimable ITC and mismatches.",
-    },
-    portalFetchFileIds: ["F02"],
-    autoAdvanceMessage: "Both files are ready. Running your reconciliation summary... ⏳",
-  },
   // "Sales Register vs GST Reconciliation": four progressive rounds, each adding one more document
   // and showing a refreshed, more accurate result — Sales Register + GSTR-1 first, then GSTR-1A,
   // then the outward credit/debit notes, then the GSTR-3B Liability Summary that closes the loop.
@@ -413,6 +405,39 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
   },
 };
 
+// Documents that can be downloaded from the GST Portal (or its linked systems) offer "Fetch from GST
+// Portal" in the flows generated from flows.ts.
+const PORTAL_FLOW_FILE_IDS = new Set([
+  "F01", "F02", "F03", "F04", "F14", "F18", "F19", "F20", "F29", "F37", "F39", "F40", "F41", "F42", "F54", "F55",
+]);
+
+// Builds a flow's script from its config (flows.ts) and its catalogue entry: the required
+// documents first, then every other document as an optional round, all offered together before
+// the run (see OptionalDocsOffer) and again on the result's accuracy card.
+function scriptFromFlow(entry: CatalogEntry, flow: FlowConfig, label: string): ReconciliationScript {
+  const base = flow.base ?? entry.fileIds.slice(0, 2);
+  const optionalIds = [...entry.fileIds.filter((id) => !base.includes(id)), ...(flow.extra ?? []).filter((id) => !entry.fileIds.includes(id) && !base.includes(id))];
+  return {
+    baseFileIds: base,
+    requiredFileNameOverrides: flow.names,
+    requiredFileWhyOverrides: flow.whys,
+    portalFetchFileIds: [...base, ...optionalIds].filter((id) => PORTAL_FLOW_FILE_IDS.has(id)),
+    autoAdvanceMessage: `Running your ${label} reconciliation... ⏳`,
+    furtherCheckpoints: optionalIds.flatMap((fileId, index): ReconciliationCheckpoint[] => {
+      const def = FILE_DEFS[fileId];
+      if (!def) return [];
+      return [
+        {
+          files: [{ fileId, name: flow.names?.[fileId] ?? def.name, level: "required", why: flow.whys?.[fileId] ?? def.why }],
+          portalFetchFileIds: PORTAL_FLOW_FILE_IDS.has(fileId) ? [fileId] : undefined,
+          accuracyBenefit: flow.whys?.[fileId] ?? def.why,
+          mockResult: generateMockResult(`${entry.id}::checkpoint-${index + 1}`),
+        },
+      ];
+    }),
+  };
+}
+
 // Assembles the shape the existing upload/verification/result/reveal components already expect
 // (`ReconciliationTopic`), on demand from the catalogue + file data once the discovery engine has
 // identified a reconciliation — nothing about those downstream components needs to change.
@@ -420,7 +445,9 @@ export function buildResolvedTopic(reconciliationId: string): ReconciliationTopi
   const entry = getCatalogEntry(reconciliationId);
   if (!entry) return null;
   const { required, optional } = buildFileRequirements(entry);
-  const { requiredFileNameOverrides, requiredFileWhyOverrides, baseFileIds, ...script } = RECONCILIATION_SCRIPTS[entry.id] ?? {};
+  const flow = FLOW_BY_ID[entry.id];
+  const written = RECONCILIATION_SCRIPTS[entry.id] ?? (flow ? scriptFromFlow(entry, flow, CHAT_LABEL_OVERRIDES[entry.id] ?? entry.name) : undefined);
+  const { requiredFileNameOverrides, requiredFileWhyOverrides, baseFileIds, ...script } = written ?? {};
   const requiredBase = baseFileIds
     ? baseFileIds.map((id) => required.find((f) => f.fileId === id)).filter((f): f is FileRequirement => Boolean(f))
     : required;

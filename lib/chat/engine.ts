@@ -166,7 +166,7 @@ function answerYearRoute(state: ConversationState, optionId: string): Conversati
 
 export function selectDiscoveryOption(state: ConversationState, turnId: string, optionId: string): ConversationState {
   if (turnId === YEAR_ROUTE_TURN_ID) return answerYearRoute(state, optionId);
-  const { discovery, status } = applySelectDiscoveryOption(state.discovery, turnId, optionId);
+  const { discovery, status } = applySelectDiscoveryOption(state.discovery, turnId, optionId, state.firstMessage);
   return touch({ ...state, discovery, phase: phaseForStatus(status), ...intentGate(status) });
 }
 

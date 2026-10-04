@@ -1,4 +1,5 @@
 import { RECONCILIATION_CATALOG } from "./data/catalog";
+import { FLOW_BY_ID } from "./flows";
 import type { ConversationState, ReconciliationTopic } from "./types";
 
 // The "here's what I understood" step shown once discovery has settled on a reconciliation and
@@ -174,6 +175,8 @@ function joinNames(names: string[]): string {
 export function buildIntentSummary(topic: ReconciliationTopic): IntentSummary {
   const override = OVERRIDES[topic.id];
   if (override) return override;
+  const flow = FLOW_BY_ID[topic.id];
+  if (flow) return { problem: flow.problem, intent: flow.intent, checks: flow.checks };
 
   const entry = RECONCILIATION_CATALOG.find((e) => e.id === topic.id);
   const purpose = entry ? lowercaseFirst(entry.purpose.replace(/\.$/, "")) : "reconcile the two sides";
