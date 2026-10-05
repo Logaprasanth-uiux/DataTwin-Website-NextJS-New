@@ -1,7 +1,7 @@
 import { RECONCILIATION_CATALOG } from "./data/catalog";
 import { FLOW_BY_ID } from "./flows";
 import { RECON_TO_OUTPUTS, RECOVERY_OUTPUT_DEFS, type RecoveryOutputDef } from "./data/recoveryOutputs";
-import type { RecoveryBucket, RecoveryPreviewRow, SummaryFraming, TopicMockResult } from "./types";
+import type { RecoveryBucket, RecoveryPreviewRow, SalesGstArea, SummaryFraming, TopicMockResult } from "./types";
 
 // Deterministic mock recovery figures — clearly demo values, never real calculations. Generated
 // (not hand-authored) so the same mechanism works across all 133 catalogue entries instead of
@@ -120,7 +120,120 @@ function splitAmount(count: number, total: number, random: () => number): number
   return weights.map((w) => Math.max(round10k((total * w) / weightTotal), 10_000));
 }
 
-export function generateMockResult(reconciliationId: string): TopicMockResult {
+// The Sales Register vs GSTR-1 result, built from a few amounts so everything on the summary tallies:
+//   recoverable = GST overpaid (+ missed ITC once GSTR-3B is in)
+//   payable     = GST underpaid + interest (+ excess ITC and blocked ITC once GSTR-3B is in)
+//   net         = recoverable - payable   <- the headline "net current impact"
+// ITC claimed / eligible are reference totals (excess = claimed - eligible-and-claimed). Projections
+// start from the net and add recurring leakage and interest, so 3, 6 and 12 months all build on it.
+const SALES_GST_INTEREST_RATE = 0.18;
+
+const SALES_GST_ROWS: { classification: string; detail: string; bucket: RecoveryBucket; sign: "positive" | "negative" }[] = [
+  { classification: "Deterministic validation", detail: "Invoice reported twice in GSTR-1, so GST was paid twice", bucket: "recovery", sign: "positive" },
+  { classification: "LLM validation", detail: "Item classified under a higher-rate HSN than its description supports", bucket: "followup", sign: "positive" },
+  { classification: "Applicable / Not applicable", detail: "Export invoice reported as taxable although the LUT applies", bucket: "neutral", sign: "positive" },
+  { classification: "Deterministic validation", detail: "Invoice in the sales register but missing from GSTR-1", bucket: "correction", sign: "negative" },
+  { classification: "Deterministic validation", detail: "Tax rate in GSTR-1 lower than the rate for the HSN", bucket: "correction", sign: "negative" },
+  { classification: "LLM validation", detail: "Place of supply read as intra-state but reported inter-state", bucket: "followup", sign: "negative" },
+  { classification: "Applicable / Not applicable", detail: "e-invoice applicable but the invoice was not reported as one", bucket: "neutral", sign: "negative" },
+  { classification: "Data quality check", detail: "Customer GSTIN missing, so a B2B sale was reported as B2C", bucket: "recovery", sign: "negative" },
+];
+
+function generateSalesGstResult(reconciliationId: string, includeItc: boolean): TopicMockResult {
+  const random = mulberry32(hashString(reconciliationId));
+  const overpaid = round10k(800_000 + random() * 5_200_000);
+  const underpaid = round10k(overpaid * (0.12 + random() * 0.4));
+  let missed = 0;
+  let excess = 0;
+  let blocked = 0;
+  let claimed = 0;
+  let eligible = 0;
+  if (includeItc) {
+    missed = round10k(overpaid * (0.1 + random() * 0.15));
+    excess = round10k(overpaid * (0.06 + random() * 0.1));
+    blocked = round10k(overpaid * (0.03 + random() * 0.06));
+    const eligibleAndClaimed = round10k((excess + missed) * (1 + random() * 0.6));
+    claimed = eligibleAndClaimed + excess;
+    eligible = eligibleAndClaimed + missed;
+  }
+  const interest = round10k((underpaid + excess) * (0.14 + random() * 0.08));
+
+  const grossPositive = overpaid + missed;
+  const grossNegative = underpaid + excess + blocked + interest;
+  const net = grossPositive - grossNegative;
+
+  const area = (id: SalesGstArea["id"], label: string, description: string, amount: number, kind: SalesGstArea["kind"]): SalesGstArea => ({
+    id, label, description, amount, kind,
+  });
+  const areas: SalesGstArea[] = [
+    area("gst-overpaid", "GST overpaid", "Output GST paid above what was due, which you can recover", overpaid, "recoverable"),
+    area("gst-underpaid", "GST underpaid", "Output GST short-paid against your invoices, still payable", underpaid, "payable"),
+  ];
+  if (includeItc) {
+    areas.push(
+      area("itc-claimed", "ITC claimed", "Input tax credit claimed in GSTR-3B for the period", claimed, "reference"),
+      area("itc-eligible", "ITC eligible", "Input tax credit you are eligible to claim", eligible, "reference"),
+      area("itc-excess", "Excess ITC", "Claimed above what is eligible, to be reversed", excess, "payable"),
+      area("itc-missed", "Missed ITC", "Eligible but not claimed, which you can still recover", missed, "recoverable"),
+      area("itc-blocked", "Blocked ITC", "Claimed on blocked credits, to be reversed", blocked, "payable"),
+    );
+  }
+  areas.push(area("interest", "Interest exposure", "Interest on tax underpaid and on ITC claimed in excess", interest, "payable"));
+
+  // Projections build on the net: recurring leakage per month plus interest on the net.
+  const monthlyLeakage = round10k(net * (0.04 + random() * 0.04));
+  const projections = ([3, 6, 12] as const).map((months) => {
+    const leakage = monthlyLeakage * months;
+    const interestOnNet = round10k((net * SALES_GST_INTEREST_RATE * months) / 12);
+    return { months, leakage, interest: interestOnNet, total: net + leakage + interestOnNet };
+  });
+
+  // Line items: the three recoverable ones share `grossPositive`, the five payable ones `grossNegative`.
+  const positiveRows = SALES_GST_ROWS.filter((r) => r.sign === "positive");
+  const negativeRows = SALES_GST_ROWS.filter((r) => r.sign === "negative");
+  const positiveAmounts = splitAmount(positiveRows.length, grossPositive, random);
+  const negativeAmounts = splitAmount(negativeRows.length, grossNegative, random);
+  // Rounding each line to the nearest 10k can leave the lines a little off their total — the last
+  // line takes the difference so the table adds up exactly to the summary.
+  positiveAmounts[positiveAmounts.length - 1] += grossPositive - positiveAmounts.reduce((sum, v) => sum + v, 0);
+  negativeAmounts[negativeAmounts.length - 1] += grossNegative - negativeAmounts.reduce((sum, v) => sum + v, 0);
+  const rowsWithAmounts = SALES_GST_ROWS.map((row) => ({
+    row,
+    amount: row.sign === "positive" ? positiveAmounts[positiveRows.indexOf(row)] : negativeAmounts[negativeRows.indexOf(row)],
+  }));
+  const largest = Math.max(...rowsWithAmounts.map((r) => r.amount), 1);
+  const previewRows: RecoveryPreviewRow[] = rowsWithAmounts.map(({ row, amount }) => {
+    const weight = amount / largest;
+    return {
+      classification: row.classification,
+      bucket: row.bucket,
+      detail: row.detail,
+      amount,
+      sign: row.sign,
+      records: 2 + Math.floor(random() * 38),
+      priority: weight >= 0.66 ? "High" : weight >= 0.33 ? "Medium" : "Low",
+    };
+  });
+
+  return {
+    framing: "recovery",
+    salesGst: { areas, projections, includesItc: includeItc },
+    potentialNow: net,
+    grossPositive,
+    grossNegative,
+    exposureQuarter: projections[0].total,
+    exposureYear: projections[2].total,
+    previewRows,
+    nextActions: [
+      "Correct the invoices the rule-based checks flagged before the next filing",
+      "Review the place-of-supply and HSN calls the model flagged with your tax team",
+      "Confirm e-invoice and LUT applicability for the flagged invoices",
+    ],
+  };
+}
+
+export function generateMockResult(reconciliationId: string, options: { includeItc?: boolean } = {}): TopicMockResult {
+  if (reconciliationId.split("::")[0] === "10.1") return generateSalesGstResult(reconciliationId, options.includeItc ?? false);
   const random = mulberry32(hashString(reconciliationId));
 
   // A reconciliation nets two real, opposite-direction findings against each other: money coming

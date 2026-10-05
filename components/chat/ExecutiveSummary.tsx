@@ -1,6 +1,7 @@
 "use client";
 
 import { useRecoveryFormatter } from "@/lib/chat/useCurrency";
+import { SalesGstBody, SalesGstHeader } from "./SalesGstSummary";
 import type {
   RecoveryBucket,
   RecoveryPreviewRow,
@@ -74,7 +75,7 @@ function aggregateByBucket(previewRows: readonly RecoveryPreviewRow[], sign: Rec
 // prose, not a recoverable figure, and — just as importantly — it lets the gated body below start
 // exactly at `data-scroll-target="result"`, so the "land on this phase" scroll and the gate
 // overlay's own top edge always line up, whatever height the body itself happens to be.
-export function ExecutiveSummaryHeader({ result }: { result: TopicMockResult }) {
+function StandardSummaryHeader({ result }: { result: TopicMockResult }) {
   const { top, topSharePct } = summaryHighlights(result);
   return (
     <div className="flex flex-col gap-1.5 px-1">
@@ -97,6 +98,16 @@ export function ExecutiveSummaryHeader({ result }: { result: TopicMockResult }) 
 // Which findings the summary leads with: recoverable amounts, the owed/unpaid side, or all of them.
 function leadSign(framing: SummaryFraming): RecoverySign | "all" {
   return framing === "exposure" ? "negative" : framing === "mismatch" ? "all" : "positive";
+}
+
+// Sales Register vs GSTR-1 has its own summary (see SalesGstSummary) — everything else keeps the
+// standard one below.
+export function ExecutiveSummaryHeader({ result }: { result: TopicMockResult }) {
+  return result.salesGst ? <SalesGstHeader result={result} /> : <StandardSummaryHeader result={result} />;
+}
+
+export function ExecutiveSummaryBody({ result }: { result: TopicMockResult }) {
+  return result.salesGst ? <SalesGstBody result={result} /> : <StandardSummaryBody result={result} />;
 }
 
 function summaryHighlights(result: TopicMockResult) {
@@ -127,7 +138,7 @@ export function ExecutiveSummary({ result }: { result: TopicMockResult }) {
 // on ResultStep's own outer wrapper instead of anywhere in here, specifically so it includes the
 // header above this body too — landing on this body alone would leave that header (and its own
 // "do not hide this" requirement) scrolled just out of view above it.
-export function ExecutiveSummaryBody({ result }: { result: TopicMockResult }) {
+function StandardSummaryBody({ result }: { result: TopicMockResult }) {
   const { formatter, ready } = useRecoveryFormatter();
   const format = (amount: number) => (ready ? formatter.format(amount) : "");
 

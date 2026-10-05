@@ -4,6 +4,7 @@ import {
   submitFreeMessage as applySubmitFreeMessage,
 } from "./discovery";
 import { buildIntentSummary, userWordsForIntent } from "./intents";
+import { generateMockResult } from "./mockResult";
 import { ANNUAL_ENTRY_ID, buildResolvedTopic, periodModeFor } from "./reconciliation";
 import { PLACEHOLDER_TITLE } from "./title";
 import { formatPeriodRange } from "./formatDate";
@@ -501,11 +502,14 @@ function withAccuracyExtras(topic: ReconciliationTopic, effective: Reconciliatio
   const checkpoints = topic.furtherCheckpoints ?? [];
   if (extras.length === 0) return effective;
   const covered = (state.checkpointIndex ?? 0) + extras.length;
-  return {
-    ...effective,
-    requiredFiles: [...effective.requiredFiles, ...extras.flatMap((i) => checkpoints[i]?.files ?? [])],
-    mockResult: checkpoints[covered - 1]?.mockResult ?? effective.mockResult,
-  };
+  const requiredFiles = [...effective.requiredFiles, ...extras.flatMap((i) => checkpoints[i]?.files ?? [])];
+  // Sales Register vs GSTR-1: the result is rebuilt for the documents actually provided, and shows
+  // ITC only once GSTR-3B is among them.
+  const mockResult =
+    topic.id === "10.1"
+      ? generateMockResult(`10.1::round-${covered}`, { includeItc: requiredFiles.some((f) => f.fileId === "SG-GSTR3B") })
+      : (checkpoints[covered - 1]?.mockResult ?? effective.mockResult);
+  return { ...effective, requiredFiles, mockResult };
 }
 
 export function openSchedule(state: ConversationState): ConversationState {

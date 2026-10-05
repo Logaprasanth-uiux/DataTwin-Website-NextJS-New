@@ -38,6 +38,45 @@ export interface RecoveryPreviewRow {
   priority: "High" | "Medium" | "Low";
 }
 
+// The Sales Register vs GSTR-1 summary breaks its net impact into named areas and projects it
+// forward. Everything in it is derived from the same few amounts, so the headline, the two pills,
+// the projections and the areas always tally (see generateSalesGstResult in mockResult.ts).
+export type SalesGstAreaId =
+  | "gst-overpaid"
+  | "gst-underpaid"
+  | "itc-claimed"
+  | "itc-eligible"
+  | "itc-excess"
+  | "itc-missed"
+  | "itc-blocked"
+  | "interest";
+
+export interface SalesGstArea {
+  id: SalesGstAreaId;
+  label: string;
+  description: string;
+  amount: number;
+  /** "recoverable" adds to the net, "payable" takes from it, "reference" is a total shown for context. */
+  kind: "recoverable" | "payable" | "reference";
+}
+
+export interface SalesGstProjection {
+  months: 3 | 6 | 12;
+  /** The net impact as it would stand at that point: today's net + leakage + interest. */
+  total: number;
+  /** Further leakage over the period if nothing changes. */
+  leakage: number;
+  /** Interest accruing on the net over the period. */
+  interest: number;
+}
+
+export interface SalesGstBreakdown {
+  areas: SalesGstArea[];
+  projections: SalesGstProjection[];
+  /** True once GSTR-3B is part of the result — only then do the ITC areas exist. */
+  includesItc: boolean;
+}
+
 // How the executive summary is worded and what it leads with. Chosen from the reconciliation (see
 // mockResult.ts) and then read back off the generated findings: "recovery" leads with money coming
 // back; "exposure" with tax that looks unpaid or under-reported; "mismatch" with differences
@@ -47,6 +86,8 @@ export type SummaryFraming = "recovery" | "exposure" | "mismatch";
 export interface TopicMockResult {
   /** Absent on older saved data — treated as "recovery". */
   framing?: SummaryFraming;
+  /** Only the Sales Register vs GSTR-1 result has this — see SalesGstBreakdown. */
+  salesGst?: SalesGstBreakdown;
   /** The NET recoverable position — `grossPositive - grossNegative`. This is the headline figure
    * quoted everywhere a single number is needed; the two gross figures below are what it's made
    * of, shown alongside it rather than only implied by it. */
