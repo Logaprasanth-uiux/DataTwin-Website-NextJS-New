@@ -12,6 +12,7 @@ import type {
   ContactDetails,
   ConversationState,
   CustomPeriodRange,
+  DemoOutcome,
   EntryContext,
   FileRequirement,
   FileSourceChoice,
@@ -224,9 +225,46 @@ function pickFreeMessageReply(index: number, topicLabel: string | null): string 
 // "Something else" uses (so it can actually resolve/narrow, not just echo). Once a reconciliation
 // is resolved, there's no further identification/period/file logic to re-run here — the message is
 // recorded and acknowledged in place, appended wherever the conversation currently stands.
+// --- Outcomes other than a normal result (demo) -------------------------------------------------
+
+const DEMO_OUTCOME_LABEL: Record<DemoOutcome, string> = {
+  "file-error": "a file error",
+  "api-error": "a GST Portal (API) error",
+  "reconciliation-error": "a reconciliation error",
+  "no-impact": "a no-impact result",
+};
+
+// A typed demo command. Once a reconciliation is under way, a short message that names an outcome
+// is enough: "file error", "api error", "portal error", "reconciliation error", "no impact",
+// "all clear" (or the same starting with demo / simulate / test / force). Before that, while
+// DataTwin is still working out what the user is asking about, only the prefixed form counts, so a
+// real question like "my GST file has an error" still goes to the normal conversation. Anything
+// longer than six words is treated as ordinary conversation.
+export function parseDemoCommand(text: string, underway = true): DemoOutcome | null {
+  const t = text.toLowerCase().trim();
+  const prefixed = /^(demo|simulate|test|force|trigger|show)\b/.test(t);
+  if (!prefixed && (!underway || t.split(/\s+/).length > 6)) return null;
+  if (!/(error|fail|crash|broke|impact|issue|clear)/.test(t)) return null;
+  if (/(no[\s-]?impact|no issues?|all clear|clean|no difference|no mismatch)/.test(t)) return "no-impact";
+  if (/(api|portal|server|timeout|time out)/.test(t)) return "api-error";
+  if (/recon/.test(t)) return "reconciliation-error";
+  return "file-error";
+}
+
+// A file whose name says it's bad ("sales-error.xlsx", "corrupt.csv") ends the run with a file
+// error too, so the error can also be reached just by choosing a file.
+const BAD_FILE_NAME = /error|corrupt|invalid/i;
+
 export function submitChatMessage(state: ConversationState, text: string): ConversationState {
   const trimmed = text.trim();
   if (!trimmed) return state;
+
+  const demo = parseDemoCommand(trimmed, state.phase !== "discovery");
+  if (demo) {
+    const reply = `Demo mode: your next run will end with ${DEMO_OUTCOME_LABEL[demo]}. Carry on as normal.`;
+    const freeMessages = [...state.freeMessages, { id: `fm${state.freeMessages.length}`, text: trimmed, reply, demo: true }];
+    return touch({ ...state, freeMessages, demoOutcome: demo });
+  }
 
   if (state.phase === "discovery") {
     const { discovery, status } = applySubmitFreeMessage(state.discovery, trimmed);
@@ -441,7 +479,31 @@ export function completeVerification(state: ConversationState): ConversationStat
   // Straight to the result after the required documents. Every further document is optional, so
   // they are all offered together on the result's "improve accuracy" card (see getAccuracyOffer)
   // rather than asked for one at a time in the conversation first.
-  return touch({ ...state, phase: "result" });
+  const flagged = Object.values(state.uploads).find((upload) => BAD_FILE_NAME.test(upload.fileName));
+  return touch({ ...state, phase: "result", demoOutcome: state.demoOutcome ?? (flagged ? "file-error" : undefined) });
+}
+
+// After an error outcome: back to the files, with nothing carried over from the failed run.
+export function retryAfterOutcome(state: ConversationState): ConversationState {
+  return touch({
+    ...state,
+    phase: "files",
+    demoOutcome: undefined,
+    nextCheck: undefined,
+    uploads: {},
+    fileEvents: [],
+    fileSource: {},
+    portalFetch: {},
+    fileValidation: {},
+    filePreviewOpen: {},
+    accuracyExtras: [],
+    checkpointIndex: 0,
+    maxRequiredFilesRevealed: 0,
+  });
+}
+
+export function answerNextCheck(state: ConversationState, choice: "another" | "done"): ConversationState {
+  return touch({ ...state, nextCheck: choice });
 }
 
 // The "continue with the existing uploaded documents alone" way out of an offered checkpoint round
@@ -557,8 +619,9 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
   // below (still picking a period, mid-upload, waiting on verification, already at the result) —
   // appended right before every return, not just the final one, so a message typed before the
   // conversation has moved past "files" (say) doesn't silently vanish from the transcript.
+  let outcomeShown = false;
   const finish = (): TranscriptItem[] => {
-    appendFreeMessages(items, state);
+    appendFreeMessages(items, state, outcomeShown ? "other" : "all");
     return items;
   };
 
@@ -713,6 +776,13 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
     if (!isCurrentRound) continue;
 
     const resultTopic = withAccuracyExtras(topic, effectiveTopic, state);
+    if (state.demoOutcome) {
+      // The command that caused this outcome reads just before it, not after.
+      appendFreeMessages(items, state, "demo");
+      appendOutcome(items, state, resultTopic);
+      outcomeShown = true;
+      return finish();
+    }
     push({ kind: "result", id: "result", topic: resultTopic, active: state.phase === "result" });
     appendContactAndBeyond(items, state, resultTopic);
     appendFileEvents(items, state, effectiveTopic);
@@ -722,6 +792,58 @@ export function buildTranscript(state: ConversationState): TranscriptItem[] {
   // Unreachable in practice — the loop above always returns by the time it processes
   // `currentCheckpointIndex` — kept only so this function provably returns on every path.
   return finish();
+}
+
+// The wording on each outcome card: a one-line headline, then two or three lines on what happened
+// and what to do next, naming the file or check involved.
+function appendOutcome(items: TranscriptItem[], state: ConversationState, topic: ReconciliationTopic): void {
+  const outcome = state.demoOutcome!;
+  const badUpload = Object.values(state.uploads).find((upload) => BAD_FILE_NAME.test(upload.fileName));
+  const fileName = badUpload?.fileName ?? `your ${topic.requiredFiles[0]?.name ?? "file"}`;
+  // Sales Register vs GSTR-1 is called "Sales Register vs GST reconciliation" in the conversation.
+  const checkName = topic.id === "10.1" ? "Sales Register vs GST reconciliation" : topic.label;
+  const portalId = topic.portalFetchFileIds?.[0];
+  const portalName = topic.requiredFiles.find((f) => f.fileId === portalId)?.name ?? "return";
+
+  const content: Record<DemoOutcome, { title: string; reason: string }> = {
+    "file-error": {
+      title: "Oops! One of your files needs a look",
+      reason: `Some entries in ${fileName} couldn't be read, such as rows with a missing GSTIN or amounts saved as text, so we couldn't match them reliably. Fix those rows and upload the file again. Nothing else you've shared is lost.`,
+    },
+    "api-error": {
+      title: "Oops! We couldn't reach the GST Portal",
+      reason: `The GST Portal didn't answer in time, so your ${portalName} couldn't be fetched and the reconciliation stopped. Your uploaded files are safe. Try again in a few minutes, or upload that file yourself.`,
+    },
+    "reconciliation-error": {
+      title: "Oops! The reconciliation hit a snag",
+      reason: `We matched most of your records, but too many invoices had no usable invoice number to finish ${checkName}. Check the invoice number column in your files and run it again.`,
+    },
+    "no-impact": {
+      title: "Good news! No impact found",
+      reason: `We checked ${checkName} and everything lines up. Your books and returns agree, so there's no tax at risk and nothing to recover for this period.`,
+    },
+  };
+  items.push({ kind: "outcome", id: "outcome", outcome, ...content[outcome] });
+
+  if (outcome === "no-impact") {
+    items.push({
+      kind: "next-check",
+      id: "next-check",
+      prompt: "Would you like to check another reconciliation?",
+      options: [
+        { id: "another", label: "Yes, check another" },
+        { id: "done", label: "No, that's all for now" },
+      ],
+      selectedId: state.nextCheck ?? null,
+    });
+    if (state.nextCheck === "done") {
+      items.push({
+        kind: "assistant-text",
+        id: "next-check-done",
+        text: "Sounds good. I'm here whenever you want to run another check.",
+      });
+    }
+  }
 }
 
 const REPLACE_PHRASES = [
@@ -757,8 +879,10 @@ function appendFileEvents(items: TranscriptItem[], state: ConversationState, top
 // Composer messages sent after discovery, each rendered as the user's turn immediately followed
 // by DataTwin's acknowledgement — appended wherever the conversation currently stands (see
 // `finish()` above), never rewriting an earlier turn.
-function appendFreeMessages(items: TranscriptItem[], state: ConversationState): void {
+function appendFreeMessages(items: TranscriptItem[], state: ConversationState, which: "all" | "demo" | "other"): void {
   for (const message of state.freeMessages) {
+    if (which === "demo" && !message.demo) continue;
+    if (which === "other" && message.demo) continue;
     items.push({ kind: "user-text", id: `free-user-${message.id}`, text: message.text });
     items.push({ kind: "assistant-text", id: `free-reply-${message.id}`, text: message.reply });
   }

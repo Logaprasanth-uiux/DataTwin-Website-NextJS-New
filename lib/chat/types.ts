@@ -237,6 +237,8 @@ export interface FreeMessage {
   id: string;
   text: string;
   reply: string;
+  /** A typed demo command ("demo file error") — shown just before the outcome card it caused, not at the very end. */
+  demo?: boolean;
 }
 
 export type ConversationPhase =
@@ -311,6 +313,12 @@ export interface DiscoveryState {
   shownIds: string[];
 }
 
+// How a run ends when it doesn't end in a normal result: a problem with a file, with the GST Portal
+// (API), or with the reconciliation itself, or a clean "no impact" outcome. Triggered for demos by
+// typing a command in the composer (see parseDemoCommand in engine.ts), or by uploading a file whose
+// name contains "error".
+export type DemoOutcome = "file-error" | "api-error" | "reconciliation-error" | "no-impact";
+
 export interface ConversationState {
   id: string;
   title: string;
@@ -381,6 +389,10 @@ export interface ConversationState {
    * is held back until then; `true` = confirmed. Absent on conversations saved before this step
    * existed, which are treated as already confirmed. */
   intentConfirmed?: boolean;
+  /** When set, the run ends with this outcome card instead of the normal result. */
+  demoOutcome?: DemoOutcome;
+  /** The answer to "Would you like to check another reconciliation?" after a no-impact outcome. */
+  nextCheck?: "another" | "done";
 }
 
 export interface ConversationSummary {
@@ -444,5 +456,7 @@ export type TranscriptItem =
     }
   | { kind: "verification"; id: string }
   | { kind: "result"; id: string; topic: ReconciliationTopic; active: boolean }
+  | { kind: "outcome"; id: string; outcome: DemoOutcome; title: string; reason: string }
+  | { kind: "next-check"; id: string; prompt: string; options: DiscoveryOptionChoice[]; selectedId: string | null }
   | { kind: "schedule"; id: string; resolved: boolean }
   | { kind: "reveal"; id: string; topic: ReconciliationTopic };

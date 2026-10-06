@@ -23,6 +23,7 @@ import { FileUploadStep } from "./FileUploadStep";
 import { IntentCard } from "./IntentCard";
 import { MessageTurn } from "./MessageTurn";
 import { OptionGroup } from "./OptionGroup";
+import { OutcomeCard } from "./OutcomeCard";
 import { AssistantReveal, createRevealTracker, UserReveal } from "./reveal";
 import { RevealStep } from "./RevealStep";
 import { ResultStep } from "./ResultStep";
@@ -31,6 +32,9 @@ import { VerificationStep } from "./VerificationStep";
 
 export interface TranscriptActions {
   onSelectDiscoveryOption: (turnId: string, optionId: string) => void;
+  onRetryOutcome: () => void;
+  onCheckSomethingElse: () => void;
+  onNextCheck: (choice: "another" | "done") => void;
   onConfirmIntent: () => void;
   onRejectIntent: () => void;
   onSelectPeriod: (id: PeriodOptionId) => void;
@@ -247,6 +251,31 @@ export function Transcript({
                   })()}
                 />
               </AssistantReveal>
+            );
+          case "outcome":
+            return (
+              <AssistantReveal key={item.id} itemKey={item.id} tracker={tracker}>
+                <OutcomeCard
+                  outcome={item.outcome}
+                  title={item.title}
+                  reason={item.reason}
+                  onRetry={actions.onRetryOutcome}
+                  onCheckSomethingElse={actions.onCheckSomethingElse}
+                />
+              </AssistantReveal>
+            );
+          case "next-check":
+            return (
+              <OptionGroup
+                key={item.id}
+                id={item.id}
+                tracker={tracker}
+                prompt={item.prompt}
+                options={item.options}
+                selectedId={item.selectedId}
+                resolved={item.selectedId !== null}
+                onSelect={(choice) => actions.onNextCheck(choice as "another" | "done")}
+              />
             );
           case "schedule":
             return (

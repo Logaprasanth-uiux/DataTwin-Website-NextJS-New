@@ -134,6 +134,7 @@ export const FLOWS: FlowConfig[] = [
     problem: "Revenue in your books for the year may not agree with the outward supplies reported through GSTR-1 and GSTR-1A.",
     intent: "Reconcile full-year book revenue to GSTR-1 and GSTR-1A, with the reasons for any gap.",
     checks: ["Books turnover vs GSTR-1 and GSTR-1A for the year", "Credit and debit notes in between", "Unexplained differences"],
+    triggers: [["turnover", "gstr-1", "year"], ["revenue", "gstr-1", "annual"], ["revenue", "gstr-1a"], ["turnover", "gstr-1a"]],
   },
   {
     id: "8.3",
@@ -142,6 +143,7 @@ export const FLOWS: FlowConfig[] = [
     problem: "The tax reported in your GSTR-1 for the year may differ from the liability declared in your GSTR-3B returns.",
     intent: "Compare annual outward-supply reporting with the tax declared month by month, and find short payments.",
     checks: ["GSTR-1 and GSTR-1A tax by month", "Liability declared in GSTR-3B", "Months with a gap"],
+    triggers: [["gstr-1", "gstr-3b", "year"], ["gstr-1", "gstr-3b", "annual"]],
   },
   {
     id: "8.16",
@@ -493,7 +495,7 @@ export const FLOWS: FlowConfig[] = [
     problem: "The liability on the portal may not be fully matched by the cash and credit you used to pay it.",
     intent: "Confirm each liability was paid from the right ledger, with nothing left over.",
     checks: ["Liability ledger", "Cash and credit utilisation", "Unmatched liability"],
-    triggers: [["utilisation"], ["utilization"]],
+    triggers: [["utilisation"], ["utilization"], ["cash", "credit", "utilisation"], ["cash", "credit", "utilization"]],
   },
   {
     id: "11.3",
@@ -583,7 +585,7 @@ export const FLOWS: FlowConfig[] = [
     problem: "Zero-rated supplies and related ITC may qualify for a refund that hasn't been identified or claimed.",
     intent: "Find the refund you are eligible to claim for exports and SEZ supplies.",
     checks: ["Zero-rated supplies in the period", "ITC and tax attributable to them", "Eligible refund not yet claimed"],
-    triggers: [["refund", "eligibility"], ["refund", "eligible"]],
+    triggers: [["refund", "eligibility"], ["refund", "eligible"], ["refunds", "eligible"], ["refunds", "eligibility"]],
   },
 ];
 

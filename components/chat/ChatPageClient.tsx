@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useRef, useSyncExternalStore } from "
 import { useRouter } from "next/navigation";
 import {
   advanceUploadStatus,
+  answerNextCheck,
   agreePortalConsent,
   beginFileValidation,
   beginVerification,
@@ -24,6 +25,7 @@ import {
   rejectIntent,
   removeUpload,
   replaceFlaggedFile,
+  retryAfterOutcome,
   scheduleMeeting,
   selectDiscoveryOption,
   selectPeriod,
@@ -35,6 +37,7 @@ import {
   verifySummaryOtp,
 } from "@/lib/chat/engine";
 import {
+  createConversationId,
   getMostRecentConversationForContext,
   getOrCreateUserId,
   loadConversation,
@@ -304,8 +307,17 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     setOverride(updater(state));
   };
 
+  const openNewConversation = () => router.push(`/chat?cid=${createConversationId()}`);
+
   const actions: TranscriptActions = {
     onSelectDiscoveryOption: (turnId, optionId) => update((prev) => selectDiscoveryOption(prev, turnId, optionId)),
+    onRetryOutcome: () => update((prev) => retryAfterOutcome(prev)),
+    onCheckSomethingElse: () => openNewConversation(),
+    onNextCheck: (choice) => {
+      update((prev) => answerNextCheck(prev, choice));
+      // A short beat so the answer shows (and is saved) before moving on to a fresh conversation.
+      if (choice === "another") window.setTimeout(openNewConversation, 450);
+    },
     onConfirmIntent: () => update((prev) => confirmIntent(prev)),
     onRejectIntent: () => update((prev) => rejectIntent(prev)),
     onSelectPeriod: (id) => update((prev) => selectPeriod(prev, id)),

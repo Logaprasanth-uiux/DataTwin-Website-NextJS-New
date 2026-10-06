@@ -2,6 +2,7 @@
 
 import { useRecoveryFormatter } from "@/lib/chat/useCurrency";
 import type { SalesGstArea, SalesGstAreaId, TopicMockResult } from "@/lib/chat/types";
+import { ProjectionTimeline } from "./ProjectionTimeline";
 
 // The executive summary for Sales Register vs GSTR-1. Same look as the standard summary, but built
 // on the named areas and projections in `result.salesGst` (see generateSalesGstResult), so the net
@@ -58,18 +59,9 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
   const top = largestMover(breakdown.areas);
   const [p3, p6, p12] = breakdown.projections;
   const fade = `transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`;
-  const areaTotal = breakdown.areas.reduce((sum, a) => sum + a.amount, 0);
-
-  const projectionCards = [
-    { p: p3, tone: "navy" as const, label: "In 3 months if unresolved" },
-    { p: p6, tone: "accent" as const, label: "In 6 months if unresolved" },
-    { p: p12, tone: "crimson" as const, label: "In 12 months if unresolved" },
-  ];
-  const toneClass = {
-    navy: { card: "border-navy-hairline bg-navy/[0.03]", value: "text-navy" },
-    accent: { card: "border-accent/30 bg-accent/[0.05]", value: "text-accent" },
-    crimson: { card: "border-crimson/20 bg-crimson/[0.04]", value: "text-crimson" },
-  } as const;
+  // Only areas that are an issue appear: ITC claimed and ITC eligible are reference totals, not findings.
+  const shownAreas = breakdown.areas.filter((a) => a.kind !== "reference");
+  const areaTotal = shownAreas.reduce((sum, a) => sum + a.amount, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -100,19 +92,8 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {projectionCards.map(({ p, tone, label }) => (
-          <div key={p.months} className={`flex flex-col gap-2 rounded-2xl border p-5 shadow-soft ${toneClass[tone].card}`}>
-            <span className={`dt-display text-3xl font-semibold tracking-[-0.01em] ${toneClass[tone].value} ${fade}`}>
-              {format(p.total)}
-            </span>
-            <span className="text-[13.5px] font-semibold text-navy">{label}</span>
-            <span className="text-[12.5px] leading-relaxed text-navy-muted">
-              {format(net)} today, plus {format(p.leakage)} of further leakage and {format(p.interest)} of interest
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* Re-keyed on the figures, so it plays again when the result is refreshed. */}
+      <ProjectionTimeline key={`${net}-${p12.total}`} net={net} projections={breakdown.projections} format={format} />
 
       <div className="rounded-2xl border border-accent/25 bg-accent/[0.06] p-6">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">Bottom line</p>
@@ -132,18 +113,20 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
       <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft sm:p-7">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">Recovery areas</p>
         <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">
-          {breakdown.areas.length} areas behind the {format(net)} net impact
+          {shownAreas.length} areas behind the {format(net)} net impact
         </h3>
         <p className="mt-1.5 text-[13px] text-navy-body">
           {breakdown.includesItc
             ? "Includes ITC, since GSTR-3B is part of this result."
-            : "Add GSTR-3B below to include ITC claimed, eligible, excess, missed and blocked."}
+            : "Add GSTR-3B below to include excess, missed and blocked ITC."}
         </p>
 
-        <div className="mt-6 flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
-          <AreaDonut areas={breakdown.areas} total={areaTotal} centre={format(net)} ready={ready} />
-          <ul className="flex w-full flex-1 flex-col gap-4">
-            {breakdown.areas.map((area) => (
+        <div className="mt-6 grid grid-cols-1 items-center gap-8 sm:grid-cols-2 sm:gap-10">
+          <div className="flex justify-center">
+            <AreaDonut areas={shownAreas} total={areaTotal} centre={format(net)} ready={ready} />
+          </div>
+          <ul className="flex w-full flex-col gap-4">
+            {shownAreas.map((area) => (
               <li key={area.id} className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-2.5">
                   <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: dotColor(area.id) }} />
@@ -162,7 +145,7 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
                     {format(area.amount)}
                   </p>
                   <p className="mt-0.5 text-[12.5px] text-navy-muted">
-                    {area.kind === "reference" ? "reference" : `${Math.round((area.amount / areaTotal) * 100)}%`}
+                    {`${Math.round((area.amount / areaTotal) * 100)}%`}
                   </p>
                 </div>
               </li>
@@ -171,16 +154,15 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
         </div>
 
         <p className="mt-6 border-t border-navy-hairline pt-4 text-[12px] text-navy-faint">
-          Recoverable areas add to the net impact, payable areas take from it, and ITC claimed and eligible are
-          shown for reference.
+          Recoverable areas add to the net impact and payable areas take from it.
         </p>
       </div>
     </div>
   );
 }
 
-const DONUT_SIZE = 168;
-const DONUT_STROKE = 24;
+const DONUT_SIZE = 280;
+const DONUT_STROKE = 40;
 
 function AreaDonut({
   areas,
@@ -223,13 +205,13 @@ function AreaDonut({
           />
         ))}
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 px-6 text-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-10 text-center">
         <span
-          className={`dt-display text-[15px] leading-tight font-semibold text-navy transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
+          className={`dt-display text-[24px] leading-tight font-semibold text-navy transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
         >
           {centre}
         </span>
-        <span className="text-[10.5px] tracking-[0.04em] text-navy-muted uppercase">Net impact</span>
+        <span className="text-[11.5px] tracking-[0.04em] text-navy-muted uppercase">Net impact</span>
       </div>
     </div>
   );
