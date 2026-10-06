@@ -95,6 +95,22 @@ type ReconciliationScript = Pick<
   baseFileIds?: string[];
 };
 
+// The optional documents of the umbrella Sales with GST check, in the order they're offered. The
+// "SG-" ids are hand-written for this check (not rows in File_Requirements.xlsx), as for 10.1.
+const SALES_WITH_GST_OPTIONAL: { fileId: string; name: string; why: string; benefit: string; portal?: boolean }[] = [
+  { fileId: "SG-GSTR3B", name: "GSTR-3B Liability Summary", why: "Shows the tax you actually paid, so GSTR-1 can be checked against it month by month.", benefit: "Checks the tax declared in GSTR-1 against what you paid in GSTR-3B, which is where short payment shows up, and brings ITC into the result.", portal: true },
+  { fileId: "F39", name: "e-Invoice (IRP) Register", why: FILE_DEFS.F39.why, benefit: "Confirms every IRN appears in your register and GSTR-1 with matching values.", portal: true },
+  { fileId: "F40", name: "e-Way Bill Register", why: FILE_DEFS.F40.why, benefit: "Ties e-way bill values and details back to the invoices they were raised for.", portal: true },
+  { fileId: "F24", name: "Export / SEZ Register", why: "Lists export and SEZ invoices with their destination and treatment, so each can be checked against GSTR-1.", benefit: "Confirms exports and SEZ supplies are reported in the right GSTR-1 table, and none as taxable." },
+  { fileId: "F60", name: FILE_DEFS.F60.name, why: FILE_DEFS.F60.why, benefit: "Matches each export invoice to its shipping bill, so exports without one are flagged." },
+  { fileId: "F61", name: FILE_DEFS.F61.name, why: FILE_DEFS.F61.why, benefit: "Confirms each export made without paying IGST falls within a valid LUT." },
+  { fileId: "F22", name: FILE_DEFS.F22.name, why: "Lists advances received from customers, so GST at receipt and later adjustments can be checked.", benefit: "Checks tax was paid on advances received and that adjustments against invoices are reported." },
+  { fileId: "F58", name: "HSN/SAC Summary", why: FILE_DEFS.F58.why, benefit: "Compares HSN- and rate-wise totals in GSTR-1 with your sales register.", portal: true },
+  { fileId: "F31", name: FILE_DEFS.F31.name, why: FILE_DEFS.F31.why, benefit: "Ties every credit and debit note back to its original invoice, so returns and price changes net off correctly." },
+  { fileId: "SG-GSTR1A", name: "GSTR-1A", why: "Captures same-period amendments to GSTR-1: corrections, cancellations and rate fixes.", benefit: "Picks up amendments filed after your GSTR-1, so corrected invoices stop showing up as mismatches.", portal: true },
+  { fileId: "SG-OTHERINC", name: "Other Income Register", why: "Lists income outside normal sales, such as sale of assets or scrap, recoveries, rent, notice pay and cross-charges between your GSTINs.", benefit: "Finds income in your books that may be a supply but was never reported in GSTR-1." },
+];
+
 // Bespoke walkthrough copy for reconciliations with a scripted journey. Everything else keeps the
 // generic templated copy built below; this only ever *adds* optional fields onto the topic the
 // generic path already produces, so a reconciliation with no entry here behaves exactly as it did
@@ -402,6 +418,33 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
         mockResult: generateMockResult("10.1::checkpoint-3"),
       },
     ],
+  },
+  // "Sales with GST": the umbrella check for a user who says their sales have a GST issue without
+  // naming one reconciliation. Sales Register + GSTR-1 are all that's needed to run; every other
+  // sales-side document is optional, offered together before the run and again below the result.
+  // The result is the Sales Register vs GSTR-1 summary (ITC appears once GSTR-3B is in).
+  "10.15": {
+    baseFileIds: ["F17", "F18"],
+    requiredFileNameOverrides: { F18: "GSTR-1" },
+    requiredFileWhyOverrides: {
+      F17: "Lists your sales for the period, invoice by invoice, so each can be checked against what was reported.",
+      F18: "Shows the sales you reported for the period, to match against your register.",
+    },
+    filesIntro:
+      "Let's start with your Sales Revenue Register for the period.\n\nWhy this helps: Sets the books-side baseline.",
+    fileAckOverrides: {
+      F17: "Got it. Now share your GSTR-1 for the same period.\n\nWhy this helps: Matches every invoice to what's reported.",
+    },
+    portalFetchFileIds: ["F18"],
+    autoAdvanceMessage: "Both files are ready. Running your Sales with GST reconciliation... ⏳",
+    furtherCheckpoints: SALES_WITH_GST_OPTIONAL.map(
+      ({ fileId, name, why, benefit, portal }, index): ReconciliationCheckpoint => ({
+        files: [{ fileId, name, level: "required", why }],
+        portalFetchFileIds: portal ? [fileId] : undefined,
+        accuracyBenefit: benefit,
+        mockResult: generateMockResult(`10.15::checkpoint-${index + 1}`),
+      }),
+    ),
   },
 };
 

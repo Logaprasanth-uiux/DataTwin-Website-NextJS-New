@@ -318,6 +318,7 @@ export function FileUploadStep({
       {requiredReady && topic.autoAdvanceMessage && startIndex === 0 && (topic.furtherCheckpoints?.length ?? 0) > 0 && (
         <OptionalDocsOffer
           itemKey={`${itemKey}:optional`}
+          requiredNames={topic.requiredFiles.map((f) => f.name)}
           tracker={tracker}
           checkpoints={topic.furtherCheckpoints ?? []}
           uploads={uploads}

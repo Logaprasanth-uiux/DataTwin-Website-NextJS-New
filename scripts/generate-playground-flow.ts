@@ -16,7 +16,7 @@ import { buildIntentSummary } from "../lib/chat/intents";
 import { buildResolvedTopic, periodModeFor } from "../lib/chat/reconciliation";
 import type { ChatFlow, FlowFile, FlowStep, Problem } from "../lib/playground/chatflow-types";
 
-const HAND_SCRIPTED = ["10.1", "10.11", "10.12", "10.13", "10.14", "14.8", "8.5"];
+const HAND_SCRIPTED = ["10.1", "10.15", "10.11", "10.12", "10.13", "10.14", "14.8", "8.5"];
 const FRAMING_NOTE = {
   recovery: "Result is framed as a recovery: money that can come back, net of anything short-paid.",
   exposure: "Result is framed as an exposure: tax that looks unpaid or under-reported, net of anything paid in excess.",

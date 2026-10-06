@@ -99,39 +99,48 @@ export function AccuracyBoostCard({
         </p>
       </div>
 
-      {remaining.map(({ checkpoint }) =>
-        checkpoint.files.map((file) => {
-          const upload = uploads[file.fileId];
-          const canFetch = checkpoint.portalFetchFileIds?.includes(file.fileId) ?? false;
-          if (!upload && canFetch && fileSource[file.fileId] === "portal") {
+      {/* Same two-column layout as the offer before the run: documents that can be fetched from the
+          portal first, so each row holds cards of the same height. */}
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+        {remaining
+          .flatMap(({ checkpoint }) =>
+            checkpoint.files.map((file) => ({ file, checkpoint, canFetch: checkpoint.portalFetchFileIds?.includes(file.fileId) ?? false })),
+          )
+          .sort((x, y) => Number(y.canFetch) - Number(x.canFetch))
+          .map(({ file, checkpoint, canFetch }) => {
+            const upload = uploads[file.fileId];
+            if (!upload && canFetch && fileSource[file.fileId] === "portal") {
+              return (
+                <div key={file.fileId} className="md:col-span-2">
+                  <PortalFetchFlow
+                    itemKey={`${itemKey}:${file.fileId}`}
+                    tracker={tracker}
+                    file={file}
+                    stage={portalFetch[file.fileId] ?? "gstin"}
+                    onSubmitGstin={() => onSubmitPortalGstin(file.fileId)}
+                    onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
+                  />
+                </div>
+              );
+            }
             return (
-              <PortalFetchFlow
-                key={file.fileId}
-                itemKey={`${itemKey}:${file.fileId}`}
-                tracker={tracker}
-                file={file}
-                stage={portalFetch[file.fileId] ?? "gstin"}
-                onSubmitGstin={() => onSubmitPortalGstin(file.fileId)}
-                onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
-              />
+              <div key={file.fileId} className={canFetch ? "flex self-stretch [&>*]:w-full" : undefined}>
+                <FileRequirementCard
+                  requirement={{ ...file, level: "optional", why: checkpoint.accuracyBenefit ?? file.why }}
+                  showWhyLabel
+                  upload={upload}
+                  onUpload={(fileId, fileName) => {
+                    onChooseFileSource(fileId, "upload");
+                    onUpload(fileId, fileName);
+                  }}
+                  onAdvanceStatus={onAdvanceStatus}
+                  onRemove={onRemove}
+                  onChoosePortal={canFetch ? () => onChooseFileSource(file.fileId, "portal") : undefined}
+                />
+              </div>
             );
-          }
-          return (
-            <FileRequirementCard
-              key={file.fileId}
-              requirement={{ ...file, level: "optional", why: checkpoint.accuracyBenefit ?? file.why }}
-              upload={upload}
-              onUpload={(fileId, fileName) => {
-                onChooseFileSource(fileId, "upload");
-                onUpload(fileId, fileName);
-              }}
-              onAdvanceStatus={onAdvanceStatus}
-              onRemove={onRemove}
-              onChoosePortal={canFetch ? () => onChooseFileSource(file.fileId, "portal") : undefined}
-            />
-          );
-        }),
-      )}
+          })}
+      </div>
 
       {pending.length > 0 && (
         <div className="flex flex-col gap-2.5">

@@ -1,6 +1,6 @@
 import { RECONCILIATION_CATALOG, type CatalogEntry } from "./data/catalog";
 import { AREAS, AREA_BY_ID, type AreaId } from "./areas";
-import { areaOfEntry, classifyOpener, guessAreaFromText, rankInArea, resolveIntent } from "./resolver";
+import { SALES_WITH_GST_ENTRY_ID, areaOfEntry, classifyOpener, guessAreaFromText, rankInArea, resolveIntent } from "./resolver";
 import type { DiscoveryState, DiscoveryTurn, EntryContext } from "./types";
 
 // Progressive, free-form reconciliation discovery: "Something else" (and generic/casual openers)
@@ -213,7 +213,9 @@ function continueFreeText(
     // Nothing points at a particular side: ask which, rather than guessing. When close matches
     // already span two or more sides, only those are offered.
     if (attempts >= MAX_ATTEMPTS) return askAgainOrFallback(CLARIFY_PROMPTS);
-    const areaIds = candidateAreas.length >= 2 ? candidateAreas : AREAS.map((a) => a.id);
+    // Sales and Purchase are always offered, since a GST issue is most often one of the two.
+    const areaIds: AreaId[] =
+      candidateAreas.length >= 2 ? [...new Set<AreaId>(["sales", "purchase", ...candidateAreas])] : AREAS.map((a) => a.id);
     turns.push(makeAreaOptions(turns, pickRound(ASK_AREA_PROMPTS, round), areaIds));
     return { discovery: { ...discovery, turns, attempts }, status: "continue" };
   }
@@ -283,6 +285,15 @@ export function selectDiscoveryOption(
   // The user picked a side: offer the closest checks on that side, scored against what they said.
   if (optionId.startsWith(AREA_PREFIX)) {
     const areaId = optionId.slice(AREA_PREFIX.length) as AreaId;
+    // The sales side has one umbrella check that covers everything on it, so choosing it needs no
+    // further narrowing.
+    if (areaId === "sales") {
+      turns.push(makeMessage(turns, "Got it — Sales with GST. Let's get the details we need."));
+      return {
+        discovery: { ...discovery, turns, resolvedId: SALES_WITH_GST_ENTRY_ID, shownIds: [...discovery.shownIds, SALES_WITH_GST_ENTRY_ID] },
+        status: "resolved",
+      };
+    }
     const lastUser = [...turns].reverse().find((turn) => turn.kind === "user");
     const text = (lastUser && lastUser.kind === "user" ? lastUser.text : fallbackText) ?? "";
     const candidates = rankInArea(text, areaId, discovery.shownIds);

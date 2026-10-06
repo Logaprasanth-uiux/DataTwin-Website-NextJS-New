@@ -4,7 +4,7 @@ import {
   submitFreeMessage as applySubmitFreeMessage,
 } from "./discovery";
 import { buildIntentSummary, userWordsForIntent } from "./intents";
-import { generateMockResult } from "./mockResult";
+import { generateMockResult, SALES_GST_IDS } from "./mockResult";
 import { ANNUAL_ENTRY_ID, buildResolvedTopic, periodModeFor } from "./reconciliation";
 import { PLACEHOLDER_TITLE } from "./title";
 import { formatPeriodRange } from "./formatDate";
@@ -568,8 +568,8 @@ function withAccuracyExtras(topic: ReconciliationTopic, effective: Reconciliatio
   // Sales Register vs GSTR-1: the result is rebuilt for the documents actually provided, and shows
   // ITC only once GSTR-3B is among them.
   const mockResult =
-    topic.id === "10.1"
-      ? generateMockResult(`10.1::round-${covered}`, { includeItc: requiredFiles.some((f) => f.fileId === "SG-GSTR3B") })
+    SALES_GST_IDS.has(topic.id)
+      ? generateMockResult(`${topic.id}::round-${covered}`, { includeItc: requiredFiles.some((f) => f.fileId === "SG-GSTR3B") })
       : (checkpoints[covered - 1]?.mockResult ?? effective.mockResult);
   return { ...effective, requiredFiles, mockResult };
 }
@@ -801,7 +801,8 @@ function appendOutcome(items: TranscriptItem[], state: ConversationState, topic:
   const badUpload = Object.values(state.uploads).find((upload) => BAD_FILE_NAME.test(upload.fileName));
   const fileName = badUpload?.fileName ?? `your ${topic.requiredFiles[0]?.name ?? "file"}`;
   // Sales Register vs GSTR-1 is called "Sales Register vs GST reconciliation" in the conversation.
-  const checkName = topic.id === "10.1" ? "Sales Register vs GST reconciliation" : topic.label;
+  const checkName =
+    topic.id === "10.1" ? "Sales Register vs GST reconciliation" : topic.id === "10.15" ? "Sales with GST reconciliation" : topic.label;
   const portalId = topic.portalFetchFileIds?.[0];
   const portalName = topic.requiredFiles.find((f) => f.fileId === portalId)?.name ?? "return";
 

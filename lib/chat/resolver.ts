@@ -148,6 +148,7 @@ function matchesGstr2bScriptedTrigger(userTokens: ReadonlySet<string>): CatalogE
 // "GSTR-1" only counts when no OTHER GST return is also mentioned (which would more likely mean
 // one of the other outward/inward-supply entries instead).
 const SALES_REGISTER_GST_SCRIPTED_ENTRY_ID = "10.1";
+export const SALES_WITH_GST_ENTRY_ID = "10.15";
 
 function matchesSalesRegisterGstScriptedTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
   const hasSalesRegister = userTokens.has("sales") && userTokens.has("register");
@@ -163,6 +164,12 @@ function matchesSalesRegisterGstScriptedTrigger(userTokens: ReadonlySet<string>)
   const hasGstr1Only = userTokens.has("gstr-1") && !mentionsOtherGstReturn;
 
   if (!hasSalesRegister && !hasAccountsReceivablesCheck && !hasSalesVsGst && !hasGstr1Only) return null;
+  // "My sales vs GST" with no register, no GSTR-1 and no particular return named is the whole sales
+  // side, not the one Sales Register vs GSTR-1 check: it gets the umbrella Sales with GST flow.
+  const namesAReturn = [...userTokens].some((t) => t.startsWith("gstr"));
+  if (hasSalesVsGst && !hasSalesRegister && !hasAccountsReceivablesCheck && !namesAReturn) {
+    return INDEX.find((i) => i.entry.id === SALES_WITH_GST_ENTRY_ID)?.entry ?? null;
+  }
   return INDEX.find((i) => i.entry.id === SALES_REGISTER_GST_SCRIPTED_ENTRY_ID)?.entry ?? null;
 }
 

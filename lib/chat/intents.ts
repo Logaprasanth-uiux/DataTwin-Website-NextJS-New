@@ -26,6 +26,17 @@ const SALES_VS_GSTR1: IntentSummary = {
   ],
 };
 
+const SALES_WITH_GST: IntentSummary = {
+  problem:
+    "Your sales may not agree with what you've reported and paid under GST, so some invoices could be missing, under-reported or taxed at the wrong rate, and some tax may be short-paid.",
+  intent: "Check your sales against GST from end to end, so any gap is found and fixed before it turns into a notice or a tax shortfall.",
+  checks: [
+    "Sales register vs GSTR-1, invoice by invoice, including credit notes, debit notes and amendments",
+    "Tax declared in GSTR-1 vs tax paid in GSTR-3B, month by month",
+    "e-Invoice and e-way bills, exports, advances, HSN/SAC and other income that may be a supply",
+  ],
+};
+
 const GSTR1_VS_3B: IntentSummary = {
   problem: "The tax declared in GSTR-1 may differ from the tax actually paid through GSTR-3B.",
   intent: "Find month-wise short payment early, so it can be paid with interest before it escalates into a DRC-01B notice.",
@@ -150,6 +161,7 @@ const OVERRIDES: Record<string, IntentSummary> = {
   "10.12": HSN_SAC,
   "8.5": ANNUAL_TURNOVER,
   "10.1": SALES_VS_GSTR1,
+  "10.15": SALES_WITH_GST,
   "10.3": GSTR1_VS_3B,
   "8.3": GSTR1_VS_3B,
   "18.1": GSTR1_VS_3B,

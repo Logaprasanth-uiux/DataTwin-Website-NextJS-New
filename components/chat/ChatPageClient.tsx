@@ -221,6 +221,7 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     let debounceTimer = 0;
     let lastScrolledHeight = 0;
     let landedOnResult = false;
+    let landedOnOptional = false;
     let lastPhaseSeen: string | undefined;
 
     const performScroll = () => {
@@ -229,6 +230,19 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
         lastPhaseSeen = phase;
         landedOnResult = false;
       }
+
+      // The optional-documents offer is long, so it lands once with its first line at the top of the
+      // viewport, for reading from the start, and then stays put while documents are added to it
+      // (the rest of the time the view chases the bottom, as everywhere else).
+      const optionalTarget = container.querySelector<HTMLElement>('[data-scroll-target="optional"]');
+      if (optionalTarget) {
+        if (!landedOnOptional) {
+          landedOnOptional = true;
+          optionalTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        return;
+      }
+      landedOnOptional = false;
 
       // The recovery result deserves to land at the top of the viewport the moment it appears —
       // not wherever the ordinary "chase the bottom" anchor happens to leave it — so it's found

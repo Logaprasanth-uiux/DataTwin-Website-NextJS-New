@@ -26,6 +26,7 @@ export function FileRequirementCard({
   onRemove,
   holdAtRecognised = false,
   onChoosePortal,
+  showWhyLabel = false,
 }: {
   requirement: FileRequirement;
   upload: UploadedFile | undefined;
@@ -41,6 +42,9 @@ export function FileRequirementCard({
    * ReconciliationTopic.portalFetchFileIds), rather than a differently-styled choice step ahead of
    * it. Switches the caller over to PortalFetchFlow; this card plays no further part once chosen. */
   onChoosePortal?: () => void;
+  /** Leads the description with a bold "Why this helps:", used where it is the benefit of adding the
+   * document (optional offers) rather than a plain description of the file. */
+  showWhyLabel?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   useMockFileValidation(upload, requirement.fileId, onAdvanceStatus, holdAtRecognised);
@@ -67,7 +71,17 @@ export function FileRequirementCard({
           {LEVEL_LABEL[requirement.level]}
         </span>
       </div>
-      <p className="text-[13.5px] leading-relaxed text-navy-body">{requirement.why}</p>
+      {/* Same look as the "Why this helps" line under a request in MessageTurn: small, italic, faint. */}
+      <p
+        className={
+          showWhyLabel
+            ? "text-[13px] leading-relaxed text-navy-faint italic"
+            : "text-[13.5px] leading-relaxed text-navy-body"
+        }
+      >
+        {showWhyLabel && "Why this helps: "}
+        {requirement.why}
+      </p>
 
       <input
         ref={inputRef}

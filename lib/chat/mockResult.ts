@@ -126,6 +126,8 @@ function splitAmount(count: number, total: number, random: () => number): number
 //   net         = recoverable - payable   <- the headline "net current impact"
 // ITC claimed / eligible are reference totals (excess = claimed - eligible-and-claimed). Projections
 // start from the net and add recurring leakage and interest, so 3, 6 and 12 months all build on it.
+// Sales Register vs GSTR-1 and the umbrella Sales with GST check share this result.
+export const SALES_GST_IDS = new Set(["10.1", "10.15"]);
 const SALES_GST_INTEREST_RATE = 0.18;
 
 const SALES_GST_ROWS: { classification: string; detail: string; bucket: RecoveryBucket; sign: "positive" | "negative" }[] = [
@@ -233,7 +235,7 @@ function generateSalesGstResult(reconciliationId: string, includeItc: boolean): 
 }
 
 export function generateMockResult(reconciliationId: string, options: { includeItc?: boolean } = {}): TopicMockResult {
-  if (reconciliationId.split("::")[0] === "10.1") return generateSalesGstResult(reconciliationId, options.includeItc ?? false);
+  if (SALES_GST_IDS.has(reconciliationId.split("::")[0])) return generateSalesGstResult(reconciliationId, options.includeItc ?? false);
   const random = mulberry32(hashString(reconciliationId));
 
   // A reconciliation nets two real, opposite-direction findings against each other: money coming
