@@ -1,6 +1,6 @@
 import { RECONCILIATION_CATALOG, type CatalogEntry } from "./data/catalog";
 import { AREAS, AREA_BY_ID, type AreaId } from "./areas";
-import { PURCHASE_WITH_GST_ENTRY_ID, SALES_WITH_GST_ENTRY_ID, areaOfEntry, classifyOpener, guessAreaFromText, rankInArea, resolveIntent } from "./resolver";
+import { PURCHASE_WITH_GST_ENTRY_ID, SALES_WITH_GST_ENTRY_ID, TAX_PAYMENTS_ENTRY_ID, areaOfEntry, classifyOpener, guessAreaFromText, rankInArea, resolveIntent } from "./resolver";
 import type { DiscoveryState, DiscoveryTurn, EntryContext } from "./types";
 
 // Progressive, free-form reconciliation discovery: "Something else" (and generic/casual openers)
@@ -287,9 +287,16 @@ export function selectDiscoveryOption(
     const areaId = optionId.slice(AREA_PREFIX.length) as AreaId;
     // The sales side has one umbrella check that covers everything on it, so choosing it needs no
     // further narrowing.
-    const umbrellaId = areaId === "sales" ? SALES_WITH_GST_ENTRY_ID : areaId === "purchase" ? PURCHASE_WITH_GST_ENTRY_ID : null;
+    const umbrellaId =
+      areaId === "sales"
+        ? SALES_WITH_GST_ENTRY_ID
+        : areaId === "purchase"
+          ? PURCHASE_WITH_GST_ENTRY_ID
+          : areaId === "tax"
+            ? TAX_PAYMENTS_ENTRY_ID
+            : null;
     if (umbrellaId) {
-      const label = areaId === "sales" ? "Sales with GST" : "Purchase with GST";
+      const label = areaId === "sales" ? "Sales with GST" : areaId === "purchase" ? "Purchase with GST" : "Tax payments and ledgers";
       turns.push(makeMessage(turns, `Got it — ${label}. Let's get the details we need.`));
       return {
         discovery: { ...discovery, turns, resolvedId: umbrellaId, shownIds: [...discovery.shownIds, umbrellaId] },

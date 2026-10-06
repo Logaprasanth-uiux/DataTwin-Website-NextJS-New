@@ -3190,6 +3190,144 @@
       ]
     },
     {
+      "id": "p-11-9",
+      "name": "Tax payments and ledgers",
+      "area": "Tax payments & ledgers",
+      "summary": "Check your GST payments end to end, so unpaid tax, interest and open demands are found and settled before they escalate. Result is framed as an exposure: tax that looks unpaid or under-reported, net of anything paid in excess.",
+      "steps": [
+        {
+          "id": "p-11-9-1",
+          "kind": "ai",
+          "title": "Show what was understood",
+          "detail": "Problem: The tax you declared may not match what has been paid through your ledgers, and interest, late fees, DRC-03 payments, refunds or demands may be sitting unreconciled.\nWhat you're after: Check your GST payments end to end, so unpaid tax, interest and open demands are found and settled before they escalate.\nWhat I'll check: Tax declared in GSTR-3B vs the electronic liability ledger, and how it was discharged; Interest, late fees and penalties paid vs what was due; DRC-03 payments, refunds and demands matched to the liabilities behind them.",
+          "chips": [
+            "Yes, that's right",
+            "Not quite"
+          ]
+        },
+        {
+          "id": "p-11-9-2",
+          "kind": "choice",
+          "title": "Period selection",
+          "detail": "Which month should be reconciled? Picking year-end offers to switch to the annual (GSTR-9) flow.",
+          "chips": [
+            "Current month",
+            "Previous month",
+            "Custom month",
+            "Year-end (annual)"
+          ]
+        },
+        {
+          "id": "p-11-9-3",
+          "kind": "files",
+          "title": "Required documents",
+          "detail": "Requested one by one. The first document gets a quick validation pass; a document that can come from the GST Portal also offers Fetch.",
+          "files": [
+            {
+              "id": "p-11-9-f-F03",
+              "name": "GSTR-3B",
+              "level": "required",
+              "source": "both",
+              "why": "Shows the tax you declared for the period, which is what has to be paid."
+            },
+            {
+              "id": "p-11-9-f-F19",
+              "name": "Electronic Liability Ledger",
+              "level": "required",
+              "source": "both",
+              "why": "Shows the liability on the portal and how much of it has been discharged."
+            }
+          ]
+        },
+        {
+          "id": "p-11-9-4",
+          "kind": "files",
+          "title": "Optional documents (offered together)",
+          "detail": "All shown at once in one message. The reconciliation waits for the user: \"Continue without these\" or \"Run reconciliation with N extra documents\". Anything added here counts towards the first result; anything skipped is offered again below the result.",
+          "skippable": true,
+          "files": [
+            {
+              "id": "p-11-9-f-F04",
+              "name": "Electronic Credit Ledger",
+              "level": "optional",
+              "source": "both",
+              "why": "Provides portal-side credit movements and balances after return filing."
+            },
+            {
+              "id": "p-11-9-f-F07",
+              "name": "Input GST GL",
+              "level": "optional",
+              "source": "upload",
+              "why": "Shows accounting postings to Input CGST/SGST/IGST/Cess, including reversals, reclaims and return claim movements."
+            },
+            {
+              "id": "p-11-9-f-F20",
+              "name": "Electronic Cash Ledger",
+              "level": "optional",
+              "source": "both",
+              "why": "Provides cash deposits and offsets used to discharge GST liabilities."
+            },
+            {
+              "id": "p-11-9-f-F33",
+              "name": "GST Payment Challan Register",
+              "level": "optional",
+              "source": "upload",
+              "why": "Provides challan/CIN-based GST cash deposits feeding Electronic Cash Ledger."
+            },
+            {
+              "id": "p-11-9-f-F21",
+              "name": "DRC-03 Additional Payments",
+              "level": "optional",
+              "source": "upload",
+              "why": "Captures voluntary/additional payments made outside normal return offset that may relate to annual reconciliation differences."
+            },
+            {
+              "id": "p-11-9-f-F41",
+              "name": "RFD-01 Refund Applications",
+              "level": "optional",
+              "source": "both",
+              "why": "Provides refund applications, category, claimed amount and ARN."
+            },
+            {
+              "id": "p-11-9-f-F42",
+              "name": "RFD-06 Refund Orders",
+              "level": "optional",
+              "source": "both",
+              "why": "Provides sanction/rejection order and sanctioned amount."
+            },
+            {
+              "id": "p-11-9-f-F43",
+              "name": "Refund Bank Receipts",
+              "level": "optional",
+              "source": "upload",
+              "why": "Provides actual bank receipt of sanctioned refunds."
+            },
+            {
+              "id": "p-11-9-f-F44",
+              "name": "Refund Eligibility Working",
+              "level": "optional",
+              "source": "upload",
+              "why": "Calculates eligible refund before RFD-01 for each applicable refund category."
+            },
+            {
+              "id": "p-11-9-f-F63",
+              "name": "Demand & Order Register",
+              "level": "optional",
+              "source": "upload",
+              "why": "Lists demands, notices and orders raised against you, with amounts, due dates and status."
+            },
+            {
+              "id": "p-11-9-f-F57",
+              "name": "DRC Response Register",
+              "level": "optional",
+              "source": "upload",
+              "why": "Tracks reasons, responses, payments/reversals and closure evidence for DRC intimations."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "p-18-6",
       "name": "Demands & Orders Raised vs Paid",
       "area": "Tax payments & ledgers",

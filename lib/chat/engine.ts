@@ -4,7 +4,7 @@ import {
   submitFreeMessage as applySubmitFreeMessage,
 } from "./discovery";
 import { buildIntentSummary, userWordsForIntent } from "./intents";
-import { generateMockResult, PURCHASE_GST_IDS, SALES_GST_IDS } from "./mockResult";
+import { generateMockResult, PURCHASE_GST_IDS, SALES_GST_IDS, TAX_GST_IDS } from "./mockResult";
 import { ANNUAL_ENTRY_ID, buildResolvedTopic, periodModeFor } from "./reconciliation";
 import { PLACEHOLDER_TITLE } from "./title";
 import { formatPeriodRange } from "./formatDate";
@@ -580,7 +580,7 @@ function withAccuracyExtras(topic: ReconciliationTopic, effective: Reconciliatio
   const mockResult =
     SALES_GST_IDS.has(topic.id)
       ? generateMockResult(`${topic.id}::round-${covered}`, { includeItc: requiredFiles.some((f) => f.fileId === "SG-GSTR3B") })
-      : PURCHASE_GST_IDS.has(topic.id)
+      : PURCHASE_GST_IDS.has(topic.id) || TAX_GST_IDS.has(topic.id)
         ? generateMockResult(`${topic.id}::round-${covered}`, { fileIds: requiredFiles.map((f) => f.fileId) })
         : (checkpoints[covered - 1]?.mockResult ?? effective.mockResult);
   return { ...effective, requiredFiles, mockResult };
@@ -820,7 +820,9 @@ function appendOutcome(items: TranscriptItem[], state: ConversationState, topic:
         ? "Sales with GST reconciliation"
         : topic.id === "1.14"
           ? "Purchase with GST reconciliation"
-          : topic.label;
+          : topic.id === "11.9"
+            ? "Tax payments and ledgers reconciliation"
+            : topic.label;
   const portalId = topic.portalFetchFileIds?.[0];
   const portalName = topic.requiredFiles.find((f) => f.fileId === portalId)?.name ?? "return";
 

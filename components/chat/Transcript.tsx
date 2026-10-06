@@ -235,9 +235,9 @@ export function Transcript({
                       <AccuracyBoostCard
                         itemKey={`${item.id}:accuracy`}
                         tracker={tracker}
-                        subject={item.topic.id === "1.14" ? "purchases" : "sales"}
+                        subject={item.topic.id === "1.14" ? "purchases" : item.topic.id === "11.9" ? "tax payments" : "sales"}
                         providedFileNames={item.topic.requiredFiles
-                          .filter((file) => file.fileId !== (item.topic.id === "1.14" ? "F05" : "F17"))
+                          .filter((file) => file.fileId !== (item.topic.id === "1.14" ? "F05" : item.topic.id === "11.9" ? "" : "F17"))
                           .map((file) => file.name)}
                         remaining={offer.remaining}
                         pending={offer.pending}

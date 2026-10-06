@@ -151,6 +151,31 @@ const PURCHASE_WITH_GST_OPTIONAL: { group: string; fileId: string; benefit: stri
   { group: "isd", fileId: "F38", benefit: "Compares the credit distributed with what each branch GSTIN received." },
 ];
 
+// The optional documents of the umbrella Tax payments and ledgers check, by group (see
+// PURCHASE_WITH_GST_GROUPS for the same shape). The required pair is GSTR-3B and the electronic
+// liability ledger. All of these have a definition in FILE_DEFS already.
+const TAX_PAYMENTS_GROUPS: { id: string; label: string }[] = [
+  { id: "credit", label: "Credit ledger and input accounts in your books" },
+  { id: "interest", label: "Cash ledger, interest and late fees" },
+  { id: "drc03", label: "DRC-03 payments" },
+  { id: "refunds", label: "Refunds claimed and received" },
+  { id: "demands", label: "Demands and orders" },
+];
+
+const TAX_PAYMENTS_OPTIONAL: { group: string; fileId: string; benefit: string }[] = [
+  { group: "credit", fileId: "F04", benefit: "Shows the credit available and used on the portal, to tie to the input accounts in your books." },
+  { group: "credit", fileId: "F07", benefit: "Ties the input CGST, SGST and IGST balances in your books to the credit used to pay tax." },
+  { group: "interest", fileId: "F20", benefit: "Shows the cash paid, so interest and late fees can be checked against what was due." },
+  { group: "interest", fileId: "F33", benefit: "Matches each challan to the liability it paid, including interest and late fees." },
+  { group: "drc03", fileId: "F21", benefit: "Matches voluntary payments made through DRC-03 to the liabilities they were meant to cover." },
+  { group: "refunds", fileId: "F41", benefit: "Lists the refunds you applied for, to compare with what was sanctioned." },
+  { group: "refunds", fileId: "F42", benefit: "Shows what was sanctioned, so short or rejected refunds stand out." },
+  { group: "refunds", fileId: "F43", benefit: "Confirms sanctioned refunds actually reached the bank and the books." },
+  { group: "refunds", fileId: "F44", benefit: "Compares the refund you are eligible for with what was claimed." },
+  { group: "demands", fileId: "F63", benefit: "Lists demands and orders raised, to track what has been paid and what is still open." },
+  { group: "demands", fileId: "F57", benefit: "Links each notice response to the payment made against it." },
+];
+
 // Bespoke walkthrough copy for reconciliations with a scripted journey. Everything else keeps the
 // generic templated copy built below; this only ever *adds* optional fields onto the topic the
 // generic path already produces, so a reconciliation with no entry here behaves exactly as it did
@@ -514,6 +539,36 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
         portalFetchFileIds: ["F01", "F03", "F04", "F29", "F37"].includes(fileId) ? [fileId] : undefined,
         accuracyBenefit: benefit,
         mockResult: generateMockResult(`1.14::checkpoint-${index + 1}`),
+      }),
+    ),
+  },
+  // "Tax payments and ledgers": the umbrella check for a user asking about their GST payments without
+  // naming one reconciliation. GSTR-3B and the electronic liability ledger are all that's needed to run.
+  // Everything else is optional and asked for by group. The result is framed as exposure, and each area
+  // appears only once the document behind it is in (see generateTaxGstResult).
+  "11.9": {
+    baseFileIds: ["F03", "F19"],
+    requiredFileNameOverrides: { F03: "GSTR-3B", F19: "Electronic Liability Ledger" },
+    requiredFileWhyOverrides: {
+      F03: "Shows the tax you declared for the period, which is what has to be paid.",
+      F19: "Shows the liability on the portal and how much of it has been discharged.",
+    },
+    filesIntro:
+      "Let's start with your GSTR-3B for the period.\n\nWhy this helps: Sets the tax you declared.",
+    fileAckOverrides: {
+      F03: "Got it. Now share your Electronic Liability Ledger for the same period.\n\nWhy this helps: Shows how much of that tax has actually been paid.",
+    },
+    portalFetchFileIds: ["F03", "F19"],
+    autoAdvanceMessage: "Both files are ready. Running your Tax payments and ledgers reconciliation... ⏳",
+    optionalGroups: TAX_PAYMENTS_GROUPS,
+    optionalGroupsQuestion: "To narrow this down, which of these apply to your GST payments?",
+    furtherCheckpoints: TAX_PAYMENTS_OPTIONAL.map(
+      ({ group, fileId, benefit }, index): ReconciliationCheckpoint => ({
+        group,
+        files: [{ fileId, name: FILE_DEFS[fileId].name, level: "required", why: FILE_DEFS[fileId].why }],
+        portalFetchFileIds: ["F04", "F20", "F41", "F42"].includes(fileId) ? [fileId] : undefined,
+        accuracyBenefit: benefit,
+        mockResult: generateMockResult(`11.9::checkpoint-${index + 1}`),
       }),
     ),
   },

@@ -139,10 +139,13 @@ export function OptionalDocsOffer({
             />
           </UserReveal>
           {selectedGroups.length > 0 && (
-            <MessageTurn
-              speaker="DataTwin"
-              text="Here are the documents that go with those. Add any of them now, or continue without."
-            />
+            // The view lands here once the groups are answered, so the reply is read from its first line.
+            <div data-scroll-target={resolved ? undefined : "optional-docs"}>
+              <MessageTurn
+                speaker="DataTwin"
+                text="Here are the documents that go with those. Add any of them now, or continue without."
+              />
+            </div>
           )}
         </>
       ) : (

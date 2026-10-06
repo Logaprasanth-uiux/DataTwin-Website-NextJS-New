@@ -48,6 +48,17 @@ const PURCHASE_WITH_GST: IntentSummary = {
   ],
 };
 
+const TAX_PAYMENTS: IntentSummary = {
+  problem:
+    "The tax you declared may not match what has been paid through your ledgers, and interest, late fees, DRC-03 payments, refunds or demands may be sitting unreconciled.",
+  intent: "Check your GST payments end to end, so unpaid tax, interest and open demands are found and settled before they escalate.",
+  checks: [
+    "Tax declared in GSTR-3B vs the electronic liability ledger, and how it was discharged",
+    "Interest, late fees and penalties paid vs what was due",
+    "DRC-03 payments, refunds and demands matched to the liabilities behind them",
+  ],
+};
+
 const GSTR1_VS_3B: IntentSummary = {
   problem: "The tax declared in GSTR-1 may differ from the tax actually paid through GSTR-3B.",
   intent: "Find month-wise short payment early, so it can be paid with interest before it escalates into a DRC-01B notice.",
@@ -174,6 +185,7 @@ const OVERRIDES: Record<string, IntentSummary> = {
   "10.1": SALES_VS_GSTR1,
   "10.15": SALES_WITH_GST,
   "1.14": PURCHASE_WITH_GST,
+  "11.9": TAX_PAYMENTS,
   "10.3": GSTR1_VS_3B,
   "8.3": GSTR1_VS_3B,
   "18.1": GSTR1_VS_3B,

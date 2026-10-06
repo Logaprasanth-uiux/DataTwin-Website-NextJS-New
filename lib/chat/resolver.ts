@@ -150,6 +150,7 @@ function matchesGstr2bScriptedTrigger(userTokens: ReadonlySet<string>): CatalogE
 const SALES_REGISTER_GST_SCRIPTED_ENTRY_ID = "10.1";
 export const SALES_WITH_GST_ENTRY_ID = "10.15";
 export const PURCHASE_WITH_GST_ENTRY_ID = "1.14";
+export const TAX_PAYMENTS_ENTRY_ID = "11.9";
 
 function matchesSalesRegisterGstScriptedTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
   const hasSalesRegister = userTokens.has("sales") && userTokens.has("register");
@@ -190,6 +191,29 @@ function matchesPurchaseWithGstTrigger(userTokens: ReadonlySet<string>): Catalog
   const itcIssue = userTokens.has("itc") && (userTokens.has("issue") || userTokens.has("issues") || userTokens.has("problem") || userTokens.has("problems"));
   if (!((purchaseWord && gstWord) || itcIssue)) return null;
   return INDEX.find((i) => i.entry.id === PURCHASE_WITH_GST_ENTRY_ID)?.entry ?? null;
+}
+
+// "My GST payments", "tax payment reconciliation" or "a ledger issue", with no particular return,
+// ledger, notice or refund named, is the whole tax-payment side: it gets the umbrella Tax payments
+// and ledgers flow. Anything more specific keeps its own flow.
+const TAX_SPECIFIC_WORDS = [
+  "electronic", "credit", "cash", "liability", "challan", "interest", "penalty", "penalties", "late", "fee", "fees",
+  "demand", "demands", "order", "orders", "notice", "refund", "refunds", "drc-03", "drc-01b", "drc-01c", "rfd-01",
+  "rfd-06", "roll-forward", "rollforward", "vendor", "vendors", "supplier", "suppliers", "bank", "bill", "bills",
+  "sales", "purchase", "purchases", "itc",
+];
+
+function matchesTaxPaymentsTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
+  const tokens = [...userTokens];
+  if (tokens.some((t) => t.startsWith("gstr") || t.startsWith("drc") || t.startsWith("rfd"))) return null;
+  if (TAX_SPECIFIC_WORDS.some((w) => userTokens.has(w))) return null;
+  const taxWord = userTokens.has("tax") || userTokens.has("gst");
+  const paymentWord = userTokens.has("payment") || userTokens.has("payments") || userTokens.has("paid") || userTokens.has("paying");
+  const ledgerWord = userTokens.has("ledger") || userTokens.has("ledgers");
+  if (!((taxWord && paymentWord) || (ledgerWord && (taxWord || userTokens.has("issue") || userTokens.has("issues") || userTokens.has("reconciliation"))))) {
+    return null;
+  }
+  return INDEX.find((i) => i.entry.id === TAX_PAYMENTS_ENTRY_ID)?.entry ?? null;
 }
 
 /** Distinguishes a genuine greeting or "what can you do" question from an actual attempt at
@@ -321,7 +345,8 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
     matchesEInvoiceScriptedTrigger(userTokenSet) ??
     matchesGstr2bScriptedTrigger(userTokenSet) ??
     matchesSalesRegisterGstScriptedTrigger(userTokenSet) ??
-    matchesPurchaseWithGstTrigger(userTokenSet);
+    matchesPurchaseWithGstTrigger(userTokenSet) ??
+    matchesTaxPaymentsTrigger(userTokenSet);
   if (scriptedMatch && !excluded.has(scriptedMatch.id)) {
     return { confidence: "high", top: scriptedMatch, candidates: [] };
   }

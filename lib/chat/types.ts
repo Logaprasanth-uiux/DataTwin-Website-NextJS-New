@@ -53,6 +53,11 @@ export type SalesGstAreaId =
   | "itc-claimed-above-2b"
   | "itc-unclaimed"
   | "itc-to-reverse"
+  | "tax-unpaid"
+  | "interest-late-fees"
+  | "demands-outstanding"
+  | "drc03-unmatched"
+  | "refund-pending"
   | "interest";
 
 export interface SalesGstArea {
@@ -80,7 +85,7 @@ export interface SalesGstBreakdown {
   /** True once GSTR-3B is part of the result — only then do the ITC areas exist. */
   includesItc: boolean;
   /** Set for the purchase-side result: the areas are about ITC, and the copy changes to match. */
-  side?: "purchase";
+  side?: "purchase" | "tax";
 }
 
 // How the executive summary is worded and what it leads with. Chosen from the reconciliation (see

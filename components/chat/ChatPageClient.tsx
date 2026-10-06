@@ -223,6 +223,7 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     let lastScrolledHeight = 0;
     let landedOnResult = false;
     let landedOnOptional = false;
+    let landedOnOptionalDocs = false;
     let lastPhaseSeen: string | undefined;
 
     const performScroll = () => {
@@ -235,6 +236,18 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
       // The optional-documents offer is long, so it lands once with its first line at the top of the
       // viewport, for reading from the start, and then stays put while documents are added to it
       // (the rest of the time the view chases the bottom, as everywhere else).
+      // Once the user has answered which groups apply, the reply (and the cards under it) lands the
+      // same way: its first line at the top, then nothing chases the bottom.
+      const optionalDocsTarget = container.querySelector<HTMLElement>('[data-scroll-target="optional-docs"]');
+      if (optionalDocsTarget) {
+        if (!landedOnOptionalDocs) {
+          landedOnOptionalDocs = true;
+          optionalDocsTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        return;
+      }
+      landedOnOptionalDocs = false;
+
       const optionalTarget = container.querySelector<HTMLElement>('[data-scroll-target="optional"]');
       if (optionalTarget) {
         if (!landedOnOptional) {

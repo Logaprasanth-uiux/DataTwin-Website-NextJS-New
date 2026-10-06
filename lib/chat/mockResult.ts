@@ -351,9 +351,120 @@ function generatePurchaseGstResult(reconciliationId: string, fileIds: readonly s
   };
 }
 
+// --- Tax payments and ledgers --------------------------------------------------------------
+// The tax-payment counterpart, framed as exposure: it leads with the tax at risk (owed) net of what is
+// already paid or coming back. Same build as the purchase result (a few amounts, everything derived
+// from them), and each area only exists when the document behind it was provided:
+//   Tax unpaid or short-paid   GSTR-3B + liability ledger (always)     payable
+//   Interest and late fees     cash ledger or challan register          payable
+//   Demands outstanding        demand or DRC response register          payable
+//   DRC-03 not matched         DRC-03 payments                          recoverable (paid, not yet set off)
+//   Refund pending             any refund document                      recoverable
+export const TAX_GST_IDS = new Set(["11.9"]);
+
+const TAX_GST_ROWS: {
+  classification: string;
+  detail: string;
+  bucket: RecoveryBucket;
+  sign: "positive" | "negative";
+  needs: "base" | "cash" | "demands" | "drc" | "refund";
+}[] = [
+  { classification: "Deterministic validation", detail: "Liability declared in GSTR-3B but not fully discharged in the electronic liability ledger", bucket: "correction", sign: "negative", needs: "base" },
+  { classification: "Deterministic validation", detail: "Liability left open after offsetting the cash and credit ledgers", bucket: "correction", sign: "negative", needs: "base" },
+  { classification: "Deterministic validation", detail: "Interest and late fee due on delayed payment, not yet paid", bucket: "correction", sign: "negative", needs: "cash" },
+  { classification: "Data quality check", detail: "Challan paid but not matched to a liability in the books", bucket: "followup", sign: "negative", needs: "cash" },
+  { classification: "Deterministic validation", detail: "Demand or order raised and still outstanding", bucket: "correction", sign: "negative", needs: "demands" },
+  { classification: "LLM validation", detail: "Notice response filed but the payment against it is not recorded", bucket: "followup", sign: "negative", needs: "demands" },
+  { classification: "Deterministic validation", detail: "DRC-03 payment not set against the liability it was made for", bucket: "recovery", sign: "positive", needs: "drc" },
+  { classification: "Deterministic validation", detail: "Refund claimed or sanctioned but not received in the bank", bucket: "recovery", sign: "positive", needs: "refund" },
+  { classification: "Applicable / Not applicable", detail: "Refund-eligible amount not yet claimed", bucket: "neutral", sign: "positive", needs: "refund" },
+];
+
+function generateTaxGstResult(reconciliationId: string, fileIds: readonly string[]): TopicMockResult {
+  const random = mulberry32(hashString(reconciliationId));
+  const has = (ids: string[]) => ids.some((id) => fileIds.includes(id));
+  const hasCash = has(["F20", "F33"]);
+  const hasDemands = has(["F63", "F57"]);
+  const hasDrc = has(["F21"]);
+  const hasRefund = has(["F41", "F42", "F43", "F44"]);
+
+  const unpaid = round10k(600_000 + random() * 3_400_000);
+  const interest = hasCash ? round10k(unpaid * (0.1 + random() * 0.15)) : 0;
+  const demands = hasDemands ? round10k(unpaid * (0.2 + random() * 0.3)) : 0;
+  const drc = hasDrc ? round10k(unpaid * (0.06 + random() * 0.12)) : 0;
+  const refund = hasRefund ? round10k(unpaid * (0.12 + random() * 0.25)) : 0;
+
+  const grossNegative = unpaid + interest + demands;
+  const grossPositive = drc + refund;
+  // Exposure framing: the tax at risk, less whatever is already paid or on its way back.
+  const net = grossNegative - grossPositive;
+
+  const area = (id: SalesGstArea["id"], label: string, description: string, amount: number, kind: SalesGstArea["kind"]): SalesGstArea => ({
+    id, label, description, amount, kind,
+  });
+  const areas: SalesGstArea[] = [
+    area("tax-unpaid", "Tax unpaid or short-paid", "Declared in GSTR-3B but not fully discharged through the ledgers", unpaid, "payable"),
+  ];
+  if (hasCash) areas.push(area("interest-late-fees", "Interest and late fees", "Due on delayed or short payment and not yet paid", interest, "payable"));
+  if (hasDemands) areas.push(area("demands-outstanding", "Demands outstanding", "Demands and orders raised that are still unpaid", demands, "payable"));
+  if (hasDrc) areas.push(area("drc03-unmatched", "DRC-03 not matched", "Paid through DRC-03 but not yet set against a liability", drc, "recoverable"));
+  if (hasRefund) areas.push(area("refund-pending", "Refund pending", "Claimed or sanctioned but not yet received", refund, "recoverable"));
+
+  const monthlyLeakage = round10k(net * (0.04 + random() * 0.04));
+  const projections = ([3, 6, 12] as const).map((months) => {
+    const leakage = monthlyLeakage * months;
+    const interestOnNet = round10k((net * SALES_GST_INTEREST_RATE * months) / 12);
+    return { months, leakage, interest: interestOnNet, total: net + leakage + interestOnNet };
+  });
+
+  const included = (needs: (typeof TAX_GST_ROWS)[number]["needs"]) =>
+    needs === "base" || (needs === "cash" && hasCash) || (needs === "demands" && hasDemands) || (needs === "drc" && hasDrc) || (needs === "refund" && hasRefund);
+  const rows = TAX_GST_ROWS.filter((r) => included(r.needs));
+  const positiveRows = rows.filter((r) => r.sign === "positive");
+  const negativeRows = rows.filter((r) => r.sign === "negative");
+  const positiveAmounts = splitAmount(positiveRows.length, grossPositive, random);
+  const negativeAmounts = splitAmount(negativeRows.length, grossNegative, random);
+  if (positiveAmounts.length > 0) positiveAmounts[positiveAmounts.length - 1] += grossPositive - positiveAmounts.reduce((sum, v) => sum + v, 0);
+  if (negativeAmounts.length > 0) negativeAmounts[negativeAmounts.length - 1] += grossNegative - negativeAmounts.reduce((sum, v) => sum + v, 0);
+  const rowsWithAmounts = rows.map((row) => ({
+    row,
+    amount: row.sign === "positive" ? positiveAmounts[positiveRows.indexOf(row)] : negativeAmounts[negativeRows.indexOf(row)],
+  }));
+  const largest = Math.max(...rowsWithAmounts.map((r) => r.amount), 1);
+  const previewRows: RecoveryPreviewRow[] = rowsWithAmounts.map(({ row, amount }) => {
+    const weight = amount / largest;
+    return {
+      classification: row.classification,
+      bucket: row.bucket,
+      detail: row.detail,
+      amount,
+      sign: row.sign,
+      records: 2 + Math.floor(random() * 38),
+      priority: weight >= 0.66 ? "High" : weight >= 0.33 ? "Medium" : "Low",
+    };
+  });
+
+  return {
+    framing: "exposure",
+    salesGst: { areas, projections, includesItc: false, side: "tax" },
+    potentialNow: net,
+    grossPositive,
+    grossNegative,
+    exposureQuarter: projections[0].total,
+    exposureYear: projections[2].total,
+    previewRows,
+    nextActions: [
+      "Pay the tax still open in the liability ledger, with interest, before it becomes a notice",
+      "Match each challan and DRC-03 payment to the liability it was made for",
+      "Chase refunds that are sanctioned or claimed but not yet in the bank",
+    ],
+  };
+}
+
 export function generateMockResult(reconciliationId: string, options: { includeItc?: boolean; fileIds?: string[] } = {}): TopicMockResult {
   if (SALES_GST_IDS.has(reconciliationId.split("::")[0])) return generateSalesGstResult(reconciliationId, options.includeItc ?? false);
   if (PURCHASE_GST_IDS.has(reconciliationId.split("::")[0])) return generatePurchaseGstResult(reconciliationId, options.fileIds ?? []);
+  if (TAX_GST_IDS.has(reconciliationId.split("::")[0])) return generateTaxGstResult(reconciliationId, options.fileIds ?? []);
   const random = mulberry32(hashString(reconciliationId));
 
   // A reconciliation nets two real, opposite-direction findings against each other: money coming
