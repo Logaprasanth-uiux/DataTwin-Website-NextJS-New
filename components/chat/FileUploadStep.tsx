@@ -163,6 +163,8 @@ export function FileUploadStep({
   onAdvanceStatus,
   onRemove,
   onContinue,
+  optionalGroups,
+  onChooseGroups,
   onChooseFileSource,
   onSubmitPortalGstin,
   onPortalFetchComplete,
@@ -198,6 +200,9 @@ export function FileUploadStep({
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemove: (fileId: string) => void;
   onContinue: () => void;
+  /** What was answered on the topic's optional-groups question (see OptionalDocsOffer). */
+  optionalGroups?: string[];
+  onChooseGroups: (groupIds: string[]) => void;
   onChooseFileSource: (fileId: string, source: FileSourceChoiceValue) => void;
   onSubmitPortalGstin: (fileId: string) => void;
   onPortalFetchComplete: (fileId: string, fileName: string) => void;
@@ -321,6 +326,10 @@ export function FileUploadStep({
           requiredNames={topic.requiredFiles.map((f) => f.name)}
           tracker={tracker}
           checkpoints={topic.furtherCheckpoints ?? []}
+          groups={topic.optionalGroups}
+          groupsQuestion={topic.optionalGroupsQuestion}
+          selectedGroups={optionalGroups}
+          onChooseGroups={onChooseGroups}
           uploads={uploads}
           fileSource={fileSource}
           portalFetch={portalFetch}

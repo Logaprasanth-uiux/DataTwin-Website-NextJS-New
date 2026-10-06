@@ -37,6 +37,17 @@ const SALES_WITH_GST: IntentSummary = {
   ],
 };
 
+const PURCHASE_WITH_GST: IntentSummary = {
+  problem:
+    "Your purchases may not agree with what GST shows for you, so some invoices could be missing from GSTR-2B, ITC could be claimed above what is supported, and some credit may need to be reversed.",
+  intent: "Check your purchases and ITC against GST from end to end, so unclaimed credit is recovered and excess credit is fixed before it turns into a notice.",
+  checks: [
+    "Purchase register vs GSTR-2B, vendor by vendor and invoice by invoice",
+    "ITC claimed in GSTR-3B against what GSTR-2B supports",
+    "Reversals, reverse charge, imports, capital goods and ISD credit",
+  ],
+};
+
 const GSTR1_VS_3B: IntentSummary = {
   problem: "The tax declared in GSTR-1 may differ from the tax actually paid through GSTR-3B.",
   intent: "Find month-wise short payment early, so it can be paid with interest before it escalates into a DRC-01B notice.",
@@ -162,6 +173,7 @@ const OVERRIDES: Record<string, IntentSummary> = {
   "8.5": ANNUAL_TURNOVER,
   "10.1": SALES_VS_GSTR1,
   "10.15": SALES_WITH_GST,
+  "1.14": PURCHASE_WITH_GST,
   "10.3": GSTR1_VS_3B,
   "8.3": GSTR1_VS_3B,
   "18.1": GSTR1_VS_3B,

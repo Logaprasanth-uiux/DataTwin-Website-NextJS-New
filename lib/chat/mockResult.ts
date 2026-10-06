@@ -234,8 +234,126 @@ function generateSalesGstResult(reconciliationId: string, includeItc: boolean): 
   };
 }
 
-export function generateMockResult(reconciliationId: string, options: { includeItc?: boolean } = {}): TopicMockResult {
+// --- Purchase with GST ---------------------------------------------------------------------
+// The purchase-side counterpart of the result above, built the same way (a few amounts, everything
+// derived from them, so the headline, the pills, the projections and the areas tally) — but each area
+// only exists when the document behind it was provided:
+//   ITC missing in 2B      purchase register + GSTR-2B (always)       recoverable once vendors file
+//   Unclaimed ITC          GSTR-3B                                     recoverable
+//   ITC claimed above 2B   GSTR-3B                                     payable (to reverse)
+//   ITC to reverse         any reversal / eligibility working          payable (blocked, Rule 37, Rule 42/43)
+//   Interest               when there is anything payable              payable
+export const PURCHASE_GST_IDS = new Set(["1.14"]);
+const GSTR3B_FILE_ID = "F03";
+const REVERSAL_FILE_IDS = ["F12", "F51", "F52", "F50"];
+
+const PURCHASE_GST_ROWS: {
+  classification: string;
+  detail: string;
+  bucket: RecoveryBucket;
+  sign: "positive" | "negative";
+  needs: "base" | "3b" | "reversal" | "payable";
+}[] = [
+  { classification: "Deterministic validation", detail: "Invoice in the purchase register but missing from GSTR-2B because the vendor has not filed", bucket: "recovery", sign: "positive", needs: "base" },
+  { classification: "Data quality check", detail: "Vendor GSTIN or invoice value differs between the register and GSTR-2B", bucket: "followup", sign: "positive", needs: "base" },
+  { classification: "Deterministic validation", detail: "Eligible ITC shown in GSTR-2B but not claimed in GSTR-3B", bucket: "recovery", sign: "positive", needs: "3b" },
+  { classification: "Deterministic validation", detail: "ITC claimed in GSTR-3B above what GSTR-2B supports", bucket: "correction", sign: "negative", needs: "3b" },
+  { classification: "LLM validation", detail: "Invoice claimed in a period other than the one GSTR-2B reports it in", bucket: "followup", sign: "negative", needs: "3b" },
+  { classification: "Applicable / Not applicable", detail: "Credit claimed on a blocked item under Section 17(5)", bucket: "neutral", sign: "negative", needs: "reversal" },
+  { classification: "Deterministic validation", detail: "Vendor unpaid beyond 180 days, so the ITC has to be reversed", bucket: "correction", sign: "negative", needs: "reversal" },
+  { classification: "Deterministic validation", detail: "Interest on ITC claimed in excess or not reversed in time", bucket: "correction", sign: "negative", needs: "payable" },
+];
+
+function generatePurchaseGstResult(reconciliationId: string, fileIds: readonly string[]): TopicMockResult {
+  const random = mulberry32(hashString(reconciliationId));
+  const has3b = fileIds.includes(GSTR3B_FILE_ID);
+  const hasReversal = REVERSAL_FILE_IDS.some((id) => fileIds.includes(id));
+
+  const missing = round10k(800_000 + random() * 5_200_000);
+  const unclaimed = has3b ? round10k(missing * (0.1 + random() * 0.15)) : 0;
+  const claimedAbove = has3b ? round10k(missing * (0.1 + random() * 0.25)) : 0;
+  const toReverse = hasReversal ? round10k(missing * (0.06 + random() * 0.1)) : 0;
+  const hasPayable = claimedAbove + toReverse > 0;
+  const interest = hasPayable ? round10k((claimedAbove + toReverse) * (0.14 + random() * 0.08)) : 0;
+
+  const grossPositive = missing + unclaimed;
+  const grossNegative = claimedAbove + toReverse + interest;
+  const net = grossPositive - grossNegative;
+
+  const area = (id: SalesGstArea["id"], label: string, description: string, amount: number, kind: SalesGstArea["kind"]): SalesGstArea => ({
+    id, label, description, amount, kind,
+  });
+  const areas: SalesGstArea[] = [
+    area("itc-missing-2b", "ITC missing in 2B", "Booked in your purchase register but not in GSTR-2B, claimable once the vendors file", missing, "recoverable"),
+  ];
+  if (has3b) {
+    areas.push(
+      area("itc-unclaimed", "Unclaimed ITC", "Eligible and shown in GSTR-2B, but not claimed in GSTR-3B", unclaimed, "recoverable"),
+      area("itc-claimed-above-2b", "ITC claimed above 2B", "Claimed in GSTR-3B beyond what GSTR-2B supports, to be reversed", claimedAbove, "payable"),
+    );
+  }
+  if (hasReversal) {
+    areas.push(area("itc-to-reverse", "ITC to reverse", "Blocked credits, unpaid vendors and common credit that need reversing", toReverse, "payable"));
+  }
+  if (hasPayable) {
+    areas.push(area("interest", "Interest exposure", "Interest on ITC claimed in excess or not reversed in time", interest, "payable"));
+  }
+
+  const monthlyLeakage = round10k(net * (0.04 + random() * 0.04));
+  const projections = ([3, 6, 12] as const).map((months) => {
+    const leakage = monthlyLeakage * months;
+    const interestOnNet = round10k((net * SALES_GST_INTEREST_RATE * months) / 12);
+    return { months, leakage, interest: interestOnNet, total: net + leakage + interestOnNet };
+  });
+
+  const included = (needs: (typeof PURCHASE_GST_ROWS)[number]["needs"]) =>
+    needs === "base" || (needs === "3b" && has3b) || (needs === "reversal" && hasReversal) || (needs === "payable" && hasPayable);
+  const rows = PURCHASE_GST_ROWS.filter((r) => included(r.needs));
+  const positiveRows = rows.filter((r) => r.sign === "positive");
+  const negativeRows = rows.filter((r) => r.sign === "negative");
+  const positiveAmounts = splitAmount(positiveRows.length, grossPositive, random);
+  const negativeAmounts = splitAmount(negativeRows.length, grossNegative, random);
+  // As on the sales side, the last line of each group takes the rounding difference so the table adds up.
+  if (positiveAmounts.length > 0) positiveAmounts[positiveAmounts.length - 1] += grossPositive - positiveAmounts.reduce((sum, v) => sum + v, 0);
+  if (negativeAmounts.length > 0) negativeAmounts[negativeAmounts.length - 1] += grossNegative - negativeAmounts.reduce((sum, v) => sum + v, 0);
+  const rowsWithAmounts = rows.map((row) => ({
+    row,
+    amount: row.sign === "positive" ? positiveAmounts[positiveRows.indexOf(row)] : negativeAmounts[negativeRows.indexOf(row)],
+  }));
+  const largest = Math.max(...rowsWithAmounts.map((r) => r.amount), 1);
+  const previewRows: RecoveryPreviewRow[] = rowsWithAmounts.map(({ row, amount }) => {
+    const weight = amount / largest;
+    return {
+      classification: row.classification,
+      bucket: row.bucket,
+      detail: row.detail,
+      amount,
+      sign: row.sign,
+      records: 2 + Math.floor(random() * 38),
+      priority: weight >= 0.66 ? "High" : weight >= 0.33 ? "Medium" : "Low",
+    };
+  });
+
+  return {
+    framing: "recovery",
+    salesGst: { areas, projections, includesItc: has3b, side: "purchase" },
+    potentialNow: net,
+    grossPositive,
+    grossNegative,
+    exposureQuarter: projections[0].total,
+    exposureYear: projections[2].total,
+    previewRows,
+    nextActions: [
+      "Follow up with the vendors whose invoices are missing from GSTR-2B before the next filing",
+      "Claim the eligible ITC that is showing in GSTR-2B but was left out of GSTR-3B",
+      "Reverse any excess or blocked credit, with interest, before it becomes a notice",
+    ],
+  };
+}
+
+export function generateMockResult(reconciliationId: string, options: { includeItc?: boolean; fileIds?: string[] } = {}): TopicMockResult {
   if (SALES_GST_IDS.has(reconciliationId.split("::")[0])) return generateSalesGstResult(reconciliationId, options.includeItc ?? false);
+  if (PURCHASE_GST_IDS.has(reconciliationId.split("::")[0])) return generatePurchaseGstResult(reconciliationId, options.fileIds ?? []);
   const random = mulberry32(hashString(reconciliationId));
 
   // A reconciliation nets two real, opposite-direction findings against each other: money coming

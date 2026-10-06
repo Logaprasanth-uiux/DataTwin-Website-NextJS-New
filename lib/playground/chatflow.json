@@ -1882,6 +1882,179 @@
       ]
     },
     {
+      "id": "p-1-14",
+      "name": "Purchase with GST",
+      "area": "Purchase & ITC",
+      "summary": "Check your purchases and ITC against GST from end to end, so unclaimed credit is recovered and excess credit is fixed before it turns into a notice. Result is framed as a recovery: money that can come back, net of anything short-paid.",
+      "steps": [
+        {
+          "id": "p-1-14-1",
+          "kind": "ai",
+          "title": "Show what was understood",
+          "detail": "Problem: Your purchases may not agree with what GST shows for you, so some invoices could be missing from GSTR-2B, ITC could be claimed above what is supported, and some credit may need to be reversed.\nWhat you're after: Check your purchases and ITC against GST from end to end, so unclaimed credit is recovered and excess credit is fixed before it turns into a notice.\nWhat I'll check: Purchase register vs GSTR-2B, vendor by vendor and invoice by invoice; ITC claimed in GSTR-3B against what GSTR-2B supports; Reversals, reverse charge, imports, capital goods and ISD credit.",
+          "chips": [
+            "Yes, that's right",
+            "Not quite"
+          ]
+        },
+        {
+          "id": "p-1-14-2",
+          "kind": "choice",
+          "title": "Period selection",
+          "detail": "Which month should be reconciled? Picking year-end offers to switch to the annual (GSTR-9) flow.",
+          "chips": [
+            "Current month",
+            "Previous month",
+            "Custom month",
+            "Year-end (annual)"
+          ]
+        },
+        {
+          "id": "p-1-14-3",
+          "kind": "files",
+          "title": "Required documents",
+          "detail": "Requested one by one. The first document gets a quick validation pass; a document that can come from the GST Portal also offers Fetch.",
+          "files": [
+            {
+              "id": "p-1-14-f-F05",
+              "name": "Purchase Register",
+              "level": "required",
+              "source": "upload",
+              "why": "Lists your purchase invoices for the period, vendor by vendor, so each can be checked against what GST shows."
+            },
+            {
+              "id": "p-1-14-f-F02",
+              "name": "GSTR-2B",
+              "level": "required",
+              "source": "both",
+              "why": "Shows the purchases your vendors reported for you, which is what your ITC can be claimed against."
+            }
+          ]
+        },
+        {
+          "id": "p-1-14-4",
+          "kind": "files",
+          "title": "Optional documents (offered together)",
+          "detail": "All shown at once in one message. The reconciliation waits for the user: \"Continue without these\" or \"Run reconciliation with N extra documents\". Anything added here counts towards the first result; anything skipped is offered again below the result.",
+          "skippable": true,
+          "files": [
+            {
+              "id": "p-1-14-f-F01",
+              "name": "GSTR-2A Detail",
+              "level": "optional",
+              "source": "both",
+              "why": "Provides supplier-reported inward-supply invoices, credit/debit notes and amendments. Useful for supplier-upload and amendment root-cause analysis."
+            },
+            {
+              "id": "p-1-14-f-F06",
+              "name": "Credit Debit Notes",
+              "level": "optional",
+              "source": "upload",
+              "why": "Captures subsequent adjustments that increase or reduce original taxable value and GST."
+            },
+            {
+              "id": "p-1-14-f-F03",
+              "name": "GSTR-3B Filing",
+              "level": "optional",
+              "source": "both",
+              "why": "Shows ITC actually reported in the filed return by tax period, including reversals and net ITC."
+            },
+            {
+              "id": "p-1-14-f-F29",
+              "name": "IMS Detail",
+              "level": "optional",
+              "source": "both",
+              "why": "Provides document-level IMS records and recipient action/status before GSTR-2B generation."
+            },
+            {
+              "id": "p-1-14-f-F07",
+              "name": "Input GST GL",
+              "level": "optional",
+              "source": "upload",
+              "why": "Shows accounting postings to Input CGST/SGST/IGST/Cess, including reversals, reclaims and return claim movements."
+            },
+            {
+              "id": "p-1-14-f-F04",
+              "name": "Electronic Credit Ledger",
+              "level": "optional",
+              "source": "both",
+              "why": "Provides portal-side credit movements and balances after return filing."
+            },
+            {
+              "id": "p-1-14-f-F12",
+              "name": "ITC Reversal Reclaim",
+              "level": "optional",
+              "source": "upload",
+              "why": "Tracks temporary/permanent ITC reversals and later reclaims."
+            },
+            {
+              "id": "p-1-14-f-F51",
+              "name": "Common Credit Rule 42/43 Working",
+              "level": "optional",
+              "source": "upload",
+              "why": "Calculates common-credit attribution/reversal for mixed taxable/exempt/non-business use."
+            },
+            {
+              "id": "p-1-14-f-F52",
+              "name": "Supplier Payment Condition Working",
+              "level": "optional",
+              "source": "upload",
+              "why": "Tracks supplier payment status relevant to ITC reversal/reclaim conditions."
+            },
+            {
+              "id": "p-1-14-f-F50",
+              "name": "ITC Eligibility Register",
+              "level": "optional",
+              "source": "upload",
+              "why": "Captures final invoice-level ITC eligibility reason beyond portal availability."
+            },
+            {
+              "id": "p-1-14-f-F13",
+              "name": "RCM Liability Working",
+              "level": "optional",
+              "source": "upload",
+              "why": "Provides transaction-level reverse-charge liability and payment/eligibility linkage."
+            },
+            {
+              "id": "p-1-14-f-F34",
+              "name": "Bill of Entry Register",
+              "level": "optional",
+              "source": "upload",
+              "why": "Provides customs Bill-of-Entry details and IGST paid on imports/SEZ procurements."
+            },
+            {
+              "id": "p-1-14-f-F35",
+              "name": "ICEGATE Import Data",
+              "level": "optional",
+              "source": "upload",
+              "why": "Provides customs-side import data that flows to GSTR-2B."
+            },
+            {
+              "id": "p-1-14-f-F62",
+              "name": "Fixed Asset Register",
+              "level": "optional",
+              "source": "upload",
+              "why": "Lists assets capitalised in the period, with their cost and GST, so ITC on capital goods can be matched to additions."
+            },
+            {
+              "id": "p-1-14-f-F37",
+              "name": "GSTR-6 ISD Return",
+              "level": "optional",
+              "source": "both",
+              "why": "Provides ISD credit received/distributed and amendments reported through GSTR-6."
+            },
+            {
+              "id": "p-1-14-f-F38",
+              "name": "ISD Credit Distribution Register",
+              "level": "optional",
+              "source": "upload",
+              "why": "Provides internal source-to-recipient allocation of common input-service credit."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "p-17-8",
       "name": "Capital Goods ITC vs Fixed Asset Register",
       "area": "Purchase & ITC",

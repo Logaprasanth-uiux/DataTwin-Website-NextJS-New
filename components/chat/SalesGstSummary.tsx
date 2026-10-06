@@ -16,6 +16,10 @@ const AREA_COLOR: Record<SalesGstAreaId, { color: string; opacity: number }> = {
   "itc-excess": { color: "var(--crimson)", opacity: 1 },
   "itc-missed": { color: "var(--accent)", opacity: 0.55 },
   "itc-blocked": { color: "var(--crimson)", opacity: 0.5 },
+  "itc-missing-2b": { color: "var(--accent)", opacity: 1 },
+  "itc-unclaimed": { color: "var(--accent)", opacity: 0.55 },
+  "itc-claimed-above-2b": { color: "var(--crimson)", opacity: 1 },
+  "itc-to-reverse": { color: "var(--crimson)", opacity: 0.5 },
   interest: { color: "var(--loss)", opacity: 0.55 },
 };
 
@@ -61,6 +65,7 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
   const fade = `transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`;
   // Only areas that are an issue appear: ITC claimed and ITC eligible are reference totals, not findings.
   const shownAreas = breakdown.areas.filter((a) => a.kind !== "reference");
+  const purchase = breakdown.side === "purchase";
   const areaTotal = shownAreas.reduce((sum, a) => sum + a.amount, 0);
 
   return (
@@ -77,18 +82,21 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
         <div className="mt-5 flex flex-wrap gap-3">
           <div className="flex items-center gap-2 rounded-full border border-accent/25 bg-accent/[0.06] px-4 py-2">
             <span className={`text-[13.5px] font-semibold text-accent ${fade}`}>+{format(result.grossPositive)}</span>
-            <span className="text-[12px] text-navy-muted">recoverable / overpaid</span>
+            <span className="text-[12px] text-navy-muted">{purchase ? "recoverable ITC" : "recoverable / overpaid"}</span>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-loss/25 bg-loss/[0.06] px-4 py-2">
-            <span className={`text-[13.5px] font-semibold text-loss ${fade}`}>−{format(result.grossNegative)}</span>
-            <span className="text-[12px] text-navy-muted">short-paid / payable</span>
-          </div>
+          {result.grossNegative > 0 && (
+            <div className="flex items-center gap-2 rounded-full border border-loss/25 bg-loss/[0.06] px-4 py-2">
+              <span className={`text-[13.5px] font-semibold text-loss ${fade}`}>−{format(result.grossNegative)}</span>
+              <span className="text-[12px] text-navy-muted">{purchase ? "to reverse / payable" : "short-paid / payable"}</span>
+            </div>
+          )}
         </div>
 
         <p className="mt-4 max-w-xl text-[14.5px] leading-relaxed text-navy-body">
-          Based on the initial reconciliation, we identified a material recovery opportunity, netted against
-          what&apos;s still short-paid. This is an illustrative demo figure — final numbers depend on the detailed
-          analysis.
+          {purchase
+            ? "Based on the initial reconciliation, we identified ITC you can recover, netted against any credit that has to be reversed. "
+            : "Based on the initial reconciliation, we identified a material recovery opportunity, netted against what's still short-paid. "}
+          This is an illustrative demo figure — final numbers depend on the detailed analysis.
         </p>
       </div>
 
@@ -98,8 +106,15 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
       <div className="rounded-2xl border border-accent/25 bg-accent/[0.06] p-6">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">Bottom line</p>
         <p className={`mt-2 text-[14.5px] leading-relaxed text-navy ${fade}`}>
-          {format(net)} is the net current impact for this period, after {format(result.grossNegative)} identified as
-          still short-paid or payable against {format(result.grossPositive)} recoverable
+          {format(net)} is the net current impact for this period
+          {result.grossNegative > 0 ? (
+            <>
+              , after {format(result.grossNegative)} identified as {purchase ? "ITC to reverse or payable" : "still short-paid or payable"}{" "}
+              against {format(result.grossPositive)} recoverable
+            </>
+          ) : (
+            <>, all of it recoverable</>
+          )}
           {top ? (
             <>
               , with <span className="font-medium">{top.area.label}</span> the largest area
@@ -113,12 +128,14 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
       <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft sm:p-7">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">Recovery areas</p>
         <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">
-          {shownAreas.length} areas behind the {format(net)} net impact
+          {shownAreas.length} {shownAreas.length === 1 ? "area" : "areas"} behind the {format(net)} net impact
         </h3>
         <p className="mt-1.5 text-[13px] text-navy-body">
           {breakdown.includesItc
             ? "Includes ITC, since GSTR-3B is part of this result."
-            : "Add GSTR-3B below to include excess, missed and blocked ITC."}
+            : purchase
+              ? "Add GSTR-3B below to include unclaimed ITC and ITC claimed above 2B."
+              : "Add GSTR-3B below to include excess, missed and blocked ITC."}
         </p>
 
         <div className="mt-6 grid grid-cols-1 items-center gap-8 sm:grid-cols-2 sm:gap-10">

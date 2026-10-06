@@ -149,6 +149,7 @@ function matchesGstr2bScriptedTrigger(userTokens: ReadonlySet<string>): CatalogE
 // one of the other outward/inward-supply entries instead).
 const SALES_REGISTER_GST_SCRIPTED_ENTRY_ID = "10.1";
 export const SALES_WITH_GST_ENTRY_ID = "10.15";
+export const PURCHASE_WITH_GST_ENTRY_ID = "1.14";
 
 function matchesSalesRegisterGstScriptedTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
   const hasSalesRegister = userTokens.has("sales") && userTokens.has("register");
@@ -171,6 +172,24 @@ function matchesSalesRegisterGstScriptedTrigger(userTokens: ReadonlySet<string>)
     return INDEX.find((i) => i.entry.id === SALES_WITH_GST_ENTRY_ID)?.entry ?? null;
   }
   return INDEX.find((i) => i.entry.id === SALES_REGISTER_GST_SCRIPTED_ENTRY_ID)?.entry ?? null;
+}
+
+// "My purchases vs GST" or "an ITC issue", with no particular return, register or topic named, is the
+// whole purchase side: it gets the umbrella Purchase with GST flow. Anything more specific (a named
+// return such as GSTR-2B, or IMS, RCM, imports, ISD, capital goods, reversals) keeps its own flow.
+const PURCHASE_SPECIFIC_WORDS = [
+  "ims", "rcm", "reverse", "reversal", "reversals", "reclaim", "import", "imports", "isd", "capital",
+  "blocked", "register", "ledger", "180", "unpaid", "bill", "boe", "icegate", "vendor", "vendors",
+];
+
+function matchesPurchaseWithGstTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
+  const tokens = [...userTokens];
+  if (tokens.some((t) => t.startsWith("gstr")) || PURCHASE_SPECIFIC_WORDS.some((w) => userTokens.has(w))) return null;
+  const purchaseWord = userTokens.has("purchase") || userTokens.has("purchases") || userTokens.has("inward");
+  const gstWord = userTokens.has("gst") || userTokens.has("itc");
+  const itcIssue = userTokens.has("itc") && (userTokens.has("issue") || userTokens.has("issues") || userTokens.has("problem") || userTokens.has("problems"));
+  if (!((purchaseWord && gstWord) || itcIssue)) return null;
+  return INDEX.find((i) => i.entry.id === PURCHASE_WITH_GST_ENTRY_ID)?.entry ?? null;
 }
 
 /** Distinguishes a genuine greeting or "what can you do" question from an actual attempt at
@@ -301,7 +320,8 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
     matchesAdvancesScriptedTrigger(userTokenSet) ??
     matchesEInvoiceScriptedTrigger(userTokenSet) ??
     matchesGstr2bScriptedTrigger(userTokenSet) ??
-    matchesSalesRegisterGstScriptedTrigger(userTokenSet);
+    matchesSalesRegisterGstScriptedTrigger(userTokenSet) ??
+    matchesPurchaseWithGstTrigger(userTokenSet);
   if (scriptedMatch && !excluded.has(scriptedMatch.id)) {
     return { confidence: "high", top: scriptedMatch, candidates: [] };
   }

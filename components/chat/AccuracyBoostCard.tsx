@@ -23,6 +23,7 @@ function joinNames(names: string[]): string {
 export function AccuracyBoostCard({
   itemKey,
   tracker,
+  subject = "sales",
   providedFileNames,
   remaining,
   pending,
@@ -40,6 +41,8 @@ export function AccuracyBoostCard({
 }: {
   itemKey: string;
   tracker: RevealTracker;
+  /** What the result reconciles, for the opening line ("sales", "purchases"). */
+  subject?: string;
   providedFileNames: string[];
   remaining: { index: number; checkpoint: ReconciliationCheckpoint }[];
   pending: number[];
@@ -94,7 +97,7 @@ export function AccuracyBoostCard({
         </p>
         <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-navy-body">
           {appliedCount === 0
-            ? `This result reconciles your sales against ${provided}. Adding ${remaining.length === 1 ? "the document" : "any of the documents"} below narrows the gap between what your books show and what the GST returns say, so the figure you act on is closer to what an auditor would land on.`
+            ? `This result reconciles your ${subject} against ${provided}. Adding ${remaining.length === 1 ? "the document" : "any of the documents"} below narrows the gap between what your books show and what the GST returns say, so the figure you act on is closer to what an auditor would land on.`
             : `Your result now includes ${provided}. Add ${missingNames} below for a tighter number, or carry on without ${remaining.length === 1 ? "it" : "them"}.`}
         </p>
       </div>

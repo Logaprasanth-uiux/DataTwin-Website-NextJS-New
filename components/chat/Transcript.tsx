@@ -43,6 +43,7 @@ export interface TranscriptActions {
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemoveUpload: (fileId: string) => void;
   onContinueFiles: () => void;
+  onChooseOptionalGroups: (groupIds: string[]) => void;
   onChooseFileSource: (fileId: string, source: FileSourceChoice) => void;
   onSubmitPortalGstin: (fileId: string) => void;
   onPortalFetchComplete: (fileId: string, fileName: string) => void;
@@ -197,6 +198,8 @@ export function Transcript({
                   onAdvanceStatus={actions.onAdvanceStatus}
                   onRemove={actions.onRemoveUpload}
                   onContinue={actions.onContinueFiles}
+                  optionalGroups={state.optionalGroups}
+                  onChooseGroups={actions.onChooseOptionalGroups}
                   onChooseFileSource={actions.onChooseFileSource}
                   onSubmitPortalGstin={actions.onSubmitPortalGstin}
                   onPortalFetchComplete={actions.onPortalFetchComplete}
@@ -232,7 +235,10 @@ export function Transcript({
                       <AccuracyBoostCard
                         itemKey={`${item.id}:accuracy`}
                         tracker={tracker}
-                        providedFileNames={item.topic.requiredFiles.filter((file) => file.fileId !== "F17").map((file) => file.name)}
+                        subject={item.topic.id === "1.14" ? "purchases" : "sales"}
+                        providedFileNames={item.topic.requiredFiles
+                          .filter((file) => file.fileId !== (item.topic.id === "1.14" ? "F05" : "F17"))
+                          .map((file) => file.name)}
                         remaining={offer.remaining}
                         pending={offer.pending}
                         appliedCount={offer.appliedCount}

@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import type { FileSourceChoice, PortalFetchStage, ReconciliationCheckpoint, UploadedFile } from "@/lib/chat/types";
 import { FileRequirementCard } from "./FileRequirementCard";
 import { MessageTurn } from "./MessageTurn";
 import { PortalFetchFlow } from "./PortalFetchFlow";
-import type { RevealTracker } from "./reveal";
+import { UserReveal, type RevealTracker } from "./reveal";
 
 // Shown once the required documents are in and before the reconciliation runs: every optional
 // document at once, as one message with its cards, and one button that starts the run — with or
@@ -15,6 +16,10 @@ export function OptionalDocsOffer({
   requiredNames,
   tracker,
   checkpoints,
+  groups,
+  groupsQuestion,
+  selectedGroups,
+  onChooseGroups,
   uploads,
   fileSource,
   portalFetch,
@@ -33,6 +38,13 @@ export function OptionalDocsOffer({
   requiredNames: string[];
   tracker: RevealTracker;
   checkpoints: ReconciliationCheckpoint[];
+  /** When the topic asks which groups of optional documents apply (see
+   * ReconciliationTopic.optionalGroups): the groups, the question, what was answered (undefined
+   * until then) and how to record the answer. */
+  groups?: { id: string; label: string }[];
+  groupsQuestion?: string;
+  selectedGroups?: string[];
+  onChooseGroups?: (groupIds: string[]) => void;
   uploads: Record<string, UploadedFile>;
   fileSource: Record<string, FileSourceChoice>;
   portalFetch: Record<string, PortalFetchStage>;
@@ -51,7 +63,14 @@ export function OptionalDocsOffer({
     checkpoint.portalFetchFileIds?.includes(file.fileId) ?? false;
   // Documents that can be fetched from the portal (two buttons) come first, so each row of the grid
   // holds cards of the same height instead of alternating tall and short ones.
-  const files = checkpoints
+  const [picked, setPicked] = useState<string[]>([]);
+  // With groups, nothing is offered until the user has said which apply, and then only those.
+  const offered = groups
+    ? selectedGroups === undefined
+      ? []
+      : checkpoints.filter((checkpoint) => checkpoint.group !== undefined && selectedGroups.includes(checkpoint.group))
+    : checkpoints;
+  const files = offered
     .flatMap((checkpoint) => checkpoint.files.map((file) => ({ file, checkpoint })))
     .sort((a, b) => Number(canFetchFile(b.file, b.checkpoint)) - Number(canFetchFile(a.file, a.checkpoint)));
   const joinNames = (names: string[]) =>
@@ -62,11 +81,79 @@ export function OptionalDocsOffer({
 
   return (
     <div className="flex flex-col gap-4" data-scroll-target={resolved ? undefined : "optional"}>
-      <MessageTurn
-        speaker="DataTwin"
-        text="I have what I need to start. These optional documents narrow the gap further — add any of them now, or continue without."
-      />
+      {groups && selectedGroups === undefined ? (
+        <>
+          <MessageTurn
+            speaker="DataTwin"
+            text={`I have what I need to start. ${groupsQuestion ?? "Which of these apply to you?"}`}
+          />
+          <div className="flex flex-wrap gap-2.5">
+            {groups.map((group) => {
+              const on = picked.includes(group.id);
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={resolved}
+                  onClick={() => setPicked((prev) => (prev.includes(group.id) ? prev.filter((id) => id !== group.id) : [...prev, group.id]))}
+                  className={`rounded-xl border px-4 py-2.5 text-left text-[14px] font-medium text-navy shadow-soft transition-colors hover:border-accent ${
+                    on ? "border-accent bg-accent/[0.08]" : "border-navy-hairline bg-white hover:bg-accent/[0.05]"
+                  }`}
+                >
+                  {group.label}
+                </button>
+              );
+            })}
+          </div>
+          {!resolved && (
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={picked.length === 0}
+                onClick={() => onChooseGroups?.(picked)}
+                className="dt-button h-12 w-fit rounded-full bg-navy px-6 text-[14px] text-white transition-colors hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Add files for these
+              </button>
+              <button
+                type="button"
+                onClick={() => onChooseGroups?.([])}
+                className="h-12 w-fit rounded-full border border-navy-hairline px-6 text-[14px] font-medium text-navy transition-colors hover:border-accent"
+              >
+                Continue with {joinNames(requiredNames)}
+              </button>
+            </div>
+          )}
+        </>
+      ) : groups && selectedGroups ? (
+        <>
+          <UserReveal itemKey={`${itemKey}:groups`} tracker={tracker}>
+            <MessageTurn
+              speaker="You"
+              text={
+                selectedGroups.length > 0
+                  ? groups.filter((g) => selectedGroups.includes(g.id)).map((g) => g.label).join(", ")
+                  : `Just ${joinNames(requiredNames)}`
+              }
+            />
+          </UserReveal>
+          {selectedGroups.length > 0 && (
+            <MessageTurn
+              speaker="DataTwin"
+              text="Here are the documents that go with those. Add any of them now, or continue without."
+            />
+          )}
+        </>
+      ) : (
+        <MessageTurn
+          speaker="DataTwin"
+          text="I have what I need to start. These optional documents narrow the gap further — add any of them now, or continue without."
+        />
+      )}
 
+      {files.length > 0 && (
+        <>
       <p className="text-[12px] font-semibold tracking-[0.08em] text-navy-muted uppercase">Optional documents</p>
       <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
       {files.map(({ file, checkpoint }) => {
@@ -104,8 +191,10 @@ export function OptionalDocsOffer({
         );
       })}
       </div>
+        </>
+      )}
 
-      {!resolved && (
+      {!resolved && files.length > 0 && (
         <button
           type="button"
           onClick={onRun}

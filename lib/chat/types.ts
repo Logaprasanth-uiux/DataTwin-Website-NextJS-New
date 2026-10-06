@@ -49,6 +49,10 @@ export type SalesGstAreaId =
   | "itc-excess"
   | "itc-missed"
   | "itc-blocked"
+  | "itc-missing-2b"
+  | "itc-claimed-above-2b"
+  | "itc-unclaimed"
+  | "itc-to-reverse"
   | "interest";
 
 export interface SalesGstArea {
@@ -75,6 +79,8 @@ export interface SalesGstBreakdown {
   projections: SalesGstProjection[];
   /** True once GSTR-3B is part of the result — only then do the ITC areas exist. */
   includesItc: boolean;
+  /** Set for the purchase-side result: the areas are about ITC, and the copy changes to match. */
+  side?: "purchase";
 }
 
 // How the executive summary is worded and what it leads with. Chosen from the reconciliation (see
@@ -138,6 +144,11 @@ export interface ReconciliationTopic {
    * which behaves exactly as before — straight from verification to its result, no offer in
    * between. */
   furtherCheckpoints?: ReconciliationCheckpoint[];
+  /** When set, the optional documents are not all offered at once: the user is first asked which of
+   * these groups apply (a multi-select, or "just the required documents"), and only the documents
+   * of the chosen groups are offered. Each checkpoint names its group. */
+  optionalGroups?: { id: string; label: string }[];
+  optionalGroupsQuestion?: string;
 }
 
 // One additional round of a multi-checkpoint scripted reconciliation (see
@@ -155,6 +166,9 @@ export interface ReconciliationCheckpoint {
   /** One business-specific line on what adding this round's document improves, shown on the
    * "improve accuracy" card after the result (see ResultStep) if this round was skipped. */
   accuracyBenefit?: string;
+  /** The group this document belongs to, when the topic asks which groups apply before offering
+   * its optional documents (see ReconciliationTopic.optionalGroups). */
+  group?: string;
   /** This round's own refreshed result, shown once its files are all ready and verified. */
   mockResult: TopicMockResult;
 }
@@ -382,6 +396,9 @@ export interface ConversationState {
    * accuracy" card (see ResultStep) and folded into the refreshed result — as opposed to the
    * checkpoints before `checkpointIndex`, which were collected in the normal round-by-round flow. */
   accuracyExtras?: number[];
+  /** The groups picked on the optional-documents question (see ReconciliationTopic.optionalGroups).
+   * Absent until answered; empty when the user chose to continue with the required documents only. */
+  optionalGroups?: string[];
   /** True once the user chose "continue without" on the accuracy card — it stays hidden. */
   accuracyDismissed?: boolean;
   /** The "here's what I understood" summary shown once a reconciliation is identified (see

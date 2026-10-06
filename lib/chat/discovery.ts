@@ -1,6 +1,6 @@
 import { RECONCILIATION_CATALOG, type CatalogEntry } from "./data/catalog";
 import { AREAS, AREA_BY_ID, type AreaId } from "./areas";
-import { SALES_WITH_GST_ENTRY_ID, areaOfEntry, classifyOpener, guessAreaFromText, rankInArea, resolveIntent } from "./resolver";
+import { PURCHASE_WITH_GST_ENTRY_ID, SALES_WITH_GST_ENTRY_ID, areaOfEntry, classifyOpener, guessAreaFromText, rankInArea, resolveIntent } from "./resolver";
 import type { DiscoveryState, DiscoveryTurn, EntryContext } from "./types";
 
 // Progressive, free-form reconciliation discovery: "Something else" (and generic/casual openers)
@@ -287,10 +287,12 @@ export function selectDiscoveryOption(
     const areaId = optionId.slice(AREA_PREFIX.length) as AreaId;
     // The sales side has one umbrella check that covers everything on it, so choosing it needs no
     // further narrowing.
-    if (areaId === "sales") {
-      turns.push(makeMessage(turns, "Got it — Sales with GST. Let's get the details we need."));
+    const umbrellaId = areaId === "sales" ? SALES_WITH_GST_ENTRY_ID : areaId === "purchase" ? PURCHASE_WITH_GST_ENTRY_ID : null;
+    if (umbrellaId) {
+      const label = areaId === "sales" ? "Sales with GST" : "Purchase with GST";
+      turns.push(makeMessage(turns, `Got it — ${label}. Let's get the details we need.`));
       return {
-        discovery: { ...discovery, turns, resolvedId: SALES_WITH_GST_ENTRY_ID, shownIds: [...discovery.shownIds, SALES_WITH_GST_ENTRY_ID] },
+        discovery: { ...discovery, turns, resolvedId: umbrellaId, shownIds: [...discovery.shownIds, umbrellaId] },
         status: "resolved",
       };
     }

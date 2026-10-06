@@ -84,7 +84,13 @@ function buildFileRequirements(entry: CatalogEntry): { required: FileRequirement
 // or the two asks read as duplicates of each other.
 type ReconciliationScript = Pick<
   ReconciliationTopic,
-  "filesIntro" | "fileAckOverrides" | "portalFetchFileIds" | "autoAdvanceMessage" | "furtherCheckpoints"
+  | "filesIntro"
+  | "fileAckOverrides"
+  | "portalFetchFileIds"
+  | "autoAdvanceMessage"
+  | "furtherCheckpoints"
+  | "optionalGroups"
+  | "optionalGroupsQuestion"
 > & {
   requiredFileNameOverrides?: Record<string, string>;
   /** Replaces a required file's generic catalogue description with one that fits this flow. */
@@ -109,6 +115,40 @@ const SALES_WITH_GST_OPTIONAL: { fileId: string; name: string; why: string; bene
   { fileId: "F31", name: FILE_DEFS.F31.name, why: FILE_DEFS.F31.why, benefit: "Ties every credit and debit note back to its original invoice, so returns and price changes net off correctly." },
   { fileId: "SG-GSTR1A", name: "GSTR-1A", why: "Captures same-period amendments to GSTR-1: corrections, cancellations and rate fixes.", benefit: "Picks up amendments filed after your GSTR-1, so corrected invoices stop showing up as mismatches.", portal: true },
   { fileId: "SG-OTHERINC", name: "Other Income Register", why: "Lists income outside normal sales, such as sale of assets or scrap, recoveries, rent, notice pay and cross-charges between your GSTINs.", benefit: "Finds income in your books that may be a supply but was never reported in GSTR-1." },
+];
+
+// The optional documents of the umbrella Purchase with GST check, by the group each belongs to. The
+// user is asked which groups apply (see ReconciliationTopic.optionalGroups) and is only offered the
+// documents of those. All of these have a definition in FILE_DEFS already.
+const PURCHASE_WITH_GST_GROUPS: { id: string; label: string }[] = [
+  { id: "vendor", label: "Vendor filings (GSTR-2A) and credit notes" },
+  { id: "claimed", label: "ITC claimed in GSTR-3B" },
+  { id: "ims", label: "IMS accepted, rejected or pending" },
+  { id: "ledgers", label: "ITC ledgers in your books" },
+  { id: "reversals", label: "ITC reversals and eligibility" },
+  { id: "rcm", label: "Reverse charge (RCM)" },
+  { id: "imports", label: "Imports of goods" },
+  { id: "capital", label: "Capital goods" },
+  { id: "isd", label: "ISD distribution" },
+];
+
+const PURCHASE_WITH_GST_OPTIONAL: { group: string; fileId: string; benefit: string }[] = [
+  { group: "vendor", fileId: "F01", benefit: "Shows what vendors have reported against you, so vendors who have not filed or who amended an invoice stand out." },
+  { group: "vendor", fileId: "F06", benefit: "Ties supplier credit and debit notes to the purchase invoices, so ITC is adjusted correctly." },
+  { group: "claimed", fileId: "F03", benefit: "Checks the ITC you claimed against what GSTR-2B supports, and brings unclaimed and excess ITC into the result." },
+  { group: "ims", fileId: "F29", benefit: "Reconciles accepted, rejected and pending invoice actions, so credit is neither lost nor claimed wrongly." },
+  { group: "ledgers", fileId: "F07", benefit: "Ties the input CGST, SGST and IGST balances in your books to the credit taken in GSTR-3B." },
+  { group: "ledgers", fileId: "F04", benefit: "Shows the credit actually available and used on the portal." },
+  { group: "reversals", fileId: "F12", benefit: "Ties your reversals and reclaims to the Electronic Credit Reversal and Reclaimed Statement." },
+  { group: "reversals", fileId: "F51", benefit: "Works out the common credit to reverse under Rules 42 and 43." },
+  { group: "reversals", fileId: "F52", benefit: "Flags vendors unpaid beyond 180 days, where ITC has to be reversed under Rule 37." },
+  { group: "reversals", fileId: "F50", benefit: "Marks purchases that are blocked under Section 17(5) or otherwise ineligible." },
+  { group: "rcm", fileId: "F13", benefit: "Compares reverse-charge expenses with the RCM paid in cash and the ITC taken on it." },
+  { group: "imports", fileId: "F34", benefit: "Matches each bill of entry to the import ITC claimed." },
+  { group: "imports", fileId: "F35", benefit: "Cross-checks ICEGATE import data with GSTR-2B and your books." },
+  { group: "capital", fileId: "F62", benefit: "Checks ITC on capital goods against the additions in your fixed asset register." },
+  { group: "isd", fileId: "F37", benefit: "Shows the credit your Input Service Distributor distributed." },
+  { group: "isd", fileId: "F38", benefit: "Compares the credit distributed with what each branch GSTIN received." },
 ];
 
 // Bespoke walkthrough copy for reconciliations with a scripted journey. Everything else keeps the
@@ -443,6 +483,37 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
         portalFetchFileIds: portal ? [fileId] : undefined,
         accuracyBenefit: benefit,
         mockResult: generateMockResult(`10.15::checkpoint-${index + 1}`),
+      }),
+    ),
+  },
+  // "Purchase with GST": the umbrella check for a user who says their purchases have a GST issue
+  // without naming one reconciliation. Purchase Register + GSTR-2B are all that's needed to run. The
+  // other purchase-side documents are optional and are asked for by group: the user says which of
+  // these apply and is only offered those. Same result layout as Sales with GST, with ITC areas that
+  // each appear only once the document behind them is in (see generatePurchaseGstResult).
+  "1.14": {
+    baseFileIds: ["F05", "F02"],
+    requiredFileNameOverrides: { F05: "Purchase Register", F02: "GSTR-2B" },
+    requiredFileWhyOverrides: {
+      F05: "Lists your purchase invoices for the period, vendor by vendor, so each can be checked against what GST shows.",
+      F02: "Shows the purchases your vendors reported for you, which is what your ITC can be claimed against.",
+    },
+    filesIntro:
+      "Let's start with your Purchase Register for the period.\n\nWhy this helps: Sets the books-side baseline.",
+    fileAckOverrides: {
+      F05: "Got it. Now share your GSTR-2B for the same period.\n\nWhy this helps: Shows which of your purchase invoices your vendors have reported.",
+    },
+    portalFetchFileIds: ["F02"],
+    autoAdvanceMessage: "Both files are ready. Running your Purchase with GST reconciliation... ⏳",
+    optionalGroups: PURCHASE_WITH_GST_GROUPS,
+    optionalGroupsQuestion: "To narrow this down, which of these apply to your purchases?",
+    furtherCheckpoints: PURCHASE_WITH_GST_OPTIONAL.map(
+      ({ group, fileId, benefit }, index): ReconciliationCheckpoint => ({
+        group,
+        files: [{ fileId, name: FILE_DEFS[fileId].name, level: "required", why: FILE_DEFS[fileId].why }],
+        portalFetchFileIds: ["F01", "F03", "F04", "F29", "F37"].includes(fileId) ? [fileId] : undefined,
+        accuracyBenefit: benefit,
+        mockResult: generateMockResult(`1.14::checkpoint-${index + 1}`),
       }),
     ),
   },

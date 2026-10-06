@@ -4,7 +4,7 @@ import {
   submitFreeMessage as applySubmitFreeMessage,
 } from "./discovery";
 import { buildIntentSummary, userWordsForIntent } from "./intents";
-import { generateMockResult, SALES_GST_IDS } from "./mockResult";
+import { generateMockResult, PURCHASE_GST_IDS, SALES_GST_IDS } from "./mockResult";
 import { ANNUAL_ENTRY_ID, buildResolvedTopic, periodModeFor } from "./reconciliation";
 import { PLACEHOLDER_TITLE } from "./title";
 import { formatPeriodRange } from "./formatDate";
@@ -459,6 +459,15 @@ export function visibleRequiredFiles(
   return topic.requiredFiles.slice(0, revealCount);
 }
 
+// The answer to "which of these apply?" before the optional documents (see
+// ReconciliationTopic.optionalGroups). Nothing picked means "just the required documents", which
+// goes straight to the run; otherwise the documents of the chosen groups are offered.
+export function chooseOptionalGroups(state: ConversationState, groupIds: string[]): ConversationState {
+  if (state.optionalGroups) return state;
+  const next = touch({ ...state, optionalGroups: groupIds });
+  return groupIds.length === 0 ? beginVerification(next) : next;
+}
+
 export function beginVerification(state: ConversationState): ConversationState {
   if (!requiredFilesReady(state)) return state;
   // Optional documents added before the run (see OptionalDocsOffer) count towards the first
@@ -497,6 +506,7 @@ export function retryAfterOutcome(state: ConversationState): ConversationState {
     fileValidation: {},
     filePreviewOpen: {},
     accuracyExtras: [],
+    optionalGroups: undefined,
     checkpointIndex: 0,
     maxRequiredFilesRevealed: 0,
   });
@@ -570,7 +580,9 @@ function withAccuracyExtras(topic: ReconciliationTopic, effective: Reconciliatio
   const mockResult =
     SALES_GST_IDS.has(topic.id)
       ? generateMockResult(`${topic.id}::round-${covered}`, { includeItc: requiredFiles.some((f) => f.fileId === "SG-GSTR3B") })
-      : (checkpoints[covered - 1]?.mockResult ?? effective.mockResult);
+      : PURCHASE_GST_IDS.has(topic.id)
+        ? generateMockResult(`${topic.id}::round-${covered}`, { fileIds: requiredFiles.map((f) => f.fileId) })
+        : (checkpoints[covered - 1]?.mockResult ?? effective.mockResult);
   return { ...effective, requiredFiles, mockResult };
 }
 
@@ -802,7 +814,13 @@ function appendOutcome(items: TranscriptItem[], state: ConversationState, topic:
   const fileName = badUpload?.fileName ?? `your ${topic.requiredFiles[0]?.name ?? "file"}`;
   // Sales Register vs GSTR-1 is called "Sales Register vs GST reconciliation" in the conversation.
   const checkName =
-    topic.id === "10.1" ? "Sales Register vs GST reconciliation" : topic.id === "10.15" ? "Sales with GST reconciliation" : topic.label;
+    topic.id === "10.1"
+      ? "Sales Register vs GST reconciliation"
+      : topic.id === "10.15"
+        ? "Sales with GST reconciliation"
+        : topic.id === "1.14"
+          ? "Purchase with GST reconciliation"
+          : topic.label;
   const portalId = topic.portalFetchFileIds?.[0];
   const portalName = topic.requiredFiles.find((f) => f.fileId === portalId)?.name ?? "return";
 
