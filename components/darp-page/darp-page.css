@@ -1,0 +1,149 @@
+/* DARP Framework page illustrations. The markup is a complete static picture; motion is layered on only
+   when the visitor has not asked for reduced motion. */
+
+.dp-scan,
+.dp-gate,
+.dp-dot,
+.dp-sweep,
+.dp-coin,
+.dp-spoke,
+.dp-flow {
+  transform-box: fill-box;
+}
+
+/* Static resting spots for the funding coins (reduced motion); the animation below takes over from them. */
+.dp-coin {
+  transform: translateY(var(--y, 0px));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The scan walks down the history stack one row at a time. */
+  .dp-scan {
+    animation: dp-scan 7.5s linear infinite;
+  }
+
+  /* Transactions stream past the entry gate. Negative delays spread them out from the first frame. */
+  .dp-dot {
+    animation: dp-dot 7.8s linear infinite;
+    animation-delay: calc(var(--d, 0s) * -1);
+    opacity: 0;
+  }
+
+  .dp-flow {
+    stroke-dasharray: 5 6;
+    animation: dp-flow 1.1s linear infinite;
+  }
+
+  .dp-gate {
+    animation: dp-gate 2.6s ease-in-out infinite;
+  }
+
+  .dp-sweep {
+    animation: dp-sweep 5.5s ease-in-out infinite;
+  }
+
+  .dp-coin {
+    animation: dp-coin 2.7s ease-in infinite;
+    animation-delay: calc(var(--d, 0s) * -1);
+  }
+
+  .dp-spoke {
+    stroke-dasharray: 4 6;
+    animation: dp-flow 1.4s linear infinite;
+    animation-delay: calc(var(--d, 0s) * -1);
+  }
+}
+
+/* Five rows, 40 units apart: the highlight holds on each row, then snaps to the next (explicit stops rather
+   than steps(), so it can never rest between two rows). */
+@keyframes dp-scan {
+  0%,
+  17% {
+    transform: translateY(0);
+  }
+  20%,
+  37% {
+    transform: translateY(40px);
+  }
+  40%,
+  57% {
+    transform: translateY(80px);
+  }
+  60%,
+  77% {
+    transform: translateY(120px);
+  }
+  80%,
+  97% {
+    transform: translateY(160px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes dp-dot {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(290px);
+    opacity: 0;
+  }
+}
+
+@keyframes dp-flow {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+
+@keyframes dp-gate {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes dp-sweep {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(336px);
+    opacity: 0;
+  }
+}
+
+@keyframes dp-coin {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(72px);
+    opacity: 0;
+  }
+}
+
+/* FAQ accordion marker: the plus rotates into a cross when open. */
+details[open] > summary .dp-faq-plus {
+  transform: rotate(45deg);
+}

@@ -42,7 +42,7 @@ export const PLATFORM_DARP = {
   tagline: "Discover · Assess · Recover · Prevent",
   desc: "The recovery and processing engine behind every DataTwin engagement. Reads your transaction history read-only, values every finding, packages the evidence that gets the cash back — then turns the same rules forwards so the leak cannot reopen.",
   points: ["Read-only to start", "Full population, not a sample", "Prevent needs no second build"],
-  href: "#",
+  href: "/platform/darp",
 };
 
 export const PLATFORM_ACROSS: MenuGroup = {
