@@ -51,7 +51,7 @@ export const PLATFORM_ACROSS: MenuGroup = {
     {
       title: "Security",
       desc: "Read-only by default. ISO 27001 certified and SOC 2 attested, with role-based access and an immutable audit trail on every record. Cloud agnostic — runs on AWS, Azure, GCP or your own private cloud.",
-      href: "#",
+      href: "/platform/security",
       icon: "security",
     },
     {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Container } from "./Container";
 import { LossIndicator } from "./LossIndicator";
 import { Logo } from "./Logo";
@@ -10,6 +10,7 @@ import { MobileMenu } from "./mega-menu/MobileMenu";
 import type { MenuKey } from "./mega-menu/menu-data";
 
 const SCROLL_THRESHOLD = 8;
+const MENU_CLOSE_GRACE_MS = 280;
 
 function subscribeToScroll(onChange: () => void) {
   window.addEventListener("scroll", onChange, { passive: true });
@@ -39,14 +40,27 @@ const NAV_LINKS = [
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<MenuKey | null>(null);
+  // Leaving the header does not close the menu at once: the pointer has to be able to cross the small gap to
+  // the panel (and drift a little while it travels) without the panel vanishing under it.
+  const closeTimer = useRef<number | null>(null);
+  const cancelClose = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setOpenMenu(null), MENU_CLOSE_GRACE_MS);
+  };
+  useEffect(() => cancelClose, []);
   const scrolled = useSyncExternalStore(subscribeToScroll, getScrolled, getScrolledOnServer);
   const overHero = useSyncExternalStore(subscribeToScroll, getOverHero, getOverHeroOnServer);
 
   return (
     <>
-    {openMenu && <MegaScrim onClose={() => setOpenMenu(null)} />}
+    {openMenu && <MegaScrim onClose={() => { cancelClose(); setOpenMenu(null); }} />}
     <header
-      onMouseLeave={() => setOpenMenu(null)}
+      onMouseEnter={cancelClose}
+      onMouseLeave={scheduleClose}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) setOpenMenu(null);
       }}

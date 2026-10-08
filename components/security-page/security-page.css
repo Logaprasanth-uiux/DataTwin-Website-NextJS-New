@@ -1,0 +1,83 @@
+/* Security page illustrations. The markup is a complete static picture; motion is layered on only when the
+   visitor has not asked for reduced motion. */
+
+.sp-flow,
+.sp-pulse,
+.sp-orbit {
+  transform-box: fill-box;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sp-flow {
+    stroke-dasharray: 5 6;
+    animation: sp-flow 1.2s linear infinite;
+  }
+
+  .sp-flow-slow {
+    animation-duration: 2.2s;
+  }
+
+  .sp-pulse {
+    transform-origin: center;
+    animation: sp-pulse 3.2s ease-in-out infinite;
+  }
+
+  .sp-orbit {
+    transform-origin: center;
+    animation: sp-orbit 14s linear infinite;
+  }
+
+  .sp-travel {
+    animation: sp-travel 5.5s ease-in-out infinite;
+    opacity: 0;
+  }
+
+  .sp-tab-panel {
+    animation: sp-panel-in 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+@keyframes sp-flow {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+
+@keyframes sp-travel {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  8%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(448px);
+    opacity: 0;
+  }
+}
+
+@keyframes sp-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes sp-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sp-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* FAQ accordion marker */
+details[open] > summary .sp-faq-plus {
+  transform: rotate(45deg);
+}

@@ -100,6 +100,9 @@ export function MegaMenu({
 
       {Panel && openMenu && (
         <div className="pointer-events-none absolute inset-x-0 top-full px-[var(--dt-inset)] pt-2">
+          {/* Full-width bridge across the gap between the header and the panel, so the pointer never leaves
+              the header's hit area on the way down, whichever trigger it came from. */}
+          <span aria-hidden="true" className="pointer-events-auto absolute inset-x-0 top-0 h-3" />
           <div className="dt-container">
             <div
               id={PANEL_ID}
@@ -107,7 +110,7 @@ export function MegaMenu({
               aria-label={MENU_TRIGGERS.find((t) => t.key === openMenu)?.label}
               className="dt-mega dt-mega-panel pointer-events-auto relative max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[28px] border border-navy-hairline p-6 lg:p-8"
             >
-              <span aria-hidden="true" className="absolute inset-x-0 -top-2 h-2" />
+              <span aria-hidden="true" className="absolute inset-x-0 -top-3 h-3" />
               <div key={openMenu}>
                 <Panel onNavigate={close} onEstimate={onEstimate} />
               </div>

@@ -21,7 +21,7 @@ const GUTTER = "px-6 sm:px-8 lg:px-10";
 
 const STAGE_ORDER: readonly DarpStageKey[] = ["discover", "assess", "recover", "prevent"];
 
-function Header({
+export function Header({
   eyebrow,
   id,
   body,
