@@ -55,7 +55,7 @@ export function Header({
 }
 
 // A link to something that is not published yet: same pill shape as CtaLink, visibly inert.
-function SoonPill({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
+export function SoonPill({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
   return (
     <span
       aria-disabled="true"

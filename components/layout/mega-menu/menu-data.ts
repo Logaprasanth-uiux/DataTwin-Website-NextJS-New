@@ -57,7 +57,7 @@ export const PLATFORM_ACROSS: MenuGroup = {
     {
       title: "How AI is used",
       desc: "Where AI earns its place — reading documents, spotting anomalies, answering questions in plain language — and where deterministic rules run instead, because postings must be auditable.",
-      href: "#",
+      href: "/platform/how-ai-is-used",
       icon: "ai",
     },
   ],

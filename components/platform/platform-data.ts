@@ -162,7 +162,7 @@ export const AI_NATIVE = {
       emphasis: true,
     },
   ] satisfies readonly { icon: PlatformIconName; title: string; body: string; emphasis?: boolean }[],
-  link: { label: "Agents, models, human-in-the-loop gates and the reasoning engine, in full.", href: "#how-ai-is-used" },
+  link: { label: "Agents, models, human-in-the-loop gates and the reasoning engine, in full.", href: "/platform/how-ai-is-used" },
 } as const;
 
 // ---- Across the platform ---------------------------------------------------------------------------------
@@ -175,13 +175,13 @@ export const ACROSS = {
       icon: "shield",
       title: "Security",
       body: "Read-only by default. ISO 27001 certified and SOC 2 attested, with role-based access, residency options and an immutable audit trail. AWS, Azure, GCP or your own cloud.",
-      href: "#security",
+      href: "/platform/security",
     },
     {
       icon: "sparkle",
       title: "How AI is used",
       body: "The full account of where AI earns its place: document understanding, source modelling, schema construction, reasoning on hard matches, natural-language query. And where deterministic rules run instead.",
-      href: "#how-ai-is-used",
+      href: "/platform/how-ai-is-used",
     },
   ] satisfies readonly { icon: PlatformIconName; title: string; body: string; href: string }[],
   prompt: "Prefer to see the engine working rather than described?",

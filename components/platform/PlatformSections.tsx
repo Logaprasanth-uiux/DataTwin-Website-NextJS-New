@@ -293,7 +293,7 @@ export function AcrossSection() {
             {ACROSS.items.map((item) => (
               <a
                 key={item.title}
-                id={item.href.slice(1)}
+                id={item.href.split("/").pop()}
                 href={item.href}
                 className="dt-reveal group flex flex-col rounded-[24px] border border-navy-hairline bg-cream-50 p-8 transition-colors hover:border-accent sm:p-10"
               >

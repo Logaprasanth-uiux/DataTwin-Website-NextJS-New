@@ -1,0 +1,69 @@
+/* How AI is used page illustrations. The markup is a complete static picture; motion is layered on only when
+   the visitor has not asked for reduced motion. */
+
+.ai-scan,
+.ai-pulse,
+.ai-travel {
+  transform-box: fill-box;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ai-flow {
+    stroke-dasharray: 5 6;
+    animation: ai-flow 1.2s linear infinite;
+  }
+
+  .ai-pulse {
+    transform-origin: center;
+    animation: ai-pulse 3.2s ease-in-out infinite;
+  }
+
+  /* The scan bar walks down a document. */
+  .ai-scan {
+    animation: ai-scan 4.5s ease-in-out infinite;
+  }
+
+  /* A marker travelling along a line: --ai-run is how far, in user units. */
+  .ai-travel {
+    animation: ai-travel 5.5s ease-in-out infinite;
+    animation-delay: calc(var(--d, 0s) * -1);
+    opacity: 0;
+  }
+}
+
+@keyframes ai-flow {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+
+@keyframes ai-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes ai-scan {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(78px);
+  }
+}
+
+@keyframes ai-travel {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  8%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(var(--ai-run, 200px));
+    opacity: 0;
+  }
+}
