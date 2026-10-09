@@ -128,22 +128,24 @@ export function GateArt({ gate, className = "" }: { gate: 1 | 2 | 3 | 4 | 5; cla
           <Card x={86} y={80} w={104} h={44} />
           <Card x={370} y={48} w={104} h={44} accent />
           <g stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round">
-            <path className="ap-flow" d="M192 40C230 40 240 62 258 66" />
-            <path className="ap-flow" d="M192 102C230 102 240 78 258 74" />
-            <path className="ap-flow" d="M368 70H302" />
+            <path className="ap-flow" d="M192 38C226 38 238 56 259 58" />
+            <path className="ap-flow" d="M192 102C226 102 238 84 259 82" />
+            <path className="ap-flow" d="M368 70H304" />
           </g>
+          {/* An opaque disc first, so the links stop at its edge and never show through the tick. */}
+          <circle cx="280" cy="70" r="24" fill="var(--cream-50, #fff)" />
           <circle cx="280" cy="70" r="24" fill="var(--accent)" fillOpacity="0.14" stroke="var(--accent)" strokeWidth="1.75" />
           <path d="M269 70l8 8 14-16" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </>
       )}
       {gate === 3 && (
         <>
-          {[20, 48, 76, 104].map((y, i) => (
+          {[22, 54, 86, 118].map((y, i) => (
             <g key={y}>
-              <rect x="90" y={y - 11} width="200" height="26" rx="9" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1.5" fill="currentColor" fillOpacity="0.04" />
-              <circle cx="110" cy={y + 2} r="8" stroke="var(--accent)" strokeWidth="1.5" fill="var(--accent)" fillOpacity="0.14" />
-              <path d={`M106 ${y + 2}l3 3 5-6`} stroke="var(--accent)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-              <path d={`M128 ${y + 2}h${[110, 76, 126, 92][i]}`} stroke="currentColor" strokeOpacity="0.32" strokeWidth="1.5" strokeLinecap="round" />
+              <rect x="90" y={y - 12} width="200" height="24" rx="9" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1.5" fill="currentColor" fillOpacity="0.04" />
+              <circle cx="110" cy={y} r="7.5" stroke="var(--accent)" strokeWidth="1.5" fill="var(--accent)" fillOpacity="0.14" />
+              <path d={`M106.5 ${y}l2.5 2.5 4.5-5`} stroke="var(--accent)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              <path d={`M128 ${y}h${[110, 76, 126, 92][i]}`} stroke="currentColor" strokeOpacity="0.32" strokeWidth="1.5" strokeLinecap="round" />
             </g>
           ))}
           <path className="ap-flow" d="M306 70H362" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
@@ -155,27 +157,32 @@ export function GateArt({ gate, className = "" }: { gate: 1 | 2 | 3 | 4 | 5; cla
       )}
       {gate === 4 && (
         <>
-          <circle cx="76" cy="70" r="9" fill="var(--accent)" />
           <g stroke="var(--accent)" strokeOpacity="0.7" strokeWidth="1.5" strokeLinecap="round">
-            <path className="ap-flow" d="M86 66C118 52 130 34 150 34" />
-            <path className="ap-flow" d="M86 74C118 88 130 104 150 104" />
+            {/* serial: one after the other */}
+            <path className="ap-flow" d="M85 66C112 54 126 34 150 34" />
             <path className="ap-flow" d="M186 34H236" />
-            <path className="ap-flow" d="M272 34C330 34 340 64 382 68" />
-            <path className="ap-flow" d="M186 104H214M186 104" />
-            <path className="ap-flow" d="M232 104C300 104 340 80 382 72" />
+            <path className="ap-flow" d="M272 34C330 34 342 62 384 67" />
+            {/* parallel: both at once, then together */}
+            <path className="ap-flow" d="M85 74C108 84 124 104 156 104" />
+            <path className="ap-flow" d="M156 104C180 104 186 84 198 84" />
+            <path className="ap-flow" d="M156 104C180 104 186 124 198 124" />
+            <path className="ap-flow" d="M230 84C310 84 346 76 384 72" />
+            <path className="ap-flow" d="M230 124C310 124 346 82 384 73" />
           </g>
+          <circle cx="76" cy="70" r="9" fill="var(--accent)" />
           {[
-            [168, 34],
-            [254, 34],
-            [214, 104],
-            [250, 104],
-          ].map(([x, y], i) => (
+            [168, 34, 17],
+            [254, 34, 17],
+            [214, 84, 15],
+            [214, 124, 15],
+          ].map(([x, y, r], i) => (
             <g key={i}>
-              <circle cx={x} cy={y} r="17" stroke="currentColor" strokeOpacity="0.7" strokeWidth="1.5" fill="var(--cream-50, #fff)" />
-              <circle cx={x} cy={y - 3} r="3.5" stroke="currentColor" strokeOpacity="0.7" strokeWidth="1.25" />
-              <path d={`M${x - 7} ${y + 9}c1-5 4-7 7-7s6 2 7 7`} stroke="currentColor" strokeOpacity="0.7" strokeWidth="1.25" strokeLinecap="round" />
+              <circle cx={x} cy={y} r={r} stroke="currentColor" strokeOpacity="0.7" strokeWidth="1.5" fill="var(--cream-50, #fff)" />
+              <circle cx={x} cy={y - r * 0.2} r={r * 0.22} stroke="currentColor" strokeOpacity="0.7" strokeWidth="1.25" />
+              <path d={`M${x - r * 0.42} ${y + r * 0.52}c${r * 0.06}-${r * 0.3} ${r * 0.24}-${r * 0.42} ${r * 0.42}-${r * 0.42}s${r * 0.36} ${r * 0.12} ${r * 0.42} ${r * 0.42}`} stroke="currentColor" strokeOpacity="0.7" strokeWidth="1.25" strokeLinecap="round" />
             </g>
           ))}
+          <circle cx="408" cy="70" r="24" fill="var(--cream-50, #fff)" />
           <circle cx="408" cy="70" r="24" fill="var(--accent)" fillOpacity="0.14" stroke="var(--accent)" strokeWidth="1.75" />
           <path d="M397 70l8 8 14-16" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </>
@@ -184,18 +191,22 @@ export function GateArt({ gate, className = "" }: { gate: 1 | 2 | 3 | 4 | 5; cla
         <>
           <Card x={70} y={14} w={160} h={112} rows={0} />
           <Card x={330} y={14} w={160} h={112} rows={0} accent />
-          {[34, 56, 78, 100].map((y, i) => (
-            <g key={y}>
-              <path d={`M88 ${y}h${[70, 50, 62, 40][i]}`} stroke="currentColor" strokeOpacity="0.4" strokeWidth="1.75" strokeLinecap="round" />
-              <path d={`M348 ${y}h${[70, 50, i === 2 ? 30 : 62, 40][i]}`} stroke={i === 2 ? "var(--loss)" : "currentColor"} strokeOpacity={i === 2 ? 1 : 0.4} strokeWidth="1.75" strokeLinecap="round" />
-              <path className={i === 2 ? "" : "ap-flow"} d={`M240 ${y}H320`} stroke={i === 2 ? "var(--loss)" : "var(--accent)"} strokeWidth="1.5" strokeLinecap="round" strokeDasharray={i === 2 ? "2 4" : undefined} />
-              {i === 2 ? (
-                <path d="M274 72l12 12M286 72l-12 12" stroke="var(--loss)" strokeWidth="1.75" strokeLinecap="round" />
-              ) : (
-                <path d={`M275 ${y}l4 4 7-8`} stroke="var(--accent)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-              )}
-            </g>
-          ))}
+          {[34, 56, 78, 100].map((y, i) => {
+            const bad = i === 2;
+            return (
+              <g key={y}>
+                <path d={`M88 ${y}h${[70, 50, 62, 40][i]}`} stroke="currentColor" strokeOpacity="0.4" strokeWidth="1.75" strokeLinecap="round" />
+                <path d={`M348 ${y}h${[70, 50, bad ? 30 : 62, 40][i]}`} stroke={bad ? "var(--loss)" : "currentColor"} strokeOpacity={bad ? 1 : 0.4} strokeWidth="1.75" strokeLinecap="round" />
+                {/* the link, in two parts with a clear gap for the mark between them */}
+                <path className={bad ? "" : "ap-flow"} d={`M242 ${y}H265M295 ${y}H318`} stroke={bad ? "var(--loss)" : "var(--accent)"} strokeWidth="1.5" strokeLinecap="round" strokeDasharray={bad ? "2 4" : undefined} />
+                {bad ? (
+                  <path d={`M274.5 ${y - 5.5}l11 11M285.5 ${y - 5.5}l-11 11`} stroke="var(--loss)" strokeWidth="1.75" strokeLinecap="round" />
+                ) : (
+                  <path d={`M274.5 ${y}l4 4 7-8`} stroke="var(--accent)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                )}
+              </g>
+            );
+          })}
         </>
       )}
     </svg>
