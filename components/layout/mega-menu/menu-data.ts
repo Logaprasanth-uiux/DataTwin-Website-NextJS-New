@@ -69,7 +69,7 @@ export const PRODUCT_GROUPS: readonly MenuGroup[] = [
   {
     label: "Core finance operations",
     items: [
-      { title: "Accounts Payable", desc: "Invoice to payment, accounted right", href: "#", icon: "ap" },
+      { title: "Accounts Payable", desc: "Invoice to payment, accounted right", href: "/products/accounts-payable", icon: "ap" },
       { title: "Accounts Receivable", desc: "Order to cash, collected and applied", href: "#", icon: "ar" },
       { title: "Taxation Reconciliation", desc: "Returns, credits and ledgers that agree", href: "#", icon: "tax" },
       { title: "Reconciliation & Audit", desc: "Continuous, across every system", href: "#", icon: "recon" },

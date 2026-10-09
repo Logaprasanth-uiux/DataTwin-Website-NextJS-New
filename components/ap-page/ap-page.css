@@ -1,0 +1,124 @@
+/* Accounts Payable page illustrations. The markup is a complete static picture; motion is layered on only
+   when the visitor has not asked for reduced motion. */
+
+.ap-pulse,
+.ap-sweep {
+  transform-box: view-box;
+  transform-origin: 120px 120px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ap-flow {
+    stroke-dasharray: 5 6;
+    animation: ap-flow 1.2s linear infinite;
+  }
+
+  .ap-pulse {
+    transform-origin: center;
+    animation: ap-pulse 3.2s ease-in-out infinite;
+  }
+
+  /* A dot hops along each connector in turn, so the run reads left to right (top to bottom on phones). */
+  .ap-hop {
+    animation: ap-hop-v 4.2s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 0.45s);
+    opacity: 0;
+  }
+
+  @media (min-width: 1024px) {
+    .ap-hop {
+      animation-name: ap-hop-h;
+    }
+  }
+
+  .ap-sweep {
+    animation: ap-sweep 6s linear infinite;
+  }
+
+  .ap-live {
+    animation: ap-live 2s ease-in-out infinite;
+  }
+
+  .ap-coin {
+    animation: ap-coin 3s ease-in infinite;
+    animation-delay: calc(var(--d, 0s) * -1);
+  }
+}
+
+@keyframes ap-flow {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+
+@keyframes ap-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes ap-live {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes ap-coin {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(26px);
+    opacity: 0;
+  }
+}
+
+@keyframes ap-hop-h {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  14% {
+    transform: translateX(var(--hop, 32px));
+    opacity: 1;
+  }
+  18%,
+  100% {
+    transform: translateX(var(--hop, 32px));
+    opacity: 0;
+  }
+}
+
+@keyframes ap-hop-v {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  14% {
+    transform: translateY(var(--hop-v, 16px));
+    opacity: 1;
+  }
+  18%,
+  100% {
+    transform: translateY(var(--hop-v, 16px));
+    opacity: 0;
+  }
+}
+
+@keyframes ap-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
