@@ -55,9 +55,16 @@ export function Footer({ children }: { children?: ReactNode }) {
                   <ul className="mt-6 space-y-3.5">
                     {group.links.map((link) => (
                       <li key={link.label}>
-                        <a href={link.href} className={LINK}>
-                          {link.label}
-                        </a>
+                        {link.soon ? (
+                          <span aria-disabled="true" className="inline-flex cursor-not-allowed items-center gap-2.5 text-[15px] leading-snug text-navy-muted">
+                            {link.label}
+                            <span className="rounded-full bg-accent/25 px-2 py-0.5 text-[10px] leading-none font-semibold tracking-[0.1em] text-navy uppercase">Soon</span>
+                          </span>
+                        ) : (
+                          <a href={link.href} className={LINK}>
+                            {link.label}
+                          </a>
+                        )}
                       </li>
                     ))}
                   </ul>

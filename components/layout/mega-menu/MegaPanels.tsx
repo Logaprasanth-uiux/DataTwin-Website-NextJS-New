@@ -195,6 +195,7 @@ export function DownloadCard({ index = 0, onNavigate }: { index?: number; onNavi
   return (
     <a
       href={LEARNING_DOWNLOAD.href}
+      download
       onClick={onNavigate}
       className="dt-mega-item group flex flex-col rounded-[22px] border border-navy-hairline bg-white p-5 transition-colors hover:border-accent"
       style={stagger(index)}

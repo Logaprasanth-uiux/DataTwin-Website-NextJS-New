@@ -1,8 +1,8 @@
 // Everything the global Footer shows, in one place, so every page renders the same footer and a link or
-// line of copy is only ever edited here. The hrefs are in-page anchors for now (like the header's), to
-// be pointed at real routes as those pages arrive.
+// line of copy is only ever edited here. A link marked `soon` is not published yet: the footer shows it with a
+// "Soon" badge and does not link it.
 
-export type FooterLink = { label: string; href: string };
+export type FooterLink = { label: string; href: string; soon?: boolean };
 export type FooterGroup = { title: string; links: readonly FooterLink[] };
 
 export const CONTACT_EMAIL = "solve@datatwin.ai";
@@ -13,32 +13,32 @@ export const FOOTER_GROUPS: readonly FooterGroup[] = [
     title: "Platform",
     links: [
       { label: "Platform Overview", href: "/platform" },
-      { label: "DARP Framework", href: "#darp" },
-      { label: "Security", href: "#security" },
-      { label: "How AI is used", href: "#how-ai-is-used" },
+      { label: "DARP Framework", href: "/platform/darp" },
+      { label: "Security", href: "/platform/security" },
+      { label: "How AI is used", href: "/platform/how-ai-is-used" },
     ],
   },
   {
     title: "Product",
     links: [
-      { label: "Accounts Payable", href: "#accounts-payable" },
-      { label: "Accounts Receivable", href: "#accounts-receivable" },
-      { label: "Taxation Reconciliation", href: "#taxation-reconciliation" },
-      { label: "Reconciliation & Audit", href: "#reconciliation-and-audit" },
-      { label: "Channel Rebates", href: "#channel-rebates" },
-      { label: "Partner Payouts", href: "#partner-payouts" },
-      { label: "Sales Commissions", href: "#sales-commissions" },
-      { label: "FSCP", href: "#fscp" },
-      { label: "Close KPI Catalogue", href: "#close-kpi-catalogue" },
+      { label: "Accounts Payable", href: "/products/accounts-payable" },
+      { label: "Accounts Receivable", href: "/products/accounts-receivable" },
+      { label: "Taxation Reconciliation", href: "/products/taxation-reconciliation" },
+      { label: "Reconciliation & Audit", href: "/products/reconciliation-audit" },
+      { label: "Channel Rebates", href: "/products/channel-rebates" },
+      { label: "Partner Payouts", href: "/products/partner-payouts" },
+      { label: "Sales Commissions", href: "/products/sales-commissions" },
+      { label: "FSCP", href: "/products/fscp" },
+      { label: "Close KPI Catalogue", href: "/products/close-kpi-catalogue" },
     ],
   },
   {
     title: "Company",
     links: [
       { label: "About", href: "#about" },
-      { label: "Customers", href: "#customers" },
-      { label: "Case Studies", href: "#case-studies" },
-      { label: "Blog", href: "#blog" },
+      { label: "Customers", href: "/#trusted-by" },
+      { label: "Case Studies", href: "#case-studies", soon: true },
+      { label: "Blog", href: "#blog", soon: true },
       { label: "Contact", href: "#contact" },
     ],
   },

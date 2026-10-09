@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LossIndicator } from "../LossIndicator";
+import { useChatLaunch } from "@/components/chat/useChatLaunch";
 import { useEstimateLaunch } from "./MegaMenu";
 import { LearningPanel, PlatformPanel, ProductsPanel } from "./MegaPanels";
 import { MENU_TRIGGERS, type MenuKey } from "./menu-data";
@@ -14,11 +15,12 @@ export function MobileMenu({
   links,
   onClose,
 }: {
-  links: readonly { label: string; href: string }[];
+  links: readonly { label: string; href?: string; action?: "chat" }[];
   onClose: () => void;
 }) {
   const [expanded, setExpanded] = useState<MenuKey | null>(null);
   const onEstimate = useEstimateLaunch();
+  const { onClick: openChat } = useChatLaunch("direct");
 
   return (
     <nav className="dt-mega max-h-[calc(100dvh-5rem)] overflow-y-auto border-t border-navy-hairline lg:hidden">
@@ -50,16 +52,30 @@ export function MobileMenu({
             </div>
           );
         })}
-        {links.map((link) => (
-          <a
-            key={link.label}
-            href={link.href}
-            onClick={onClose}
-            className="border-b border-navy-divider py-3.5 text-[15px] font-semibold text-navy last:border-b-0"
-          >
-            {link.label}
-          </a>
-        ))}
+        {links.map((link) =>
+          link.action === "chat" ? (
+            <button
+              key={link.label}
+              type="button"
+              onClick={() => {
+                onClose();
+                openChat();
+              }}
+              className="border-b border-navy-divider py-3.5 text-left text-[15px] font-semibold text-navy last:border-b-0"
+            >
+              {link.label}
+            </button>
+          ) : (
+            <a
+              key={link.label}
+              href={link.href}
+              onClick={onClose}
+              className="border-b border-navy-divider py-3.5 text-[15px] font-semibold text-navy last:border-b-0"
+            >
+              {link.label}
+            </a>
+          ),
+        )}
       </div>
     </nav>
   );

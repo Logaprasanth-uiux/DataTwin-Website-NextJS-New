@@ -12,6 +12,8 @@ export type MenuItem = {
   href: string;
   icon: MenuIconName;
   badge?: string;
+  /** Not published yet: shown with a "Soon" badge and not clickable. */
+  soon?: boolean;
   action?: "estimate";
   children?: readonly MenuItem[];
 };
@@ -70,9 +72,9 @@ export const PRODUCT_GROUPS: readonly MenuGroup[] = [
     label: "Core finance operations",
     items: [
       { title: "Accounts Payable", desc: "Invoice to payment, accounted right", href: "/products/accounts-payable", icon: "ap" },
-      { title: "Accounts Receivable", desc: "Order to cash, collected and applied", href: "#", icon: "ar" },
-      { title: "Taxation Reconciliation", desc: "Returns, credits and ledgers that agree", href: "#", icon: "tax" },
-      { title: "Reconciliation & Audit", desc: "Continuous, across every system", href: "#", icon: "recon" },
+      { title: "Accounts Receivable", desc: "Order to cash, collected and applied", href: "/products/accounts-receivable", icon: "ar" },
+      { title: "Taxation Reconciliation", desc: "Returns, credits and ledgers that agree", href: "/products/taxation-reconciliation", icon: "tax" },
+      { title: "Reconciliation & Audit", desc: "Continuous, across every system", href: "/products/reconciliation-audit", icon: "recon" },
     ],
   },
   {
@@ -81,16 +83,16 @@ export const PRODUCT_GROUPS: readonly MenuGroup[] = [
       {
         title: "Channel Rebates",
         desc: "Ship & debit, SPAs, POS validation",
-        href: "#",
+        href: "/products/channel-rebates",
         icon: "rebate",
         badge: "2 sides",
         children: [
-          { title: "For Manufacturers", desc: "Pay only what's genuinely owed", href: "#", icon: "manufacturer" },
-          { title: "For Distributors", desc: "Collect what you're owed, faster", href: "#", icon: "distributor" },
+          { title: "For Manufacturers", desc: "Pay only what's genuinely owed", href: "/products/channel-rebates/manufacturers", icon: "manufacturer" },
+          { title: "For Distributors", desc: "Collect what you're owed, faster", href: "/products/channel-rebates/distributors", icon: "distributor" },
         ],
       },
-      { title: "Partner Payouts", desc: "Reseller, affiliate, franchise, referral", href: "#", icon: "payouts" },
-      { title: "Sales Commissions & Incentives", desc: "Calculated from actual revenue", href: "#", icon: "commission" },
+      { title: "Partner Payouts", desc: "Reseller, affiliate, franchise, referral", href: "/products/partner-payouts", icon: "payouts" },
+      { title: "Sales Commissions & Incentives", desc: "Calculated from actual revenue", href: "/products/sales-commissions", icon: "commission" },
     ],
   },
   {
@@ -99,7 +101,7 @@ export const PRODUCT_GROUPS: readonly MenuGroup[] = [
       {
         title: "FSCP",
         desc: "Financial Statement Close Process — close integrity, scored continuously",
-        href: "#",
+        href: "/products/fscp",
         icon: "fscp",
         badge: "200+ KPIs",
       },
@@ -118,16 +120,16 @@ export const LEARNING_GROUPS: readonly MenuGroup[] = [
   {
     label: "Read",
     items: [
-      { title: "Blog", desc: "Finance operations, automation, controls", href: "#", icon: "blog" },
-      { title: "Guides", desc: "Deep dives on rebates, close and reconciliation", href: "#", icon: "guides" },
-      { title: "Glossary", desc: "Ship & debit, SPA, GRNI, N-way and more", href: "#", icon: "glossary" },
+      { title: "Blog", desc: "Finance operations, automation, controls", href: "#", icon: "blog", soon: true },
+      { title: "Guides", desc: "Deep dives on rebates, close and reconciliation", href: "#", icon: "guides", soon: true },
+      { title: "Glossary", desc: "Ship & debit, SPA, GRNI, N-way and more", href: "#", icon: "glossary", soon: true },
     ],
   },
   {
     label: "Proof",
     items: [
-      { title: "Case Studies", desc: "What we found, and what it was worth", href: "#", icon: "case" },
-      { title: "Customers", desc: "Who trusts DataTwin with their close", href: "#", icon: "customers" },
+      { title: "Case Studies", desc: "What we found, and what it was worth", href: "#", icon: "case", soon: true },
+      { title: "Customers", desc: "Who trusts DataTwin with their close", href: "/#trusted-by", icon: "customers" },
     ],
   },
   {
@@ -136,7 +138,7 @@ export const LEARNING_GROUPS: readonly MenuGroup[] = [
       {
         title: "The 200+ Close KPI Catalogue",
         desc: "Every KPI we track, by process area",
-        href: "#",
+        href: "/products/close-kpi-catalogue",
         icon: "kpi",
         badge: "PDF",
       },
@@ -155,5 +157,5 @@ export const LEARNING_DOWNLOAD = {
   title: "The Close KPI Catalogue",
   desc: "All 200+ KPIs we score across inventory, rev rec, cash application and payments.",
   cta: "Download free",
-  href: "#",
+  href: "/close-kpi-catalogue.pdf",
 };

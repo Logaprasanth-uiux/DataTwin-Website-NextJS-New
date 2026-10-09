@@ -39,6 +39,25 @@ export function MenuRow({
       <ArrowIcon className="mt-1 h-3.5 w-3.5 flex-shrink-0 -translate-x-1 text-accent opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100" />
     </>
   );
+  if (item.soon) {
+    return (
+      <li>
+        <div aria-disabled="true" className="flex w-full cursor-not-allowed items-start gap-3 rounded-[14px] p-2.5 opacity-70">
+          <span className={`flex flex-shrink-0 items-center justify-center rounded-full border border-navy-hairline text-navy ${compact ? "h-8 w-8" : "h-9 w-9"}`}>
+            <MenuIcon name={item.icon} className={compact ? "h-4 w-4" : "h-[18px] w-[18px]"} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14.5px] leading-tight font-semibold text-navy">
+              {item.title}
+              <Badge>Soon</Badge>
+            </span>
+            <span className="mt-1 block text-[13px] leading-snug text-navy-muted">{item.desc}</span>
+          </span>
+        </div>
+      </li>
+    );
+  }
+
   const cls =
     "group flex w-full items-start gap-3 rounded-[14px] p-2.5 text-left transition-colors hover:bg-navy/[0.04] focus-visible:bg-navy/[0.04] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
 

@@ -5,7 +5,7 @@ import "./darp-page.css";
 // its ink from the surface it sits on. Motion is layered on in darp-page.css and only under
 // prefers-reduced-motion: no-preference, so the static markup here is always a complete picture.
 
-export type DpIconName = "cash" | "tax" | "misstated" | "control" | "read" | "shield" | "apart" | "contract";
+export type DpIconName = "cash" | "tax" | "misstated" | "control" | "read" | "shield" | "apart" | "contract" | "clock";
 
 export function DpIcon({ name, className = "" }: { name: DpIconName; className?: string }) {
   return (
@@ -64,6 +64,12 @@ export function DpIcon({ name, className = "" }: { name: DpIconName; className?:
           <circle cx="5.5" cy="12" r="2.8" />
           <circle cx="18.5" cy="12" r="2.8" />
           <path className="text-accent" d="M10 12h1.2M12.8 12H14" />
+        </>
+      )}
+      {name === "clock" && (
+        <>
+          <circle cx="12" cy="12" r="8.5" />
+          <path className="text-accent" d="M12 7v5l3.2 2" />
         </>
       )}
       {name === "contract" && (

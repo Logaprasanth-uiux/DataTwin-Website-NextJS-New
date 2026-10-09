@@ -7,6 +7,7 @@ import { LossIndicator } from "./LossIndicator";
 import { Logo } from "./Logo";
 import { MegaMenu, MegaScrim } from "./mega-menu/MegaMenu";
 import { MobileMenu } from "./mega-menu/MobileMenu";
+import { useChatLaunch } from "@/components/chat/useChatLaunch";
 import type { MenuKey } from "./mega-menu/menu-data";
 
 const SCROLL_THRESHOLD = 8;
@@ -32,13 +33,14 @@ const getOverHero = () => {
 const getOverHeroOnServer = () => true;
 
 // Platform, Products and Learning Centre are the mega menu (./mega-menu); these stay plain links.
-const NAV_LINKS = [
-  { label: "Customers", href: "#customers" },
-  { label: "Contact", href: "#contact" },
+const NAV_LINKS: readonly { label: string; href?: string; action?: "chat" }[] = [
+  { label: "Customers", href: "/#trusted-by" },
+  { label: "Contact", action: "chat" },
 ];
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const { onClick: openChat } = useChatLaunch("direct");
   const [openMenu, setOpenMenu] = useState<MenuKey | null>(null);
   // Leaving the header does not close the menu at once: the pointer has to be able to cross the small gap to
   // the panel (and drift a little while it travels) without the panel vanishing under it.
@@ -76,15 +78,17 @@ export function Navbar() {
 
         <nav className="hidden items-center gap-8 lg:flex">
           <MegaMenu openMenu={openMenu} setOpenMenu={setOpenMenu} />
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="dt-nav-link transition-colors hover:text-navy"
-            >
-              {link.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((link) =>
+            link.action === "chat" ? (
+              <button key={link.label} type="button" onClick={openChat} className="dt-nav-link transition-colors hover:text-navy">
+                {link.label}
+              </button>
+            ) : (
+              <a key={link.label} href={link.href} className="dt-nav-link transition-colors hover:text-navy">
+                {link.label}
+              </a>
+            ),
+          )}
         </nav>
 
         <div className="flex items-center gap-3 sm:gap-6">

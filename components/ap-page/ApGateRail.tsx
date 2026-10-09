@@ -35,7 +35,7 @@ export function ApGateRail({ gates }: { gates: readonly { id: string; n: string;
   }, [gates]);
 
   return (
-    <nav aria-label="The five gates" className="hidden lg:sticky lg:top-32 lg:block lg:self-start">
+    <nav aria-label="Steps on this page" className="hidden lg:sticky lg:top-32 lg:block lg:self-start">
       <ol className="relative space-y-1">
         <span aria-hidden="true" className="absolute top-5 bottom-5 left-[19px] w-px bg-navy-hairline" />
         {gates.map((g) => {
