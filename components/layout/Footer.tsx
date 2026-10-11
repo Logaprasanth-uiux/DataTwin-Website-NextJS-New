@@ -28,7 +28,7 @@ import {
 // their URLs are supplied).
 
 const LINK =
-  "text-[15px] leading-snug text-navy-body transition-colors hover:text-navy focus-visible:text-navy";
+  "inline-block py-2 text-[15px] leading-snug text-navy-body transition-colors hover:text-navy focus-visible:text-navy";
 const SMALL = "text-[12.5px] font-medium text-navy-muted";
 
 export function Footer({ children }: { children?: ReactNode }) {
@@ -52,11 +52,11 @@ export function Footer({ children }: { children?: ReactNode }) {
               {FOOTER_GROUPS.map((group) => (
                 <div key={group.title}>
                   <p className="dt-eyebrow">{group.title}</p>
-                  <ul className="mt-6 space-y-3.5">
+                  <ul className="mt-5">
                     {group.links.map((link) => (
                       <li key={link.label}>
                         {link.soon ? (
-                          <span aria-disabled="true" className="inline-flex cursor-not-allowed items-center gap-2.5 text-[15px] leading-snug text-navy-muted">
+                          <span aria-disabled="true" className="inline-flex cursor-not-allowed items-center gap-2.5 py-2 text-[15px] leading-snug text-navy-muted">
                             {link.label}
                             <span className="rounded-full bg-accent/25 px-2 py-0.5 text-[10px] leading-none font-semibold tracking-[0.1em] text-navy uppercase">Soon</span>
                           </span>
@@ -121,12 +121,19 @@ export function Footer({ children }: { children?: ReactNode }) {
                 {LEGAL_LINKS.map((link) => (
                   <span key={link.label} className="flex items-center gap-x-2">
                     <span aria-hidden="true">·</span>
-                    <a
-                      href={link.href}
-                      className="transition-colors hover:text-navy focus-visible:text-navy"
-                    >
-                      {link.label}
-                    </a>
+                    {link.soon ? (
+                      <span aria-disabled="true" className="flex cursor-not-allowed items-center gap-1.5">
+                        {link.label}
+                        <span className="rounded-full bg-accent/25 px-1.5 py-0.5 text-[9px] leading-none font-semibold tracking-[0.1em] text-navy uppercase">Soon</span>
+                      </span>
+                    ) : (
+                      <a
+                        href={link.href}
+                        className="transition-colors hover:text-navy focus-visible:text-navy"
+                      >
+                        {link.label}
+                      </a>
+                    )}
                   </span>
                 ))}
               </p>

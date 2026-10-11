@@ -35,7 +35,6 @@ export const FOOTER_GROUPS: readonly FooterGroup[] = [
   {
     title: "Company",
     links: [
-      { label: "About", href: "#about" },
       { label: "Customers", href: "/#trusted-by" },
       { label: "Case Studies", href: "#case-studies", soon: true },
       { label: "Blog", href: "#blog", soon: true },
@@ -66,6 +65,6 @@ export const SOCIAL_LINKS: readonly SocialLink[] = [
 ];
 
 export const LEGAL_LINKS: readonly FooterLink[] = [
-  { label: "Privacy", href: "#privacy" },
-  { label: "Terms", href: "#terms" },
+  { label: "Privacy", href: "#privacy", soon: true },
+  { label: "Terms", href: "#terms", soon: true },
 ];
