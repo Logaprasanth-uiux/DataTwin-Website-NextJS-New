@@ -86,11 +86,9 @@ export const PRODUCT_GROUPS: readonly MenuGroup[] = [
         href: "/products/channel-rebates",
         icon: "rebate",
         badge: "2 sides",
-        children: [
-          { title: "For Manufacturers", desc: "Pay only what's genuinely owed", href: "/products/channel-rebates/manufacturers", icon: "manufacturer" },
-          { title: "For Distributors", desc: "Collect what you're owed, faster", href: "/products/channel-rebates/distributors", icon: "distributor" },
-        ],
       },
+      { title: "For Manufacturers", desc: "Pay only what's genuinely owed", href: "/products/channel-rebates/manufacturers", icon: "manufacturer" },
+      { title: "For Distributors", desc: "Collect what you're owed, faster", href: "/products/channel-rebates/distributors", icon: "distributor" },
       { title: "Partner Payouts", desc: "Reseller, affiliate, franchise, referral", href: "/products/partner-payouts", icon: "payouts" },
       { title: "Sales Commissions & Incentives", desc: "Calculated from actual revenue", href: "/products/sales-commissions", icon: "commission" },
     ],

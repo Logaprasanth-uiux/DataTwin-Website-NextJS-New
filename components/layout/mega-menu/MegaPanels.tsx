@@ -129,7 +129,7 @@ export function PlatformPanel({ onNavigate, onEstimate }: Handlers) {
 export function EstimatePromo({ index = 0, onEstimate }: { index?: number; onEstimate: () => void }) {
   return (
     <div
-      className="dt-mega-item dt-mega-dark relative flex flex-col overflow-hidden rounded-[22px] bg-canvas p-5 text-navy xl:p-6"
+      className="dt-mega-item dt-mega-dark relative flex flex-col self-start overflow-hidden rounded-[22px] bg-canvas p-5 text-navy xl:p-6"
       style={stagger(index)}
     >
       <svg
@@ -156,7 +156,7 @@ export function EstimatePromo({ index = 0, onEstimate }: { index?: number; onEst
       <button
         type="button"
         onClick={onEstimate}
-        className="dt-button group relative mt-6 inline-flex h-11 items-center gap-2 self-start whitespace-nowrap rounded-full bg-accent px-4 text-[14px] text-canvas transition-colors hover:bg-accent/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="dt-button group relative mt-5 inline-flex h-11 items-center gap-2 self-start whitespace-nowrap rounded-full bg-accent px-4 text-[14px] text-canvas transition-colors hover:bg-accent/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {ESTIMATE_LABEL}
         <ArrowIcon className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -167,7 +167,7 @@ export function EstimatePromo({ index = 0, onEstimate }: { index?: number; onEst
 
 export function ProductsPanel({ onNavigate, onEstimate }: Handlers) {
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.95fr_1.15fr_0.8fr_1.1fr] lg:gap-6">
+    <div className="grid gap-6 lg:grid-cols-[0.95fr_1.15fr_0.85fr_0.9fr] lg:gap-6">
       {PRODUCT_GROUPS.map((g, i) => (
         <MenuGroupList
           key={g.label}
