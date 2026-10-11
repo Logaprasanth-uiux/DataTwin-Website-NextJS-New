@@ -436,13 +436,13 @@ function Doc() {
       <rect x="70" y="14" width="130" height="112" rx="12" stroke={N} strokeOpacity="0.55" strokeWidth="1.5" fill={N} fillOpacity="0.04" />
       <path d="M88 34h70M88 46h50M88 94h74M88 106h44" stroke={N} strokeOpacity="0.32" strokeWidth="1.75" strokeLinecap="round" />
       <rect x="80" y="58" width="110" height="22" rx="7" stroke="var(--accent)" strokeWidth="1.25" fill="var(--accent)" fillOpacity="0.22" />
-      <path className="ap-flow" d="M192 69C262 69 262 82 328 82" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
-      <rect x="330" y="56" width="160" height="52" rx="12" stroke={N} strokeOpacity="0.55" strokeWidth="1.5" fill={N} fillOpacity="0.04" />
-      <path d="M348 82h70" stroke={N} strokeOpacity="0.32" strokeWidth="1.75" strokeLinecap="round" />
-      <circle cx="466" cy="82" r="7" fill="var(--accent)" />
-      <circle cx="410" cy="30" r="12" stroke="var(--accent)" strokeWidth="1.5" fill="var(--accent)" fillOpacity="0.12" />
-      <path d="M404 32c0-3 1.5-5 4-5M412 32c0-3 1.5-5 4-5" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M410 42v14" stroke="var(--accent)" strokeWidth="1.25" strokeDasharray="2 3" strokeLinecap="round" />
+      <path className="ap-flow" d="M192 69H330" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="330" y="43" width="160" height="52" rx="12" stroke={N} strokeOpacity="0.55" strokeWidth="1.5" fill={N} fillOpacity="0.04" />
+      <path d="M348 69h70" stroke={N} strokeOpacity="0.32" strokeWidth="1.75" strokeLinecap="round" />
+      <circle cx="466" cy="69" r="7" fill="var(--accent)" />
+      <circle cx="410" cy="18" r="12" stroke="var(--accent)" strokeWidth="1.5" fill="var(--accent)" fillOpacity="0.12" />
+      <path d="M404 20c0-3 1.5-5 4-5M412 20c0-3 1.5-5 4-5" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M410 30v13" stroke="var(--accent)" strokeWidth="1.25" strokeDasharray="2 3" strokeLinecap="round" />
     </>
   );
 }
