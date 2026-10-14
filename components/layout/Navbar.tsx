@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Container } from "./Container";
 import { LossIndicator } from "./LossIndicator";
 import { Logo } from "./Logo";
+import { HeaderThemeToggle } from "@/components/theme/ThemeToggle";
 import { MegaMenu, MegaScrim } from "./mega-menu/MegaMenu";
 import { MobileMenu } from "./mega-menu/MobileMenu";
 import { useChatLaunch } from "@/components/chat/useChatLaunch";
@@ -76,7 +77,7 @@ export function Navbar() {
           <Logo priority className="h-5 w-auto xl:h-7" />
         </Link>
 
-        <nav className="hidden items-center gap-8 lg:flex">
+        <nav className="hidden items-center gap-5 xl:gap-8 lg:flex">
           <MegaMenu openMenu={openMenu} setOpenMenu={setOpenMenu} />
           {NAV_LINKS.map((link) =>
             link.action === "chat" ? (
@@ -91,7 +92,8 @@ export function Navbar() {
           )}
         </nav>
 
-        <div className="flex items-center gap-3 sm:gap-6">
+        <div className="flex items-center gap-3">
+          <HeaderThemeToggle />
           <LossIndicator />
 
           <button

@@ -53,16 +53,16 @@ export function ChatHeader({ onToggleConversations }: { onToggleConversations?: 
         </div>
 
         <div className="flex items-center gap-3">
+          <HeaderThemeToggle />
           <button
             type="button"
             onClick={handleBackToDataTwin}
             className="group flex flex-shrink-0 items-center gap-1.5 text-[13px] font-medium text-navy-muted transition-colors hover:text-navy"
           >
             <BackIcon className="h-3.5 w-3.5 text-accent transition-transform duration-200 group-hover:-translate-x-0.5" />
-            Back to DataTwin
+            <span className="hidden sm:inline">Back to DataTwin</span>
+            <span className="sm:hidden">Back</span>
           </button>
-          {/* Phones only: the floating toggle is hidden on this page (it would sit on the Send button). */}
-          <HeaderThemeToggle className="sm:hidden" />
         </div>
       </div>
     </header>

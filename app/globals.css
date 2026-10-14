@@ -153,6 +153,7 @@ button:not(:disabled),
 
 .dt-nav-link {
   font-size: 14px;
+  white-space: nowrap;
   font-weight: 500;
   color: var(--navy-muted);
 }
@@ -969,40 +970,6 @@ button:not(:disabled),
 
 [data-theme="dark"] .dt-chat .text-white {
   color: var(--canvas);
-}
-
-/* Floating theme switch. */
-.dt-theme-toggle {
-  color: var(--navy);
-  background-color: rgb(255 255 255 / 0.88);
-  border: 1px solid var(--navy-hairline);
-  box-shadow: 0 6px 20px rgb(27 44 70 / 0.12);
-  transition:
-    border-color 200ms ease,
-    color 200ms ease,
-    background-color 200ms ease;
-}
-
-.dt-theme-toggle:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.dt-theme-toggle:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-[data-theme="dark"] .dt-theme-toggle {
-  color: var(--ink-on-dark);
-  background-color: rgb(27 44 70 / 0.9);
-  border-color: rgb(255 255 255 / 0.22);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.3);
-}
-
-[data-theme="dark"] .dt-theme-toggle:hover {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 .dt-theme-icon {

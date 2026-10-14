@@ -1,36 +1,10 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useTheme } from "./useTheme";
 
-// A small floating control, fixed to the bottom-right of the viewport. Both icons are always rendered and
-// the CSS (globals.css, "Theme") shows the right one from <html data-theme>, so the icon is correct from
-// first paint; only the accessible name waits for hydration.
-// On phones the chat prompt bar spans the full width and its send button sits exactly where this control
-// would float, so it is hidden there (below `sm`) on the chat page and the chat header carries a
-// HeaderThemeToggle instead; from `sm` up the composer is a centred column and the two never meet.
-
-export function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
-  const onChat = usePathname()?.startsWith("/chat") ?? false;
-  const label = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
-
-  return (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      aria-label={label}
-      title={label}
-      className={`dt-theme-toggle fixed right-4 bottom-4 z-40 h-10 w-10 items-center justify-center rounded-full backdrop-blur-[16px] sm:right-5 sm:bottom-5 sm:flex ${
-        onChat ? "hidden" : "flex"
-      }`}
-    >
-      <ThemeIcon />
-    </button>
-  );
-}
-
-// The same control, inline: used in the chat header on phones, where the floating one is hidden.
+// The theme switch, inline in the site header and the chat header, sized to match the header's pill
+// button. Both icons are always rendered and the CSS (globals.css, "Theme") shows the right one from
+// <html data-theme>, so the icon is correct from first paint; only the accessible name waits for hydration.
 export function HeaderThemeToggle({ className = "" }: { className?: string }) {
   const { theme, toggleTheme } = useTheme();
   const label = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
@@ -41,7 +15,7 @@ export function HeaderThemeToggle({ className = "" }: { className?: string }) {
       onClick={toggleTheme}
       aria-label={label}
       title={label}
-      className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-navy-muted transition-colors hover:bg-navy/[0.05] hover:text-accent ${className}`}
+      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-navy-hairline text-navy transition-colors duration-200 hover:border-accent hover:bg-accent/[0.07] hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${className}`}
     >
       <ThemeIcon />
     </button>
