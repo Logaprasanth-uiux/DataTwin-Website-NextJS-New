@@ -939,13 +939,36 @@ button:not(:disabled),
 }
 
 [data-theme="dark"] .dt-canvas .dt-logo-inv,
+[data-theme="dark"] .dt-chat .dt-logo-inv,
 [data-theme="dark"] .dt-header[data-over-hero="true"] .dt-logo-inv {
   opacity: 1;
 }
 
 [data-theme="dark"] .dt-canvas .dt-logo-base,
+[data-theme="dark"] .dt-chat .dt-logo-base,
 [data-theme="dark"] .dt-header[data-over-hero="true"] .dt-logo-base {
   opacity: 0;
+}
+
+/* Chat page. Its cards, inputs and buttons use plain `bg-white` / `text-white` / `text-navy`, so in Dark the
+   whole page re-points the ink tokens at the light ink, and "white" at a raised navy surface: cards read as
+   lifted panels, and the light-ink buttons (bg-navy) get dark label text. Light is untouched. */
+[data-theme="dark"] .dt-chat {
+  --background: var(--canvas);
+  --color-white: color-mix(in srgb, var(--ink-on-dark) 7%, var(--canvas));
+  --navy: var(--ink-on-dark);
+  --navy-muted: color-mix(in srgb, var(--navy) 68%, transparent);
+  --navy-body: color-mix(in srgb, var(--navy) 76%, transparent);
+  --navy-faint: color-mix(in srgb, var(--navy) 46%, transparent);
+  --navy-hairline: color-mix(in srgb, var(--navy) 18%, transparent);
+  --navy-divider: color-mix(in srgb, var(--navy) 11%, transparent);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --eyebrow-accent: var(--accent);
+  color: var(--navy);
+}
+
+[data-theme="dark"] .dt-chat .text-white {
+  color: var(--canvas);
 }
 
 /* Floating theme switch. */

@@ -13,7 +13,7 @@ import {
 } from "@/components/platform/PlatformSections";
 
 export const metadata: Metadata = {
-  title: "Platform Overview — DataTwin",
+  title: "DataTwin Platform Overview",
   description:
     "One engine, every solution. DataTwin wraps the systems you already run and models new sources itself, with your rules configured, not coded. Nothing migrated, nothing switched off.",
 };

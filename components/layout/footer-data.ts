@@ -12,7 +12,7 @@ export const FOOTER_GROUPS: readonly FooterGroup[] = [
   {
     title: "Platform",
     links: [
-      { label: "Platform Overview", href: "/platform" },
+      { label: "DataTwin Platform Overview", href: "/platform" },
       { label: "DARP Framework", href: "/platform/darp" },
       { label: "Security", href: "/platform/security" },
       { label: "How AI is used", href: "/platform/how-ai-is-used" },

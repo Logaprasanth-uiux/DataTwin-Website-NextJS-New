@@ -325,7 +325,7 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
 
   if (!state) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="dt-chat flex min-h-screen items-center justify-center bg-background">
         <p className="text-[13.5px] text-navy-faint">Loading your conversation…</p>
       </div>
     );
@@ -394,7 +394,7 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
   const showComposer = !COMPOSER_HIDDEN_PHASES.has(state.phase);
 
   return (
-    <>
+    <div className="dt-chat">
       <div
         className="flex min-h-screen flex-col bg-background"
         // Freezes the entire chat — header, panels, transcript, composer — behind the GST-portal
@@ -477,6 +477,6 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
           onCancel={handleCancelPortalConsent}
         />
       )}
-    </>
+    </div>
   );
 }

@@ -33,7 +33,7 @@ export const ESTIMATE_LABEL = "Discover Your Number";
 // ---- Platform ------------------------------------------------------------------------------------------
 
 export const PLATFORM_OVERVIEW = {
-  title: "Platform Overview",
+  title: "DataTwin Platform Overview",
   desc: "How analyse-first works end to end — acquire, process, report — sitting above the ERP you already run, with nothing migrated.",
   cta: "See the whole platform",
   href: "/platform",
