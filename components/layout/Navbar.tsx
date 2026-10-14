@@ -73,8 +73,8 @@ export function Navbar() {
       }`}
     >
       <Container className="flex h-20 items-center justify-between px-6 sm:px-8 lg:px-10">
-        <Link href="/" className="flex -translate-y-[2px] items-center" aria-label="Veroxle home">
-          <Logo priority className="h-5 w-auto xl:h-7" />
+        <Link href="/" className="flex items-center" aria-label="DataTwin home">
+          <Logo priority className="h-6 w-auto sm:h-7" />
         </Link>
 
         <nav className="hidden items-center gap-5 xl:gap-8 lg:flex">

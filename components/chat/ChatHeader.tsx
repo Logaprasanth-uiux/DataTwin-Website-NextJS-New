@@ -49,7 +49,7 @@ export function ChatHeader({ onToggleConversations }: { onToggleConversations?: 
               <MenuIcon className="h-4 w-4" />
             </button>
           )}
-          <Logo className="h-4 w-auto sm:h-5" />
+          <Logo className="h-5 w-auto" />
         </div>
 
         <div className="flex items-center gap-3">

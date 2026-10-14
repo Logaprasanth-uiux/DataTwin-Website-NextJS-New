@@ -74,8 +74,8 @@ export function Footer({ children }: { children?: ReactNode }) {
 
             <div className="mt-16 flex flex-col gap-8 border-t border-navy-divider pt-12 lg:mt-20 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
               <div className="max-w-2xl">
-                <Link href="/" aria-label="Veroxle home" className="inline-flex">
-                  <Logo className="h-6 w-auto" />
+                <Link href="/" aria-label="DataTwin home" className="inline-flex">
+                  <Logo className="h-6 w-auto sm:h-7" />
                 </Link>
                 <p className="mt-6 text-[15px] leading-[1.7] text-navy-body">{BRAND_STATEMENT}</p>
                 <ul aria-label="DataTwin on social media" className="mt-6 flex items-center gap-5">
