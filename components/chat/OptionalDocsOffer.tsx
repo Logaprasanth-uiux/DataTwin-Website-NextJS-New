@@ -6,6 +6,7 @@ import { FileRequirementCard } from "./FileRequirementCard";
 import { MessageTurn } from "./MessageTurn";
 import { PortalFetchFlow } from "./PortalFetchFlow";
 import { UserReveal, type RevealTracker } from "./reveal";
+import { SapConnectFlow } from "./SapConnectFlow";
 
 // Shown once the required documents are in and before the reconciliation runs: every optional
 // document at once, as one message with its cards, and one button that starts the run — with or
@@ -70,9 +71,17 @@ export function OptionalDocsOffer({
       ? []
       : checkpoints.filter((checkpoint) => checkpoint.group !== undefined && selectedGroups.includes(checkpoint.group))
     : checkpoints;
+  // Once one document was pulled from SAP, the connection is reused for the rest.
+  const sapConnected = Object.values(uploads).some((upload) => upload.fileName.endsWith("(via SAP)"));
+  const canSapFile = (file: { fileId: string }, checkpoint: ReconciliationCheckpoint) =>
+    checkpoint.sapFetchFileIds?.includes(file.fileId) ?? false;
   const files = offered
     .flatMap((checkpoint) => checkpoint.files.map((file) => ({ file, checkpoint })))
-    .sort((a, b) => Number(canFetchFile(b.file, b.checkpoint)) - Number(canFetchFile(a.file, a.checkpoint)));
+    .sort(
+      (a, b) =>
+        Number(canFetchFile(b.file, b.checkpoint) || canSapFile(b.file, b.checkpoint)) -
+        Number(canFetchFile(a.file, a.checkpoint) || canSapFile(a.file, a.checkpoint)),
+    );
   const joinNames = (names: string[]) =>
     names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
   const readyCount = files.filter(({ file }) => uploads[file.fileId]?.status === "ready").length;
@@ -87,6 +96,7 @@ export function OptionalDocsOffer({
             speaker="DataTwin"
             text={`I have what I need to start. ${groupsQuestion ?? "Which of these apply to you?"}`}
           />
+          <p className="text-[12px] font-semibold tracking-[0.08em] text-navy-muted uppercase">Select all that apply</p>
           <div className="flex flex-wrap gap-2.5">
             {groups.map((group) => {
               const on = picked.includes(group.id);
@@ -119,7 +129,7 @@ export function OptionalDocsOffer({
               <button
                 type="button"
                 onClick={() => onChooseGroups?.([])}
-                className="h-12 w-fit rounded-full border border-navy-hairline px-6 text-[14px] font-medium text-navy transition-colors hover:border-accent"
+                className="h-12 w-fit rounded-full bg-navy/[0.07] px-6 text-[14px] font-medium text-navy transition-colors hover:bg-navy/[0.12]"
               >
                 Continue with {joinNames(requiredNames)}
               </button>
@@ -161,8 +171,21 @@ export function OptionalDocsOffer({
       <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
       {files.map(({ file, checkpoint }) => {
         const upload = uploads[file.fileId];
-        const canFetch = canFetchFile(file, checkpoint);
-        if (!upload && canFetch && fileSource[file.fileId] === "portal") {
+        const canSap = canSapFile(file, checkpoint);
+        const canFetch = canFetchFile(file, checkpoint) || canSap;
+        if (!upload && canSap && fileSource[file.fileId] === "sap") {
+          return (
+            <div key={file.fileId} className="md:col-span-2">
+              <SapConnectFlow
+                file={file}
+                connected={sapConnected}
+                onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
+                onBack={() => onRemove(file.fileId)}
+              />
+            </div>
+          );
+        }
+        if (!upload && canFetchFile(file, checkpoint) && fileSource[file.fileId] === "portal") {
           return (
             <div key={file.fileId} className="md:col-span-2">
             <PortalFetchFlow
@@ -187,7 +210,8 @@ export function OptionalDocsOffer({
             }}
             onAdvanceStatus={onAdvanceStatus}
             onRemove={onRemove}
-            onChoosePortal={canFetch ? () => onChooseFileSource(file.fileId, "portal") : undefined}
+            onChoosePortal={canFetchFile(file, checkpoint) ? () => onChooseFileSource(file.fileId, "portal") : undefined}
+            onChooseSap={canSap ? () => onChooseFileSource(file.fileId, "sap") : undefined}
             showWhyLabel
           />
           </div>

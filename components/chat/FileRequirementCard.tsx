@@ -26,6 +26,7 @@ export function FileRequirementCard({
   onRemove,
   holdAtRecognised = false,
   onChoosePortal,
+  onChooseSap,
   showWhyLabel = false,
 }: {
   requirement: FileRequirement;
@@ -42,6 +43,8 @@ export function FileRequirementCard({
    * ReconciliationTopic.portalFetchFileIds), rather than a differently-styled choice step ahead of
    * it. Switches the caller over to PortalFetchFlow; this card plays no further part once chosen. */
   onChoosePortal?: () => void;
+  /** Offers "Connect SAP" for a document that comes from the user's ERP (see SapConnectFlow). */
+  onChooseSap?: () => void;
   /** Leads the description with a bold "Why this helps:", used where it is the benefit of adding the
    * document (optional offers) rather than a plain description of the file. */
   showWhyLabel?: boolean;
@@ -109,6 +112,16 @@ export function FileRequirementCard({
             >
               <PortalIcon className="h-3.5 w-3.5 text-accent" />
               Fetch from GST Portal
+            </button>
+          )}
+          {onChooseSap && (
+            <button
+              type="button"
+              onClick={onChooseSap}
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-navy-hairline px-4 py-2 text-[13px] font-medium text-navy transition-colors hover:border-accent"
+            >
+              <SapIcon className="h-3.5 w-3.5 text-accent" />
+              Connect SAP
             </button>
           )}
         </div>
@@ -189,6 +202,15 @@ function PortalIcon({ className = "" }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function SapIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+      <ellipse cx="8" cy="4" rx="4.5" ry="1.75" stroke="currentColor" strokeWidth="1.25" />
+      <path d="M3.5 4v8c0 .97 2 1.75 4.5 1.75s4.5-.78 4.5-1.75V4M3.5 8c0 .97 2 1.75 4.5 1.75S12.5 8.97 12.5 8" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
     </svg>
   );
 }

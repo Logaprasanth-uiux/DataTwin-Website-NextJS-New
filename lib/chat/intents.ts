@@ -120,6 +120,17 @@ const ANNUAL_TURNOVER: IntentSummary = {
   ],
 };
 
+const ANNUAL_9C: IntentSummary = {
+  problem:
+    "Your audited books for the year may not agree with your annual return (GSTR-9), so the GSTR-9C reconciliation statement would carry differences that are not yet explained.",
+  intent: "Reconcile the audited books with GSTR-9 table by table, and trace every difference down to the invoice behind it before the annual return and GSTR-9C are filed.",
+  checks: [
+    "Gross and taxable turnover in the audited books vs GSTR-9 (Tables 5 and 7)",
+    "Tax liability by rate and ITC availed vs GSTR-9 (Tables 9 and 12)",
+    "Each difference marked mismatch, explained or matched, down to the invoice",
+  ],
+};
+
 const ADVANCES: IntentSummary = {
   problem:
     "Advances you received from customers may not have been reported and paid in GST, or may not have been adjusted correctly when the invoice was raised.",
@@ -182,6 +193,7 @@ const OVERRIDES: Record<string, IntentSummary> = {
   "10.11": ADVANCES,
   "10.12": HSN_SAC,
   "8.5": ANNUAL_TURNOVER,
+  "8.19": ANNUAL_9C,
   "10.1": SALES_VS_GSTR1,
   "10.15": SALES_WITH_GST,
   "1.14": PURCHASE_WITH_GST,

@@ -35,7 +35,6 @@ import {
   submitPortalGstin,
   submitSummaryContact,
   toggleFilePreview,
-  verifySummaryOtp,
 } from "@/lib/chat/engine";
 import {
   createConversationId,
@@ -273,6 +272,9 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
           return;
         }
       }
+      // Someone is exploring the annual drill-down: opening a row grows the page, which is theirs to
+      // read, not new content to chase.
+      if (container.querySelector('[data-hold-scroll="true"]')) return;
       anchor.scrollIntoView({ behavior: "smooth", block: "end" });
     };
 
@@ -369,7 +371,6 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     onRefreshAccuracy: () => update((prev) => applyAccuracyExtras(prev)),
     onScheduleMeeting: (contact, meeting) => update((prev) => scheduleMeeting(prev, contact, meeting, getOrCreateUserId())),
     onSubmitSummaryContact: (contact) => update((prev) => submitSummaryContact(prev, contact)),
-    onVerifySummaryOtp: () => update((prev) => verifySummaryOtp(prev)),
   };
 
   // Not part of `TranscriptActions` — the composer is rendered directly here, not through

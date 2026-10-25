@@ -24,6 +24,7 @@ Summary: **recovery** = money coming back, **exposure** = tax unpaid or under-re
 
 | Flow | Required | Optional | Summary |
 |---|---|---|---|
+| GSTR-9C Annual Reconciliation (umbrella; ✱ = GST Portal, ◆ = SAP) | Audited Books; GSTR-9 (Annual) ✱ | Asked by group. Sales: Sales Register ◆; Outward Sales Documents ◆; GSTR-1 ✱. Purchase: Purchase Register ◆; GSTR-2B ✱. Tax paid: GSTR-3B ✱ | exposure (table-by-table, indicators, drill-down to invoice) |
 | Books Turnover vs GSTR-9 | Sales Revenue Register; GSTR-9 Annual Return ✱ | Annual Financial Statements; Trial Balance; Credit Debit Notes | exposure |
 | Final GSTR-9C Consolidated Reconciliation | GSTR-9 Annual Return ✱; Annual Financial Statements | Trial Balance | exposure |
 | Financial Statements vs GSTR-9 | GSTR-9 Annual Return ✱; Annual Financial Statements | Trial Balance; GSTIN Wise Allocation | mismatch |

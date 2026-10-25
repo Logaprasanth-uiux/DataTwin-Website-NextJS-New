@@ -5355,6 +5355,108 @@
       ]
     },
     {
+      "id": "p-8-19",
+      "name": "GSTR-9C Annual Reconciliation",
+      "area": "Annual returns (GSTR-9 / 9C)",
+      "summary": "Reconcile the audited books with GSTR-9 table by table, and trace every difference down to the invoice behind it before the annual return and GSTR-9C are filed. Result is framed as an exposure: tax that looks unpaid or under-reported, net of anything paid in excess.",
+      "steps": [
+        {
+          "id": "p-8-19-1",
+          "kind": "ai",
+          "title": "Show what was understood",
+          "detail": "Problem: Your audited books for the year may not agree with your annual return (GSTR-9), so the GSTR-9C reconciliation statement would carry differences that are not yet explained.\nWhat you're after: Reconcile the audited books with GSTR-9 table by table, and trace every difference down to the invoice behind it before the annual return and GSTR-9C are filed.\nWhat I'll check: Gross and taxable turnover in the audited books vs GSTR-9 (Tables 5 and 7); Tax liability by rate and ITC availed vs GSTR-9 (Tables 9 and 12); Each difference marked mismatch, explained or matched, down to the invoice.",
+          "chips": [
+            "Yes, that's right",
+            "Not quite"
+          ]
+        },
+        {
+          "id": "p-8-19-2",
+          "kind": "choice",
+          "title": "Period selection",
+          "detail": "Which financial year should be reconciled?",
+          "chips": [
+            "Current financial year",
+            "Previous financial year",
+            "Other financial year"
+          ]
+        },
+        {
+          "id": "p-8-19-3",
+          "kind": "files",
+          "title": "Required documents",
+          "detail": "Requested one by one. The first document gets a quick validation pass; a document that can come from the GST Portal also offers Fetch.",
+          "files": [
+            {
+              "id": "p-8-19-f-F15",
+              "name": "Audited Books",
+              "level": "required",
+              "source": "upload",
+              "why": "Gives the turnover, tax and ITC figures in your audited books for the financial year, which is the books side of the reconciliation."
+            },
+            {
+              "id": "p-8-19-f-F14",
+              "name": "GSTR-9 (Annual)",
+              "level": "required",
+              "source": "both",
+              "why": "Shows the turnover, tax and ITC you declared in the annual return, which the audited books are reconciled against."
+            }
+          ]
+        },
+        {
+          "id": "p-8-19-4",
+          "kind": "files",
+          "title": "Optional documents (offered together)",
+          "detail": "All shown at once in one message. The reconciliation waits for the user: \"Continue without these\" or \"Run reconciliation with N extra documents\". Anything added here counts towards the first result; anything skipped is offered again below the result.",
+          "skippable": true,
+          "files": [
+            {
+              "id": "p-8-19-f-F17",
+              "name": "Sales Register",
+              "level": "optional",
+              "source": "sap",
+              "why": "Lists every sale of the year, invoice by invoice, from your ERP."
+            },
+            {
+              "id": "p-8-19-f-AR-OUTWARD",
+              "name": "Outward Sales Documents",
+              "level": "optional",
+              "source": "sap",
+              "why": "Lists the outward documents raised in your ERP: invoices, credit notes, debit notes and advances."
+            },
+            {
+              "id": "p-8-19-f-F18",
+              "name": "GSTR-1",
+              "level": "optional",
+              "source": "both",
+              "why": "Shows the outward supplies you reported across the year."
+            },
+            {
+              "id": "p-8-19-f-F05",
+              "name": "Purchase Register",
+              "level": "optional",
+              "source": "sap",
+              "why": "Lists every purchase of the year, vendor by vendor, from your ERP."
+            },
+            {
+              "id": "p-8-19-f-F02",
+              "name": "GSTR-2B",
+              "level": "optional",
+              "source": "both",
+              "why": "Shows the ITC your vendors' filings made available across the year."
+            },
+            {
+              "id": "p-8-19-f-F03",
+              "name": "GSTR-3B",
+              "level": "optional",
+              "source": "both",
+              "why": "Shows the tax you declared and paid in each month's return."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "p-8-16",
       "name": "Next-Year Reported Transactions",
       "area": "Annual returns (GSTR-9 / 9C)",

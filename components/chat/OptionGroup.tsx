@@ -76,6 +76,9 @@ export function OptionGroup({
         <MessageTurn speaker="DataTwin" text={prompt} />
       </div>
 
+      {!resolved && options.length > 2 && (
+        <p className={`text-[12px] font-semibold tracking-[0.08em] text-navy-muted uppercase ${promptIsNew ? "dt-msg-in-assistant" : ""}`}>Choose one</p>
+      )}
       {!resolved && (
         <div className={`flex flex-wrap gap-2.5 ${promptIsNew ? "dt-msg-in-assistant" : ""}`}>
           {options.map((option) => (

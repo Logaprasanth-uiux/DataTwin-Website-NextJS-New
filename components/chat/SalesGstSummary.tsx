@@ -25,6 +25,12 @@ const AREA_COLOR: Record<SalesGstAreaId, { color: string; opacity: number }> = {
   "demands-outstanding": { color: "var(--crimson)", opacity: 0.8 },
   "drc03-unmatched": { color: "var(--accent)", opacity: 0.55 },
   "refund-pending": { color: "var(--accent)", opacity: 1 },
+  "annual-turnover": { color: "var(--loss)", opacity: 1 },
+  "annual-taxable": { color: "var(--loss)", opacity: 0.7 },
+  "annual-tax": { color: "var(--crimson)", opacity: 0.8 },
+  "annual-itc-excess": { color: "var(--crimson)", opacity: 1 },
+  "annual-itc-unclaimed": { color: "var(--accent)", opacity: 1 },
+  "annual-interest": { color: "var(--loss)", opacity: 0.45 },
   interest: { color: "var(--loss)", opacity: 0.55 },
 };
 
@@ -71,7 +77,9 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
   // Only areas that are an issue appear: ITC claimed and ITC eligible are reference totals, not findings.
   const shownAreas = breakdown.areas.filter((a) => a.kind !== "reference");
   const purchase = breakdown.side === "purchase";
-  const tax = breakdown.side === "tax";
+  const annual = breakdown.side === "annual";
+  // The tax payments and annual results are both framed as exposure: tax at risk, less what comes back.
+  const tax = breakdown.side === "tax" || annual;
   const areaTotal = shownAreas.reduce((sum, a) => sum + a.amount, 0);
 
   return (
@@ -89,7 +97,7 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
           {(!tax || result.grossPositive > 0) && (
             <div className="flex items-center gap-2 rounded-full border border-accent/25 bg-accent/[0.06] px-4 py-2">
               <span className={`text-[13.5px] font-semibold text-accent ${fade}`}>{tax ? "−" : "+"}{format(result.grossPositive)}</span>
-              <span className="text-[12px] text-navy-muted">{tax ? "paid or refundable" : purchase ? "recoverable ITC" : "recoverable / overpaid"}</span>
+              <span className="text-[12px] text-navy-muted">{annual ? "recoverable" : tax ? "paid or refundable" : purchase ? "recoverable ITC" : "recoverable / overpaid"}</span>
             </div>
           )}
           {result.grossNegative > 0 && (
@@ -101,7 +109,9 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
         </div>
 
         <p className="mt-4 max-w-xl text-[14.5px] leading-relaxed text-navy-body">
-          {tax
+          {annual
+            ? "Based on the initial reconciliation of your audited books against GSTR-9, we identified tax and ITC differences, netted against what you can recover. "
+            : tax
             ? "Based on the initial reconciliation, we identified tax that is still open, netted against what is already paid or refundable. "
             : purchase
             ? "Based on the initial reconciliation, we identified ITC you can recover, netted against any credit that has to be reversed. "
@@ -118,10 +128,10 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
         <p className={`mt-2 text-[14.5px] leading-relaxed text-navy ${fade}`}>
           {tax ? (
             <>
-              {format(net)} is the tax at risk for this period
+              {format(net)} is the tax at risk for this {annual ? "financial year" : "period"}
               {result.grossPositive > 0 ? (
                 <>
-                  , after {format(result.grossPositive)} already paid or refundable against {format(result.grossNegative)} owed
+                  , after {format(result.grossPositive)} {annual ? "recoverable" : "already paid or refundable"} against {format(result.grossNegative)} owed
                 </>
               ) : null}
             </>
@@ -149,13 +159,24 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
       </div>
 
       <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft sm:p-7">
-        <p className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">Recovery areas</p>
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-navy-muted uppercase">{annual ? "Difference areas" : "Recovery areas"}</p>
         <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">
           {shownAreas.length} {shownAreas.length === 1 ? "area" : "areas"} behind the {format(net)} net impact
         </h3>
         <p className="mt-1.5 text-[13px] text-navy-body">
           {breakdown.includesItc
             ? "Includes ITC, since GSTR-3B is part of this result."
+            : annual
+              ? (() => {
+                  const tables = result.annual?.tables.map((t) => t.id) ?? [];
+                  const missing = [
+                    !tables.includes("tax") && "tax liability by rate (Table 9)",
+                    !tables.includes("itc") && "ITC availed (Table 12)",
+                  ].filter((x): x is string => Boolean(x));
+                  return missing.length > 0
+                    ? `Add the sales and purchase documents below to include ${missing.join(" and ")}.`
+                    : "Includes every table, since the sales and purchase documents are part of this result.";
+                })()
             : tax
               ? (() => {
                   const have = new Set(breakdown.areas.map((a) => a.id));
@@ -205,7 +226,9 @@ export function SalesGstBody({ result }: { result: TopicMockResult }) {
         </div>
 
         <p className="mt-6 border-t border-navy-hairline pt-4 text-[12px] text-navy-faint">
-          {tax
+          {annual
+            ? "Areas that are owed add to the tax at risk, and areas you can recover take from it. Only differences with no explanation yet are counted."
+            : tax
             ? "Areas that are owed add to the tax at risk, and areas already paid or refundable take from it."
             : "Recoverable areas add to the net impact and payable areas take from it."}
         </p>

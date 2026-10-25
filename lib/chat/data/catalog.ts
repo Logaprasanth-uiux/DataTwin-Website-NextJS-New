@@ -102,6 +102,9 @@ export const RECONCILIATION_CATALOG: CatalogEntry[] = [
   // 11.9 is the umbrella "Tax payments and ledgers" check: GSTR-3B and the liability ledger first, then
   // ledgers, interest, DRC-03, refunds and demands as optional documents asked for by group.
   { id: "11.9", familyId: "11", name: "Tax payments and ledgers", purpose: "Check your GST payments end to end: liability, credit and cash ledgers, interest and late fees, DRC-03, refunds, and demands and orders.", fileIds: ["F03", "F19"] },
+  // 8.19 is the umbrella "GSTR-9C Annual Reconciliation": the audited books against GSTR-9 first, then
+  // the sales and purchase registers, GSTR-1, GSTR-2B and GSTR-3B as optional documents asked for by group.
+  { id: "8.19", familyId: "8", name: "GSTR-9C Annual Reconciliation", purpose: "Reconcile your audited books with GSTR-9 for the financial year: gross and taxable turnover, tax liability and ITC, with every difference traced down to the invoice.", fileIds: ["F15", "F14"] },
   { id: "14.8", familyId: "14", name: "Sales Register vs e-Invoice vs GSTR-1", purpose: "Confirm every invoice in the sales register has a matching e-invoice (IRN) and is reported in GSTR-1 with the same values.", fileIds: ["F17", "F39", "F18", "F31"] },
   // The entries below are hand-added (not rows in Reconciliation_Catalog.xlsx): capital goods,
   // Rule 37 (180 days), demands/orders, and the three cross-year checks.

@@ -35,7 +35,7 @@ const KIND_LABEL: Record<StepKind, string> = Object.fromEntries(STEP_KINDS.map((
   string
 >;
 
-const SOURCE_LABEL = { upload: "Upload", portal: "GST Portal", both: "Upload or GST Portal" } as const;
+const SOURCE_LABEL = { upload: "Upload", portal: "GST Portal", both: "Upload or GST Portal", sap: "Upload or SAP" } as const;
 
 function stateOf(id: string, play: PlayView): "idle" | "active" | "done" | "dim" {
   if (!play.path) return "idle";

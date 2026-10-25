@@ -16,7 +16,7 @@ import { buildIntentSummary } from "../lib/chat/intents";
 import { buildResolvedTopic, periodModeFor } from "../lib/chat/reconciliation";
 import type { ChatFlow, FlowFile, FlowStep, Problem } from "../lib/playground/chatflow-types";
 
-const HAND_SCRIPTED = ["10.1", "10.15", "1.14", "11.9", "10.11", "10.12", "10.13", "10.14", "14.8", "8.5"];
+const HAND_SCRIPTED = ["10.1", "10.15", "1.14", "11.9", "10.11", "10.12", "10.13", "10.14", "14.8", "8.5", "8.19"];
 const FRAMING_NOTE = {
   recovery: "Result is framed as a recovery: money that can come back, net of anything short-paid.",
   exposure: "Result is framed as an exposure: tax that looks unpaid or under-reported, net of anything paid in excess.",
@@ -39,11 +39,12 @@ for (const area of AREAS) {
     const portal = new Set(topic.portalFetchFileIds ?? []);
     const checkpoints = topic.furtherCheckpoints ?? [];
     checkpoints.forEach((c) => c.portalFetchFileIds?.forEach((f) => portal.add(f)));
+    const sap = new Set(checkpoints.flatMap((c) => c.sapFetchFileIds ?? []));
     const toFile = (f: { fileId: string; name: string; why: string }, level: "required" | "optional"): FlowFile => ({
       id: `${pid}-f-${f.fileId}`,
       name: f.name,
       level,
-      source: portal.has(f.fileId) ? "both" : "upload",
+      source: portal.has(f.fileId) ? "both" : sap.has(f.fileId) ? "sap" : "upload",
       why: f.why,
     });
     const annual = periodModeFor(id) === "annual";

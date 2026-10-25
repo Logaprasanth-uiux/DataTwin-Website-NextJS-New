@@ -4,7 +4,7 @@
 export type StepKind = "user" | "ai" | "choice" | "files" | "system" | "gate" | "output";
 
 export type FileLevel = "required" | "optional";
-export type FileSource = "upload" | "portal" | "both";
+export type FileSource = "upload" | "portal" | "both" | "sap";
 
 export interface FlowFile {
   id: string;

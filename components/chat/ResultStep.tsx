@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { ContactDetails, ReconciliationTopic } from "@/lib/chat/types";
 import { framingCopy } from "@/lib/chat/summaryCopy";
+import { AnnualDrilldown } from "./AnnualDrilldown";
 import { BlurredInsightPreview } from "./BlurredInsightPreview";
 import { ExecutiveSummary, ExecutiveSummaryBody, ExecutiveSummaryHeader } from "./ExecutiveSummary";
 import { SummaryAccessGate } from "./SummaryAccessGate";
@@ -21,20 +22,19 @@ import { SummaryAccessGate } from "./SummaryAccessGate";
 export function ResultStep({
   topic,
   active,
-  summaryContact,
   summaryVerified,
   onSubmitSummaryContact,
-  onVerifySummaryOtp,
   onOpenSchedule,
+  drilldownUnlocked = true,
   accuracyOffer,
 }: {
   topic: ReconciliationTopic;
   active: boolean;
-  summaryContact: ContactDetails | null;
   summaryVerified: boolean;
   onSubmitSummaryContact: (contact: ContactDetails) => void;
-  onVerifySummaryOtp: () => void;
   onOpenSchedule: () => void;
+  /** True once the conversation is scheduled: the annual (GSTR-9C) result's drill-down to the invoice opens. */
+  drilldownUnlocked?: boolean;
   /** The "improve accuracy" card, already wired up by the caller (Transcript); null when there is nothing to offer. */
   accuracyOffer: ReactNode;
 }) {
@@ -63,7 +63,7 @@ export function ResultStep({
             </div>
           </div>
           <div className="relative z-10 w-full max-w-sm px-4">
-            <SummaryAccessGate contact={summaryContact} onSubmitContact={onSubmitSummaryContact} onVerifyOtp={onVerifySummaryOtp} />
+            <SummaryAccessGate onSubmitContact={onSubmitSummaryContact} />
           </div>
         </div>
       </div>
@@ -76,9 +76,31 @@ export function ResultStep({
     <div data-scroll-target="result" className="flex flex-col gap-5">
       <ExecutiveSummary result={topic.mockResult} />
 
-      {/* The call to action sits ON the blurred findings, like the access form over the summary
-          above — right where the locked detail is, instead of somewhere below it that's easy to
-          miss. It goes away once the user opens the scheduling step. */}
+      {/* The annual (GSTR-9C) result shows its indicators straight away; the figures and the drill-down
+          to the invoice stay locked, with the unlock button in the table itself. */}
+      {topic.mockResult.annual ? (
+        <>
+          <AnnualDrilldown tables={topic.mockResult.annual.tables} locked={!drilldownUnlocked} onUnlock={active ? onOpenSchedule : undefined} />
+          {active && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[15px] font-medium text-navy">Want to walk through these with the team?</p>
+                <p className="mt-1 text-[13.5px] leading-relaxed text-navy-body">Schedule a conversation with the DataTwin Team to review the differences and the next steps.</p>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenSchedule}
+                className="dt-button h-12 w-fit flex-shrink-0 rounded-full border border-navy bg-navy px-6 text-[14px] text-white transition-colors hover:bg-navy/90"
+              >
+                Schedule a conversation
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+      // The call to action sits ON the blurred findings, like the access form over the summary above
+      // — right where the locked detail is, instead of somewhere below it that's easy to miss. It
+      // goes away once the user opens the scheduling step.
       <div className="relative">
         <BlurredInsightPreview rows={topic.mockResult.previewRows} revealed={false} className="min-h-[340px]" heading={copy.tableHeading} showSign={topic.mockResult.framing !== "mismatch"} />
         {active && (
@@ -106,6 +128,7 @@ export function ResultStep({
           </div>
         )}
       </div>
+      )}
 
       {active && accuracyOffer}
     </div>

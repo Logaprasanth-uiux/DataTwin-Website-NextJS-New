@@ -109,6 +109,7 @@ export function Inspector({ step, canMoveUp, canMoveDown, onChange, onMove, onDu
                     <option value="upload">Upload only</option>
                     <option value="portal">GST Portal only</option>
                     <option value="both">Upload or GST Portal</option>
+                    <option value="sap">Upload or SAP</option>
                   </select>
                 </div>
                 <input

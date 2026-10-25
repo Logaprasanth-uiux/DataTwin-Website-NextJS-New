@@ -4,7 +4,7 @@ import {
   submitFreeMessage as applySubmitFreeMessage,
 } from "./discovery";
 import { buildIntentSummary, userWordsForIntent } from "./intents";
-import { generateMockResult, PURCHASE_GST_IDS, SALES_GST_IDS, TAX_GST_IDS } from "./mockResult";
+import { ANNUAL_GST_IDS, generateMockResult, PURCHASE_GST_IDS, SALES_GST_IDS, TAX_GST_IDS } from "./mockResult";
 import { ANNUAL_ENTRY_ID, buildResolvedTopic, periodModeFor } from "./reconciliation";
 import { PLACEHOLDER_TITLE } from "./title";
 import { formatPeriodRange } from "./formatDate";
@@ -433,6 +433,8 @@ export function cancelPortalConsent(state: ConversationState, fileId: string): C
 export function completePortalFetch(state: ConversationState, fileId: string, fileName: string): ConversationState {
   const uploaded = recordUpload(state, fileId, fileName);
   const ready = advanceUploadStatus(uploaded, fileId, "ready");
+  // A document pulled from the user's ERP (SAP) has nothing to do with the GST Portal verification.
+  if (state.fileSource[fileId] === "sap") return ready;
   // The verification behind this fetch stays reusable for a while (see chooseFileSource).
   return { ...ready, portalSessionExpiresAt: Date.now() + PORTAL_SESSION_MS };
 }
@@ -580,7 +582,7 @@ function withAccuracyExtras(topic: ReconciliationTopic, effective: Reconciliatio
   const mockResult =
     SALES_GST_IDS.has(topic.id)
       ? generateMockResult(`${topic.id}::round-${covered}`, { includeItc: requiredFiles.some((f) => f.fileId === "SG-GSTR3B") })
-      : PURCHASE_GST_IDS.has(topic.id) || TAX_GST_IDS.has(topic.id)
+      : PURCHASE_GST_IDS.has(topic.id) || TAX_GST_IDS.has(topic.id) || ANNUAL_GST_IDS.has(topic.id)
         ? generateMockResult(`${topic.id}::round-${covered}`, { fileIds: requiredFiles.map((f) => f.fileId) })
         : (checkpoints[covered - 1]?.mockResult ?? effective.mockResult);
   return { ...effective, requiredFiles, mockResult };
@@ -613,13 +615,9 @@ export function scheduleMeeting(
 
 // --- Executive Summary access gate (see ResultStep/SummaryAccessGate) --
 
+// An email is all the summary asks for: once it is in, the summary is open (no OTP step).
 export function submitSummaryContact(state: ConversationState, contact: ContactDetails): ConversationState {
-  return touch({ ...state, summaryContact: contact });
-}
-
-export function verifySummaryOtp(state: ConversationState): ConversationState {
-  if (!state.summaryContact) return state; // no contact on file yet — nothing to verify
-  return touch({ ...state, summaryVerified: true });
+  return touch({ ...state, summaryContact: contact, summaryVerified: true });
 }
 
 // --- Transcript ---------------------------------------------------------

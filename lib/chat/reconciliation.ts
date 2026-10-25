@@ -176,6 +176,33 @@ const TAX_PAYMENTS_OPTIONAL: { group: string; fileId: string; benefit: string }[
   { group: "demands", fileId: "F57", benefit: "Links each notice response to the payment made against it." },
 ];
 
+// The optional documents of the umbrella GSTR-9C Annual Reconciliation, by the group each belongs to.
+// The Sales Register, Outward Sales Documents and Purchase Register come from the user's ERP, so they
+// can be uploaded or pulled through the SAP connector; GSTR-1, 2B and 3B come from the GST Portal.
+// "AR-" ids are hand-written for this check (not rows in File_Requirements.xlsx).
+const ANNUAL_9C_GROUPS: { id: string; label: string }[] = [
+  { id: "sales", label: "Sales records and GSTR-1" },
+  { id: "purchase", label: "Purchase records and GSTR-2B" },
+  { id: "tax", label: "Tax paid in GSTR-3B" },
+];
+
+const ANNUAL_9C_OPTIONAL: {
+  group: string;
+  fileId: string;
+  name: string;
+  why: string;
+  benefit: string;
+  portal?: boolean;
+  sap?: boolean;
+}[] = [
+  { group: "sales", fileId: "F17", name: "Sales Register", sap: true, why: "Lists every sale of the year, invoice by invoice, from your ERP.", benefit: "Lets turnover differences be traced to the invoices behind them, month by month." },
+  { group: "sales", fileId: "AR-OUTWARD", name: "Outward Sales Documents", sap: true, why: "Lists the outward documents raised in your ERP: invoices, credit notes, debit notes and advances.", benefit: "Separates real differences from credit notes, debit notes and advances, so fewer are left unexplained." },
+  { group: "sales", fileId: "F18", name: "GSTR-1", portal: true, why: "Shows the outward supplies you reported across the year.", benefit: "Shows which sales never reached GSTR-1, which is where turnover differences usually start." },
+  { group: "purchase", fileId: "F05", name: "Purchase Register", sap: true, why: "Lists every purchase of the year, vendor by vendor, from your ERP.", benefit: "Lets ITC differences be traced to the purchase invoices behind them." },
+  { group: "purchase", fileId: "F02", name: "GSTR-2B", portal: true, why: "Shows the ITC your vendors' filings made available across the year.", benefit: "Shows which ITC in GSTR-9 has no support in GSTR-2B." },
+  { group: "tax", fileId: "F03", name: "GSTR-3B", portal: true, why: "Shows the tax you declared and paid in each month's return.", benefit: "Rolls the twelve returns up against GSTR-9, so tax paid and ITC differences show by month." },
+];
+
 // Bespoke walkthrough copy for reconciliations with a scripted journey. Everything else keeps the
 // generic templated copy built below; this only ever *adds* optional fields onto the topic the
 // generic path already produces, so a reconciliation with no entry here behaves exactly as it did
@@ -364,6 +391,37 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
         mockResult: generateMockResult("10.12::checkpoint-2"),
       },
     ],
+  },
+  // "GSTR-9C Annual Reconciliation": the umbrella annual check. The audited books and GSTR-9 are all
+  // that's needed to run; the registers and returns that explain the differences are optional, asked for
+  // by group. The result is a table-by-table reconciliation with an indicator on every line, and a
+  // drill-down to the invoice that unlocks (see generateAnnualGstResult and AnnualDrilldown).
+  "8.19": {
+    baseFileIds: ["F15", "F14"],
+    requiredFileNameOverrides: { F15: "Audited Books", F14: "GSTR-9 (Annual)" },
+    requiredFileWhyOverrides: {
+      F15: "Gives the turnover, tax and ITC figures in your audited books for the financial year, which is the books side of the reconciliation.",
+      F14: "Shows the turnover, tax and ITC you declared in the annual return, which the audited books are reconciled against.",
+    },
+    filesIntro:
+      "Let's start with your Audited Books for the financial year.\n\nWhy this helps: Sets the books-side figures for the reconciliation.",
+    fileAckOverrides: {
+      F15: "Got it. Now share your GSTR-9 for the same financial year.\n\nWhy this helps: Shows what you declared in the annual return.",
+    },
+    portalFetchFileIds: ["F14"],
+    autoAdvanceMessage: "Both files are ready. Running your GSTR-9C annual reconciliation... ⏳",
+    optionalGroups: ANNUAL_9C_GROUPS,
+    optionalGroupsQuestion: "To trace the differences down to invoices, which of these can you share?",
+    furtherCheckpoints: ANNUAL_9C_OPTIONAL.map(
+      ({ group, fileId, name, why, benefit, portal, sap }, index): ReconciliationCheckpoint => ({
+        group,
+        files: [{ fileId, name, level: "required", why }],
+        portalFetchFileIds: portal ? [fileId] : undefined,
+        sapFetchFileIds: sap ? [fileId] : undefined,
+        accuracyBenefit: benefit,
+        mockResult: generateMockResult(`8.19::checkpoint-${index + 1}`),
+      }),
+    ),
   },
   // "Gross Turnover Reconciliation - Table 5/6" — the year-end (GSTR-9) counterpart to the monthly
   // Sales Register vs GSTR-1 flow: full-year books turnover against the annual return. Same

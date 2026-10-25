@@ -25,6 +25,9 @@ const STOPWORDS = new Set([
 function tokenize(text: string): string[] {
   return text
     .toLowerCase()
+    // "GSTR 9C", "GSTR-9 C" or a bare "9C" are all the annual reconciliation; "GSTR 9" the annual return.
+    .replace(/\bgstr[\s-]*9\s*c\b|\b9\s*c\b/g, "gstr-9c")
+    .replace(/\bgstr[\s-]*9\b/g, "gstr-9")
     .replace(/[^a-z0-9\s/-]/g, " ")
     .split(/\s+/)
     .map((t) => t.replace(/^-+|-+$/g, ""))
@@ -240,6 +243,25 @@ function matchesAnnualScriptedTrigger(userTokens: ReadonlySet<string>): CatalogE
   return INDEX.find((i) => i.entry.id === ANNUAL_SCRIPTED_ENTRY_ID)?.entry ?? null;
 }
 
+// "An annual reconciliation", "GSTR-9C" or "my audited books against GSTR-9", with nothing more
+// specific named, is the whole annual reconciliation: it gets the umbrella GSTR-9C flow. Naming a
+// particular table, register or return (turnover, ITC, RCM, a sales register...) keeps that flow.
+export const ANNUAL_RECONCILIATION_ENTRY_ID = "8.19";
+const ANNUAL_SPECIFIC_WORDS = [
+  "turnover", "itc", "rcm", "reverse", "drc-03", "rate", "rates", "rate-wise", "ratewise", "taxable", "expense",
+  "expenses", "register", "gstr-1", "gstr-1a", "gstr-2a", "gstr-2b", "gstr-3b", "financial", "additional",
+  "liability", "payable", "prior", "next", "timing", "advance", "advances", "export", "exports", "sez", "hsn",
+];
+
+function matchesAnnualReconciliationTrigger(userTokens: ReadonlySet<string>): CatalogEntry | null {
+  if (ANNUAL_SPECIFIC_WORDS.some((w) => userTokens.has(w))) return null;
+  const annual =
+    ["annual", "yearly", "year-end", "yearend", "gstr-9", "gstr9", "gstr-9c", "gstr9c"].some((t) => userTokens.has(t)) ||
+    (userTokens.has("year") && userTokens.has("end")) ||
+    (userTokens.has("audited") && (userTokens.has("books") || userTokens.has("accounts")));
+  return annual ? entryById(ANNUAL_RECONCILIATION_ENTRY_ID) : null;
+}
+
 // Advances received from customers and HSN/SAC summaries each have their own scripted flow. Both
 // are checked ahead of the sales-register trigger, which would otherwise claim "HSN summary vs
 // sales register". "Advance" alone is ambiguous (advances to vendors are a payables matter), so it
@@ -329,6 +351,11 @@ export function resolveIntent(text: string, excludeIds: readonly string[] = []):
   }
   const userTokenSet = new Set(userTokens);
   const excluded = new Set(excludeIds);
+
+  const annualReconciliation = matchesAnnualReconciliationTrigger(userTokenSet);
+  if (annualReconciliation && !excluded.has(annualReconciliation.id)) {
+    return { confidence: "high", top: annualReconciliation, candidates: [] };
+  }
 
   const exportsMatch = matchesExportsScriptedTrigger(userTokenSet);
   if (exportsMatch && !matchesAnnualScriptedTrigger(userTokenSet) && !excluded.has(exportsMatch.top?.id ?? "")) {

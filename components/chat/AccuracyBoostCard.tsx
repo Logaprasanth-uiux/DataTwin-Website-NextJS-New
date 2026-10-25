@@ -6,6 +6,7 @@ import { FileRequirementCard } from "./FileRequirementCard";
 import { MessageTurn } from "./MessageTurn";
 import { PortalFetchFlow } from "./PortalFetchFlow";
 import type { RevealTracker } from "./reveal";
+import { SapConnectFlow } from "./SapConnectFlow";
 
 const REFRESH_MS = 1400;
 
@@ -72,6 +73,7 @@ export function AccuracyBoostCard({
     return () => window.clearTimeout(id);
   }, [refreshing]);
 
+  const sapConnected = Object.values(uploads).some((upload) => upload.fileName.endsWith("(via SAP)"));
   const provided = joinNames(providedFileNames);
   const missingNames = joinNames(remaining.flatMap(({ checkpoint }) => checkpoint.files.map((f) => f.name)));
   const pendingNames = joinNames(
@@ -107,11 +109,28 @@ export function AccuracyBoostCard({
       <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
         {remaining
           .flatMap(({ checkpoint }) =>
-            checkpoint.files.map((file) => ({ file, checkpoint, canFetch: checkpoint.portalFetchFileIds?.includes(file.fileId) ?? false })),
+            checkpoint.files.map((file) => ({
+              file,
+              checkpoint,
+              canFetch: checkpoint.portalFetchFileIds?.includes(file.fileId) ?? false,
+              canSap: checkpoint.sapFetchFileIds?.includes(file.fileId) ?? false,
+            })),
           )
-          .sort((x, y) => Number(y.canFetch) - Number(x.canFetch))
-          .map(({ file, checkpoint, canFetch }) => {
+          .sort((x, y) => Number(y.canFetch || y.canSap) - Number(x.canFetch || x.canSap))
+          .map(({ file, checkpoint, canFetch, canSap }) => {
             const upload = uploads[file.fileId];
+            if (!upload && canSap && fileSource[file.fileId] === "sap") {
+              return (
+                <div key={file.fileId} className="md:col-span-2">
+                  <SapConnectFlow
+                    file={file}
+                    connected={sapConnected}
+                    onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
+                    onBack={() => onRemove(file.fileId)}
+                  />
+                </div>
+              );
+            }
             if (!upload && canFetch && fileSource[file.fileId] === "portal") {
               return (
                 <div key={file.fileId} className="md:col-span-2">
@@ -127,7 +146,7 @@ export function AccuracyBoostCard({
               );
             }
             return (
-              <div key={file.fileId} className={canFetch ? "flex self-stretch [&>*]:w-full" : undefined}>
+              <div key={file.fileId} className={canFetch || canSap ? "flex self-stretch [&>*]:w-full" : undefined}>
                 <FileRequirementCard
                   requirement={{ ...file, level: "optional", why: checkpoint.accuracyBenefit ?? file.why }}
                   showWhyLabel
@@ -139,6 +158,7 @@ export function AccuracyBoostCard({
                   onAdvanceStatus={onAdvanceStatus}
                   onRemove={onRemove}
                   onChoosePortal={canFetch ? () => onChooseFileSource(file.fileId, "portal") : undefined}
+                  onChooseSap={canSap ? () => onChooseFileSource(file.fileId, "sap") : undefined}
                 />
               </div>
             );

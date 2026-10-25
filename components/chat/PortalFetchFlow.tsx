@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { FileRequirement, PortalFetchStage } from "@/lib/chat/types";
 import { MessageTurn } from "./MessageTurn";
 import { UserReveal, type RevealTracker } from "./reveal";
+import { useScrollIntoViewOnMount } from "./useScrollIntoViewOnMount";
 
 const VERIFYING_MS = 1100;
 const FETCHING_MS = 1400;
@@ -34,6 +35,7 @@ export function PortalFetchFlow({
   onSubmitGstin: () => void;
   onFetchComplete: (fileName: string) => void;
 }) {
+  const rootRef = useScrollIntoViewOnMount<HTMLDivElement>();
   const [gstin, setGstin] = useState("");
   const [otp, setOtp] = useState("");
   const [localPhase, setLocalPhase] = useState<LocalPhase>(
@@ -78,7 +80,7 @@ export function PortalFetchFlow({
 
   if (stage === "gstin") {
     return (
-      <div className="flex flex-col gap-3">
+      <div ref={rootRef} className="flex flex-col gap-3">
         <MessageTurn
           speaker="DataTwin"
           text={`Smart choice! Let's pull your ${file.name} directly from the portal so you don't have to download anything manually.\n\nPlease enter your 15-digit GST Number (GSTIN) below to get started:`}

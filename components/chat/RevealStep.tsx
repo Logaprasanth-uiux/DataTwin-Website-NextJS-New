@@ -1,5 +1,6 @@
 import type { ReconciliationTopic } from "@/lib/chat/types";
 import { framingCopy } from "@/lib/chat/summaryCopy";
+import { AnnualDrilldown } from "./AnnualDrilldown";
 import { BlurredInsightPreview } from "./BlurredInsightPreview";
 
 export function RevealStep({ topic }: { topic: ReconciliationTopic }) {
@@ -14,7 +15,11 @@ export function RevealStep({ topic }: { topic: ReconciliationTopic }) {
         <p className="dt-display text-2xl font-semibold tracking-[-0.01em] text-navy">{copy.revealTitle}</p>
       </div>
 
-      <BlurredInsightPreview rows={topic.mockResult.previewRows} revealed heading={copy.tableHeading} showSign={topic.mockResult.framing !== "mismatch"} />
+      {topic.mockResult.annual ? (
+        <AnnualDrilldown tables={topic.mockResult.annual.tables} locked={false} />
+      ) : (
+        <BlurredInsightPreview rows={topic.mockResult.previewRows} revealed heading={copy.tableHeading} showSign={topic.mockResult.framing !== "mismatch"} />
+      )}
 
       <div className="rounded-2xl border border-navy-hairline bg-white p-6 shadow-soft">
         <p className="text-[13.5px] font-medium text-navy">Suggested next actions</p>

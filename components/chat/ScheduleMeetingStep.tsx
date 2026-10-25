@@ -28,10 +28,8 @@ function formatMeetingTime(time24: string): string {
 }
 
 // Calendly-style scheduling, standing in for a real booking integration (none exists yet — see
-// engine.ts's `scheduleMeeting`, which just records the choice locally). Name/work email/phone
-// come pre-filled from the Executive Summary gate's `summaryContact` — already collected once, so
-// this never re-asks for it as blank required fields, just leaves it editable alongside the new
-// date/time fields.
+// engine.ts's `scheduleMeeting`, which just records the choice locally). Only an email, a date and a
+// time are asked for; the email comes pre-filled from the Executive Summary gate and stays editable.
 export function ScheduleMeetingStep({
   itemKey,
   tracker,
@@ -47,9 +45,7 @@ export function ScheduleMeetingStep({
   submitted: { contact: ContactDetails; meeting: ScheduledMeeting } | null;
   onSubmit: (contact: ContactDetails, meeting: ScheduledMeeting) => void;
 }) {
-  const [name, setName] = useState(prefill?.name ?? "");
   const [email, setEmail] = useState(prefill?.email ?? "");
-  const [phone, setPhone] = useState(prefill?.phone ?? "");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
 
@@ -60,7 +56,7 @@ export function ScheduleMeetingStep({
         <UserReveal itemKey={`${itemKey}:resolved`} tracker={tracker}>
           <MessageTurn
             speaker="You"
-            text={`Scheduled for ${formatMeetingDate(submitted.meeting.date)}, ${formatMeetingTime(submitted.meeting.time)} — ${submitted.contact.name}`}
+            text={`Scheduled for ${formatMeetingDate(submitted.meeting.date)}, ${formatMeetingTime(submitted.meeting.time)} — ${submitted.contact.email}`}
           />
         </UserReveal>
         <MessageTurn
@@ -72,13 +68,12 @@ export function ScheduleMeetingStep({
     );
   }
 
-  const valid =
-    name.trim().length > 1 && EMAIL_PATTERN.test(email) && phone.trim().length >= 6 && date.length > 0 && time.length > 0;
+  const valid = EMAIL_PATTERN.test(email.trim()) && date.length > 0 && time.length > 0;
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!valid) return;
-    onSubmit({ name: name.trim(), email: email.trim(), phone: phone.trim() }, { date, time });
+    onSubmit({ name: "", email: email.trim(), phone: "" }, { date, time });
   };
 
   return (
@@ -92,34 +87,13 @@ export function ScheduleMeetingStep({
       </div>
 
       <div className="flex flex-col gap-4">
-        <Field label="Name">
-          <input
-            type="text"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            autoComplete="name"
-            className="h-11 w-full rounded-lg border border-navy-hairline bg-white px-3.5 text-[14px] text-navy focus:border-accent focus:outline-none"
-          />
-        </Field>
-        <Field label="Work email">
+        <Field label="Email">
           <input
             type="email"
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
-            className="h-11 w-full rounded-lg border border-navy-hairline bg-white px-3.5 text-[14px] text-navy focus:border-accent focus:outline-none"
-          />
-        </Field>
-        <Field label="Phone">
-          <input
-            type="tel"
-            inputMode="numeric"
-            required
-            value={phone}
-            onChange={(event) => setPhone(event.target.value.replace(/\D/g, ""))}
-            autoComplete="tel"
             className="h-11 w-full rounded-lg border border-navy-hairline bg-white px-3.5 text-[14px] text-navy focus:border-accent focus:outline-none"
           />
         </Field>
@@ -170,7 +144,7 @@ function MeetingConfirmationCard({ contact, meeting }: { contact: ContactDetails
           {formatMeetingDate(meeting.date)} · {formatMeetingTime(meeting.time)}
         </p>
         <p className="mt-2 text-[13px] leading-relaxed text-navy-body">
-          {contact.name} · {contact.email} · {contact.phone}
+          {contact.email}
         </p>
         <p className="mt-3 text-[12px] text-navy-faint">
           A calendar invite and joining details will be sent to your email closer to the session.

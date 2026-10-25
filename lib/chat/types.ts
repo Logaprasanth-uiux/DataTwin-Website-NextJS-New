@@ -58,6 +58,12 @@ export type SalesGstAreaId =
   | "demands-outstanding"
   | "drc03-unmatched"
   | "refund-pending"
+  | "annual-turnover"
+  | "annual-taxable"
+  | "annual-tax"
+  | "annual-itc-excess"
+  | "annual-itc-unclaimed"
+  | "annual-interest"
   | "interest";
 
 export interface SalesGstArea {
@@ -85,7 +91,61 @@ export interface SalesGstBreakdown {
   /** True once GSTR-3B is part of the result — only then do the ITC areas exist. */
   includesItc: boolean;
   /** Set for the purchase-side result: the areas are about ITC, and the copy changes to match. */
-  side?: "purchase" | "tax";
+  side?: "purchase" | "tax" | "annual";
+}
+
+// The annual (GSTR-9C) result is a table-by-table reconciliation of the audited books against
+// GSTR-9, with an indicator on every line. Each level adds up exactly to the one above it:
+// invoices -> months -> components -> table. The indicators are shown straight away; the figures
+// and the levels below the table stay locked until the user unlocks the drill-down (see
+// AnnualDrilldown). `difference` is always audited books minus GSTR-9.
+//   mismatch  - a difference with no explanation yet
+//   explained - a difference with a known reason (timing, advances, credit notes...)
+//   matched   - agrees
+export type AnnualStatus = "mismatch" | "explained" | "matched";
+
+export interface AnnualInvoice {
+  ref: string;
+  party: string;
+  /** Why this invoice differs, e.g. "In the sales register, missing from GSTR-1". */
+  cause: string;
+  difference: number;
+}
+
+export interface AnnualMonth {
+  month: string;
+  difference: number;
+  invoices: AnnualInvoice[];
+}
+
+export interface AnnualComponent {
+  id: string;
+  label: string;
+  books: number;
+  gstr9: number;
+  difference: number;
+  status: AnnualStatus;
+  /** The known reason, for an explained difference. */
+  reason?: string;
+  /** Only the months that differ; the rest agree. Empty for a matched component. */
+  months: AnnualMonth[];
+}
+
+export interface AnnualTable {
+  id: string;
+  /** The GSTR-9C / GSTR-9 table this line belongs to, e.g. "Table 5". */
+  ref: string;
+  label: string;
+  books: number;
+  gstr9: number;
+  difference: number;
+  /** The worst status among its components. */
+  status: AnnualStatus;
+  components: AnnualComponent[];
+}
+
+export interface AnnualBreakdown {
+  tables: AnnualTable[];
 }
 
 // How the executive summary is worded and what it leads with. Chosen from the reconciliation (see
@@ -99,6 +159,8 @@ export interface TopicMockResult {
   framing?: SummaryFraming;
   /** Only the Sales Register vs GSTR-1 result has this — see SalesGstBreakdown. */
   salesGst?: SalesGstBreakdown;
+  /** Only the GSTR-9C annual result has this — see AnnualBreakdown. */
+  annual?: AnnualBreakdown;
   /** The NET recoverable position — `grossPositive - grossNegative`. This is the headline figure
    * quoted everywhere a single number is needed; the two gross figures below are what it's made
    * of, shown alongside it rather than only implied by it. */
@@ -135,6 +197,9 @@ export interface ReconciliationTopic {
   /** Required-file ids that offer "fetch directly from the GST Portal" as an alternative to
    * uploading — see FileSourceChoice/PortalFetchFlow. */
   portalFetchFileIds?: string[];
+  /** Documents that come from the user's ERP (SAP), so "Connect SAP" is offered beside upload — see
+   * SapConnectFlow. Only ever set on a checkpoint's own documents today. */
+  sapFetchFileIds?: string[];
   /** Shown once every required file is ready, instead of the generic "Perfect — I have what I
    * need..." + optional-files offer + manual "Continue to verification" button — and, after a
    * short beat, automatically continues into verification itself. */
@@ -167,6 +232,8 @@ export interface ReconciliationCheckpoint {
   filesIntro?: string;
   fileAckOverrides?: Record<string, string>;
   portalFetchFileIds?: string[];
+  /** Documents of this round that can be pulled from the user's ERP (SAP) — see SapConnectFlow. */
+  sapFetchFileIds?: string[];
   autoAdvanceMessage?: string;
   /** One business-specific line on what adding this round's document improves, shown on the
    * "improve accuracy" card after the result (see ResultStep) if this round was skipped. */
@@ -227,7 +294,8 @@ export type FileActionKind = "replace" | "remove";
 // GSTIN -> enter OTP -> a brief mock verify/fetch animation -> the file lands in `uploads` as
 // "ready", exactly like a normal upload. Only the two waiting-on-the-user stages are persisted;
 // the verify/fetch animation itself is transient, component-local state (see PortalFetchFlow).
-export type FileSourceChoice = "upload" | "portal";
+// "sap" is a document pulled from the user's ERP through a connector (a mock; see SapConnectFlow).
+export type FileSourceChoice = "upload" | "portal" | "sap";
 // "session" is a fetch started while an earlier OTP verification is still within its window (see
 // ConversationState.portalSessionExpiresAt): no GSTIN/consent/OTP asked again, straight to fetching.
 export type PortalFetchStage = "gstin" | "consent" | "otp" | "session";

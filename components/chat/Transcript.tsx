@@ -58,7 +58,6 @@ export interface TranscriptActions {
   onRefreshAccuracy: () => void;
   onScheduleMeeting: (contact: ContactDetails, meeting: ScheduledMeeting) => void;
   onSubmitSummaryContact: (contact: ContactDetails) => void;
-  onVerifySummaryOtp: () => void;
 }
 
 export function Transcript({
@@ -223,10 +222,8 @@ export function Transcript({
                 <ResultStep
                   topic={item.topic}
                   active={item.active}
-                  summaryContact={state.summaryContact}
                   summaryVerified={state.summaryVerified}
                   onSubmitSummaryContact={actions.onSubmitSummaryContact}
-                  onVerifySummaryOtp={actions.onVerifySummaryOtp}
                   onOpenSchedule={actions.onOpenSchedule}
                   accuracyOffer={(() => {
                     const offer = getAccuracyOffer(state);
@@ -235,9 +232,17 @@ export function Transcript({
                       <AccuracyBoostCard
                         itemKey={`${item.id}:accuracy`}
                         tracker={tracker}
-                        subject={item.topic.id === "1.14" ? "purchases" : item.topic.id === "11.9" ? "tax payments" : "sales"}
+                        subject={
+                          item.topic.id === "1.14"
+                            ? "purchases"
+                            : item.topic.id === "11.9"
+                              ? "tax payments"
+                              : item.topic.id === "8.19"
+                                ? "audited books"
+                                : "sales"
+                        }
                         providedFileNames={item.topic.requiredFiles
-                          .filter((file) => file.fileId !== (item.topic.id === "1.14" ? "F05" : item.topic.id === "11.9" ? "" : "F17"))
+                          .filter((file) => file.fileId !== (item.topic.id === "1.14" ? "F05" : item.topic.id === "11.9" ? "" : item.topic.id === "8.19" ? "F15" : "F17"))
                           .map((file) => file.name)}
                         remaining={offer.remaining}
                         pending={offer.pending}
