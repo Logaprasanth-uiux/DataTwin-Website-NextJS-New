@@ -6,6 +6,7 @@ import type {
   ConversationState,
   CustomPeriodRange,
   FileSourceChoice,
+  SapConnection,
   PeriodOptionId,
   ScheduledMeeting,
   TranscriptItem,
@@ -45,6 +46,8 @@ export interface TranscriptActions {
   onContinueFiles: () => void;
   onChooseOptionalGroups: (groupIds: string[]) => void;
   onChooseFileSource: (fileId: string, source: FileSourceChoice) => void;
+  onConnectSap: (connection: SapConnection) => void;
+  onDisconnectSap: () => void;
   onSubmitPortalGstin: (fileId: string) => void;
   onPortalFetchComplete: (fileId: string, fileName: string) => void;
   onBeginValidation: (fileId: string) => void;
@@ -200,6 +203,9 @@ export function Transcript({
                   optionalGroups={state.optionalGroups}
                   onChooseGroups={actions.onChooseOptionalGroups}
                   onChooseFileSource={actions.onChooseFileSource}
+                  sapConnection={state.sapConnection ?? null}
+                  onConnectSap={actions.onConnectSap}
+                  onDisconnectSap={actions.onDisconnectSap}
                   onSubmitPortalGstin={actions.onSubmitPortalGstin}
                   onPortalFetchComplete={actions.onPortalFetchComplete}
                   onBeginValidation={actions.onBeginValidation}
@@ -254,6 +260,9 @@ export function Transcript({
                         onAdvanceStatus={actions.onAdvanceStatus}
                         onRemove={actions.onRemoveUpload}
                         onChooseFileSource={actions.onChooseFileSource}
+                        sapConnection={state.sapConnection ?? null}
+                        onConnectSap={actions.onConnectSap}
+                        onDisconnectSap={actions.onDisconnectSap}
                         onSubmitPortalGstin={actions.onSubmitPortalGstin}
                         onPortalFetchComplete={actions.onPortalFetchComplete}
                         onRefresh={actions.onRefreshAccuracy}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import type { FileRequirement, UploadedFile } from "@/lib/chat/types";
 import { useMockFileValidation } from "./useMockFileValidation";
 
@@ -27,6 +27,8 @@ export function FileRequirementCard({
   holdAtRecognised = false,
   onChoosePortal,
   onChooseSap,
+  sapNote,
+  inlineFlow,
   showWhyLabel = false,
 }: {
   requirement: FileRequirement;
@@ -45,6 +47,11 @@ export function FileRequirementCard({
   onChoosePortal?: () => void;
   /** Offers "Connect SAP" for a document that comes from the user's ERP (see SapConnectFlow). */
   onChooseSap?: () => void;
+  /** Shown under the buttons when SAP is not connected yet, so the missing button is explained. */
+  sapNote?: string;
+  /** A fetch in progress (GST Portal or SAP), shown inside this card in place of the buttons, so the
+   * card stays where it is in the grid instead of being swapped for a full-width row. */
+  inlineFlow?: ReactNode;
   /** Leads the description with a bold "Why this helps:", used where it is the benefit of adding the
    * document (optional offers) rather than a plain description of the file. */
   showWhyLabel?: boolean;
@@ -94,7 +101,9 @@ export function FileRequirementCard({
         aria-label={`Upload ${requirement.name}`}
       />
 
-      {!upload && (
+      {!upload && inlineFlow && <div className="mt-1">{inlineFlow}</div>}
+
+      {!upload && !inlineFlow && (
         <div className="mt-1 flex flex-wrap gap-2.5">
           <button
             type="button"
@@ -121,11 +130,13 @@ export function FileRequirementCard({
               className="inline-flex w-fit items-center gap-2 rounded-full border border-navy-hairline px-4 py-2 text-[13px] font-medium text-navy transition-colors hover:border-accent"
             >
               <SapIcon className="h-3.5 w-3.5 text-accent" />
-              Connect SAP
+              Fetch from SAP
             </button>
           )}
         </div>
       )}
+
+      {!upload && !inlineFlow && sapNote && <p className="-mt-1 text-[12px] text-navy-faint">{sapNote}</p>}
 
       {upload && (
         <div className="mt-1 flex flex-col gap-2 rounded-xl bg-navy/[0.03] p-3.5">

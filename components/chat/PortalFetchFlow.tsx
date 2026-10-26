@@ -27,6 +27,7 @@ export function PortalFetchFlow({
   stage,
   onSubmitGstin,
   onFetchComplete,
+  compact = false,
 }: {
   itemKey: string;
   tracker: RevealTracker;
@@ -34,6 +35,9 @@ export function PortalFetchFlow({
   stage: PortalFetchStage;
   onSubmitGstin: () => void;
   onFetchComplete: (fileName: string) => void;
+  /** Renders just the form or status line, to sit inside a document card (see FileRequirementCard's
+   * `inlineFlow`), instead of the full conversational turns. */
+  compact?: boolean;
 }) {
   const rootRef = useScrollIntoViewOnMount<HTMLDivElement>();
   const [gstin, setGstin] = useState("");
@@ -73,6 +77,71 @@ export function PortalFetchFlow({
     if (!otpValid) return;
     setLocalPhase("verifying");
   };
+
+  if (compact) {
+    if (stage === "gstin") {
+      return (
+        <form onSubmit={handleGstinSubmit} className="flex flex-col gap-2.5">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-medium text-navy-muted">GSTIN</span>
+            <input
+              type="text"
+              value={gstin}
+              onChange={(event) => setGstin(event.target.value.toUpperCase())}
+              maxLength={15}
+              placeholder="22AAAAA0000A1Z5"
+              autoComplete="off"
+              className="h-11 w-full rounded-lg border border-navy-hairline bg-white px-3.5 font-mono text-[13.5px] tracking-wide text-navy placeholder:font-sans placeholder:text-navy-faint focus:border-accent focus:outline-none"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={!gstinValid}
+            className="dt-button h-11 w-fit rounded-full bg-navy px-6 text-[13.5px] text-white transition-colors hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Continue
+          </button>
+          <p className="text-[12px] text-navy-faint">Used only to retrieve your {file.name} from the GST Portal.</p>
+        </form>
+      );
+    }
+    if (stage === "consent") {
+      return <p className="text-[13px] text-navy-muted">GSTIN received. Confirm access in the pop-up to continue.</p>;
+    }
+    if (stage === "otp" && localPhase === "idle") {
+      return (
+        <form onSubmit={handleOtpSubmit} className="flex flex-col gap-2.5">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-medium text-navy-muted">OTP sent to your GST-registered mobile or email</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={otp}
+              onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))}
+              maxLength={6}
+              placeholder="6-digit code"
+              autoComplete="off"
+              className="h-11 w-full rounded-lg border border-navy-hairline bg-white px-3.5 font-mono text-[13.5px] tracking-[0.2em] text-navy placeholder:font-sans placeholder:tracking-normal placeholder:text-navy-faint focus:border-accent focus:outline-none"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={!otpValid}
+            className="dt-button h-11 w-fit rounded-full bg-navy px-6 text-[13.5px] text-white transition-colors hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Verify
+          </button>
+          <p className="text-[12px] text-navy-faint">The OTP is used only for this one-time verification and is never stored.</p>
+        </form>
+      );
+    }
+    return (
+      <div className="flex items-center gap-2.5 text-[13px] text-navy-muted">
+        <SpinnerIcon className="h-3.5 w-3.5 flex-shrink-0 animate-spin text-accent" />
+        {localPhase === "verifying" ? "Verifying with the GST Portal…" : `Fetching your ${file.name} from the portal…`}
+      </div>
+    );
+  }
 
   if (stage === "session") {
     return <MessageTurn speaker="DataTwin" text={`Fetching your official ${file.name} directly from the portal now...`} />;

@@ -6,6 +6,7 @@ import type {
   FileValidationStage,
   PortalFetchStage,
   ReconciliationTopic,
+  SapConnection,
   UploadedFile,
 } from "@/lib/chat/types";
 import { FileRequirementCard } from "./FileRequirementCard";
@@ -166,6 +167,9 @@ export function FileUploadStep({
   optionalGroups,
   onChooseGroups,
   onChooseFileSource,
+  sapConnection,
+  onConnectSap,
+  onDisconnectSap,
   onSubmitPortalGstin,
   onPortalFetchComplete,
   onBeginValidation,
@@ -204,6 +208,9 @@ export function FileUploadStep({
   optionalGroups?: string[];
   onChooseGroups: (groupIds: string[]) => void;
   onChooseFileSource: (fileId: string, source: FileSourceChoiceValue) => void;
+  sapConnection: SapConnection | null;
+  onConnectSap: (connection: SapConnection) => void;
+  onDisconnectSap: () => void;
   onSubmitPortalGstin: (fileId: string) => void;
   onPortalFetchComplete: (fileId: string, fileName: string) => void;
   onBeginValidation: (fileId: string) => void;
@@ -339,6 +346,9 @@ export function FileUploadStep({
           onAdvanceStatus={onAdvanceStatus}
           onRemove={onRemove}
           onChooseFileSource={onChooseFileSource}
+          sapConnection={sapConnection}
+          onConnectSap={onConnectSap}
+          onDisconnectSap={onDisconnectSap}
           onSubmitPortalGstin={onSubmitPortalGstin}
           onPortalFetchComplete={onPortalFetchComplete}
           onRun={onContinue}

@@ -296,6 +296,15 @@ export type FileActionKind = "replace" | "remove";
 // the verify/fetch animation itself is transient, component-local state (see PortalFetchFlow).
 // "sap" is a document pulled from the user's ERP through a connector (a mock; see SapConnectFlow).
 export type FileSourceChoice = "upload" | "portal" | "sap";
+
+// The SAP the user connected once (see SapConnectPanel). Only what is shown back to them: the system,
+// how it connects and the company code or database. No credential is ever kept.
+export interface SapConnection {
+  system: string;
+  method: "connector" | "extract";
+  /** e.g. "company code 1000". */
+  detail: string;
+}
 // "session" is a fetch started while an earlier OTP verification is still within its window (see
 // ConversationState.portalSessionExpiresAt): no GSTIN/consent/OTP asked again, straight to fetching.
 export type PortalFetchStage = "gstin" | "consent" | "otp" | "session";
@@ -465,6 +474,8 @@ export interface ConversationState {
    * reusable — a later fetch before then skips straight to fetching. Never shown to the user.
    * Absent/null until a first portal fetch completes. */
   portalSessionExpiresAt?: number | null;
+  /** Set once the user has connected their SAP; the documents that come from it are then fetched with one click. */
+  sapConnection?: SapConnection | null;
   /** Indices into `furtherCheckpoints` whose documents were added from the result's "improve
    * accuracy" card (see ResultStep) and folded into the refreshed result — as opposed to the
    * checkpoints before `checkpointIndex`, which were collected in the normal round-by-round flow. */

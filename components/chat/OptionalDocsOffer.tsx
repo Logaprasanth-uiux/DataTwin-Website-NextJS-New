@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { FileSourceChoice, PortalFetchStage, ReconciliationCheckpoint, UploadedFile } from "@/lib/chat/types";
+import type { FileSourceChoice, PortalFetchStage, ReconciliationCheckpoint, SapConnection, UploadedFile } from "@/lib/chat/types";
 import { FileRequirementCard } from "./FileRequirementCard";
 import { MessageTurn } from "./MessageTurn";
 import { PortalFetchFlow } from "./PortalFetchFlow";
 import { UserReveal, type RevealTracker } from "./reveal";
-import { SapConnectFlow } from "./SapConnectFlow";
+import { SapConnectPanel, SapFetchFlow } from "./SapConnectFlow";
 
 // Shown once the required documents are in and before the reconciliation runs: every optional
 // document at once, as one message with its cards, and one button that starts the run — with or
@@ -30,6 +30,9 @@ export function OptionalDocsOffer({
   onAdvanceStatus,
   onRemove,
   onChooseFileSource,
+  sapConnection,
+  onConnectSap,
+  onDisconnectSap,
   onSubmitPortalGstin,
   onPortalFetchComplete,
   onRun,
@@ -56,6 +59,9 @@ export function OptionalDocsOffer({
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemove: (fileId: string) => void;
   onChooseFileSource: (fileId: string, source: FileSourceChoice) => void;
+  sapConnection: SapConnection | null;
+  onConnectSap: (connection: SapConnection) => void;
+  onDisconnectSap: () => void;
   onSubmitPortalGstin: (fileId: string) => void;
   onPortalFetchComplete: (fileId: string, fileName: string) => void;
   onRun: () => void;
@@ -71,8 +77,6 @@ export function OptionalDocsOffer({
       ? []
       : checkpoints.filter((checkpoint) => checkpoint.group !== undefined && selectedGroups.includes(checkpoint.group))
     : checkpoints;
-  // Once one document was pulled from SAP, the connection is reused for the rest.
-  const sapConnected = Object.values(uploads).some((upload) => upload.fileName.endsWith("(via SAP)"));
   const canSapFile = (file: { fileId: string }, checkpoint: ReconciliationCheckpoint) =>
     checkpoint.sapFetchFileIds?.includes(file.fileId) ?? false;
   const files = offered
@@ -168,27 +172,25 @@ export function OptionalDocsOffer({
       {files.length > 0 && (
         <>
       <p className="text-[12px] font-semibold tracking-[0.08em] text-navy-muted uppercase">Optional documents</p>
+      {files.some(({ file, checkpoint }) => canSapFile(file, checkpoint)) && !resolved && (
+        <SapConnectPanel connection={sapConnection} onConnect={onConnectSap} onDisconnect={onDisconnectSap} />
+      )}
       <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
       {files.map(({ file, checkpoint }) => {
         const upload = uploads[file.fileId];
         const canSap = canSapFile(file, checkpoint);
         const canFetch = canFetchFile(file, checkpoint) || canSap;
-        if (!upload && canSap && fileSource[file.fileId] === "sap") {
-          return (
-            <div key={file.fileId} className="md:col-span-2">
-              <SapConnectFlow
-                file={file}
-                connected={sapConnected}
-                onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
-                onBack={() => onRemove(file.fileId)}
-              />
-            </div>
-          );
-        }
-        if (!upload && canFetchFile(file, checkpoint) && fileSource[file.fileId] === "portal") {
-          return (
-            <div key={file.fileId} className="md:col-span-2">
+        // A fetch in progress shows inside the card itself, so the grid doesn't reshuffle.
+        const inlineFlow =
+          !upload && canSap && sapConnection && fileSource[file.fileId] === "sap" ? (
+            <SapFetchFlow
+              file={file}
+              connection={sapConnection}
+              onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
+            />
+          ) : !upload && canFetchFile(file, checkpoint) && fileSource[file.fileId] === "portal" ? (
             <PortalFetchFlow
+              compact
               itemKey={`${itemKey}:${file.fileId}`}
               tracker={tracker}
               file={file}
@@ -196,9 +198,7 @@ export function OptionalDocsOffer({
               onSubmitGstin={() => onSubmitPortalGstin(file.fileId)}
               onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
             />
-            </div>
-          );
-        }
+          ) : undefined;
         return (
           <div key={file.fileId} className={canFetch ? "flex self-stretch [&>*]:w-full" : undefined}>
           <FileRequirementCard
@@ -211,7 +211,9 @@ export function OptionalDocsOffer({
             onAdvanceStatus={onAdvanceStatus}
             onRemove={onRemove}
             onChoosePortal={canFetchFile(file, checkpoint) ? () => onChooseFileSource(file.fileId, "portal") : undefined}
-            onChooseSap={canSap ? () => onChooseFileSource(file.fileId, "sap") : undefined}
+            onChooseSap={canSap && sapConnection ? () => onChooseFileSource(file.fileId, "sap") : undefined}
+            sapNote={canSap && !sapConnection ? "Connect SAP above to fetch this from SAP." : undefined}
+            inlineFlow={inlineFlow}
             showWhyLabel
           />
           </div>

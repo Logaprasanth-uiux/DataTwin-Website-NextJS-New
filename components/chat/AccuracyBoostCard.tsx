@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { FileSourceChoice, PortalFetchStage, ReconciliationCheckpoint, UploadedFile } from "@/lib/chat/types";
+import type { FileSourceChoice, PortalFetchStage, ReconciliationCheckpoint, SapConnection, UploadedFile } from "@/lib/chat/types";
 import { FileRequirementCard } from "./FileRequirementCard";
 import { MessageTurn } from "./MessageTurn";
 import { PortalFetchFlow } from "./PortalFetchFlow";
 import type { RevealTracker } from "./reveal";
-import { SapConnectFlow } from "./SapConnectFlow";
+import { SapConnectPanel, SapFetchFlow } from "./SapConnectFlow";
 
 const REFRESH_MS = 1400;
 
@@ -36,6 +36,9 @@ export function AccuracyBoostCard({
   onAdvanceStatus,
   onRemove,
   onChooseFileSource,
+  sapConnection,
+  onConnectSap,
+  onDisconnectSap,
   onSubmitPortalGstin,
   onPortalFetchComplete,
   onRefresh,
@@ -55,6 +58,9 @@ export function AccuracyBoostCard({
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemove: (fileId: string) => void;
   onChooseFileSource: (fileId: string, source: FileSourceChoice) => void;
+  sapConnection: SapConnection | null;
+  onConnectSap: (connection: SapConnection) => void;
+  onDisconnectSap: () => void;
   onSubmitPortalGstin: (fileId: string) => void;
   onPortalFetchComplete: (fileId: string, fileName: string) => void;
   onRefresh: () => void;
@@ -73,7 +79,6 @@ export function AccuracyBoostCard({
     return () => window.clearTimeout(id);
   }, [refreshing]);
 
-  const sapConnected = Object.values(uploads).some((upload) => upload.fileName.endsWith("(via SAP)"));
   const provided = joinNames(providedFileNames);
   const missingNames = joinNames(remaining.flatMap(({ checkpoint }) => checkpoint.files.map((f) => f.name)));
   const pendingNames = joinNames(
@@ -106,6 +111,9 @@ export function AccuracyBoostCard({
 
       {/* Same two-column layout as the offer before the run: documents that can be fetched from the
           portal first, so each row holds cards of the same height. */}
+      {remaining.some(({ checkpoint }) => (checkpoint.sapFetchFileIds?.length ?? 0) > 0) && (
+        <SapConnectPanel connection={sapConnection} onConnect={onConnectSap} onDisconnect={onDisconnectSap} />
+      )}
       <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
         {remaining
           .flatMap(({ checkpoint }) =>
@@ -119,32 +127,25 @@ export function AccuracyBoostCard({
           .sort((x, y) => Number(y.canFetch || y.canSap) - Number(x.canFetch || x.canSap))
           .map(({ file, checkpoint, canFetch, canSap }) => {
             const upload = uploads[file.fileId];
-            if (!upload && canSap && fileSource[file.fileId] === "sap") {
-              return (
-                <div key={file.fileId} className="md:col-span-2">
-                  <SapConnectFlow
-                    file={file}
-                    connected={sapConnected}
-                    onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
-                    onBack={() => onRemove(file.fileId)}
-                  />
-                </div>
-              );
-            }
-            if (!upload && canFetch && fileSource[file.fileId] === "portal") {
-              return (
-                <div key={file.fileId} className="md:col-span-2">
-                  <PortalFetchFlow
-                    itemKey={`${itemKey}:${file.fileId}`}
-                    tracker={tracker}
-                    file={file}
-                    stage={portalFetch[file.fileId] ?? "gstin"}
-                    onSubmitGstin={() => onSubmitPortalGstin(file.fileId)}
-                    onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
-                  />
-                </div>
-              );
-            }
+            // A fetch in progress shows inside the card itself, so the grid doesn't reshuffle.
+            const inlineFlow =
+              !upload && canSap && sapConnection && fileSource[file.fileId] === "sap" ? (
+                <SapFetchFlow
+                  file={file}
+                  connection={sapConnection}
+                  onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
+                />
+              ) : !upload && canFetch && fileSource[file.fileId] === "portal" ? (
+                <PortalFetchFlow
+                  compact
+                  itemKey={`${itemKey}:${file.fileId}`}
+                  tracker={tracker}
+                  file={file}
+                  stage={portalFetch[file.fileId] ?? "gstin"}
+                  onSubmitGstin={() => onSubmitPortalGstin(file.fileId)}
+                  onFetchComplete={(fileName) => onPortalFetchComplete(file.fileId, fileName)}
+                />
+              ) : undefined;
             return (
               <div key={file.fileId} className={canFetch || canSap ? "flex self-stretch [&>*]:w-full" : undefined}>
                 <FileRequirementCard
@@ -158,7 +159,9 @@ export function AccuracyBoostCard({
                   onAdvanceStatus={onAdvanceStatus}
                   onRemove={onRemove}
                   onChoosePortal={canFetch ? () => onChooseFileSource(file.fileId, "portal") : undefined}
-                  onChooseSap={canSap ? () => onChooseFileSource(file.fileId, "sap") : undefined}
+                  onChooseSap={canSap && sapConnection ? () => onChooseFileSource(file.fileId, "sap") : undefined}
+                  sapNote={canSap && !sapConnection ? "Connect SAP above to fetch this from SAP." : undefined}
+                  inlineFlow={inlineFlow}
                 />
               </div>
             );

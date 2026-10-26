@@ -19,6 +19,7 @@ import type {
   PeriodOptionId,
   ReconciliationCheckpoint,
   ReconciliationTopic,
+  SapConnection,
   ScheduledMeeting,
   TranscriptItem,
   UploadedFile,
@@ -401,6 +402,19 @@ export function chooseFileSource(state: ConversationState, fileId: string, sourc
       ? { ...state.portalFetch, [fileId]: sessionActive ? ("session" as const) : ("gstin" as const) }
       : state.portalFetch;
   return touch({ ...state, fileSource, portalFetch });
+}
+
+export function connectSap(state: ConversationState, connection: SapConnection): ConversationState {
+  return touch({ ...state, sapConnection: connection });
+}
+
+// Changing the connection clears it, and any SAP fetch that had not finished goes back to the choice.
+export function disconnectSap(state: ConversationState): ConversationState {
+  const fileSource = { ...state.fileSource };
+  for (const fileId of Object.keys(fileSource)) {
+    if (fileSource[fileId] === "sap" && state.uploads[fileId] === undefined) delete fileSource[fileId];
+  }
+  return touch({ ...state, sapConnection: null, fileSource });
 }
 
 export function submitPortalGstin(state: ConversationState, fileId: string): ConversationState {
