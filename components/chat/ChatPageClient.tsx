@@ -270,6 +270,11 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
         const target = container.querySelector<HTMLElement>('[data-scroll-target="result"]');
         if (target) {
           landedOnResult = true;
+          // A result shorter than the visible chat (the email gate, on a tall window) leaves nothing
+          // below it to scroll into, so its top could only reach the middle of the view. Giving it at
+          // least the height of the view lets it always land at the top, whatever the window size.
+          const viewHeight = container.parentElement?.clientHeight ?? 0;
+          if (target.offsetHeight < viewHeight) target.style.minHeight = `${viewHeight}px`;
           target.scrollIntoView({ behavior: "smooth", block: "start" });
           return;
         }
@@ -453,6 +458,7 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
               fileSource={state.fileSource}
               fileValidation={state.fileValidation}
               filePreviewOpen={state.filePreviewOpen}
+              optionalGroups={state.optionalGroups}
               onUpload={actions.onUpload}
               onAdvanceStatus={actions.onAdvanceStatus}
               onRemove={actions.onRemoveUpload}

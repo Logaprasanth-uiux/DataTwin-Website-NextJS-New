@@ -312,6 +312,7 @@ export function FileContextPanel({
   fileSource,
   fileValidation,
   filePreviewOpen,
+  optionalGroups,
   onUpload,
   onAdvanceStatus,
   onRemove,
@@ -323,6 +324,8 @@ export function FileContextPanel({
   fileSource: Record<string, FileSourceChoiceValue>;
   fileValidation: Record<string, FileValidationStage>;
   filePreviewOpen: Record<string, boolean>;
+  /** The groups answered on the optional-documents question, so only the offered documents are listed. */
+  optionalGroups?: string[];
   onUpload: (fileId: string, fileName: string) => void;
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemove: (fileId: string) => void;
@@ -340,7 +343,23 @@ export function FileContextPanel({
   // conversation).
   const optionalFilesIntroduced = requiredReady && !topic.autoAdvanceMessage;
   const visibleOptional = topic.optionalFiles.filter((f) => optionalFilesIntroduced || uploads[f.fileId]);
-  const files = [...visibleRequired, ...visibleOptional];
+  // The optional documents of a scripted check live in its checkpoints and are offered together once
+  // the required ones are in (and, where the topic asks which groups apply, only the chosen groups').
+  // They are listed here as soon as they are on offer, with whatever is already added.
+  const offeredOptional = (topic.furtherCheckpoints ?? [])
+    .filter((checkpoint) => {
+      if (checkpoint.files.some((f) => uploads[f.fileId])) return true;
+      if (!requiredReady || !topic.autoAdvanceMessage) return false;
+      if (!topic.optionalGroups) return true;
+      return optionalGroups !== undefined && checkpoint.group !== undefined && optionalGroups.includes(checkpoint.group);
+    })
+    .flatMap((checkpoint) => checkpoint.files.map((f) => ({ ...f, level: "optional" as const })));
+  const seen = new Set<string>();
+  const files = [...visibleRequired, ...visibleOptional, ...offeredOptional].filter((f) => {
+    if (seen.has(f.fileId)) return false;
+    seen.add(f.fileId);
+    return true;
+  });
   const flaggedFile = files.find(
     (f) => fileValidation[f.fileId] === "issue" || fileValidation[f.fileId] === "acknowledged",
   );

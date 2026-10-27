@@ -180,6 +180,10 @@ const TAX_PAYMENTS_OPTIONAL: { group: string; fileId: string; benefit: string }[
 // The Sales Register, Outward Sales Documents and Purchase Register come from the user's ERP, so they
 // can be uploaded or pulled through the SAP connector; GSTR-1, 2B and 3B come from the GST Portal.
 // "AR-" ids are hand-written for this check (not rows in File_Requirements.xlsx).
+// The SAP connector is off for now: documents are uploaded. Turning this on brings back the "connect SAP
+// once, then fetch from SAP" step (SapConnectPanel / SapFetchFlow).
+const SAP_ENABLED = false;
+
 const ANNUAL_9C_GROUPS: { id: string; label: string }[] = [
   { id: "sales", label: "Sales records and GSTR-1" },
   { id: "purchase", label: "Purchase records and GSTR-2B" },
@@ -417,7 +421,8 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
         group,
         files: [{ fileId, name, level: "required", why }],
         portalFetchFileIds: portal ? [fileId] : undefined,
-        sapFetchFileIds: sap ? [fileId] : undefined,
+        // SAP fetch is switched off for now (upload only); see ANNUAL_9C_OPTIONAL's `sap` flags.
+        sapFetchFileIds: SAP_ENABLED && sap ? [fileId] : undefined,
         accuracyBenefit: benefit,
         mockResult: generateMockResult(`8.19::checkpoint-${index + 1}`),
       }),
