@@ -9,6 +9,9 @@ export interface FileRequirement {
   name: string;
   level: FileRequirementLevel;
   why: string;
+  /** The user can add several files for this one requirement (audited books come as a balance
+   * sheet, a P&L, notes, schedules...). */
+  multiple?: boolean;
 }
 
 export type RecoveryBucket = "recovery" | "correction" | "followup" | "neutral";
@@ -102,7 +105,8 @@ export interface SalesGstBreakdown {
 //   mismatch  - a difference with no explanation yet
 //   explained - a difference with a known reason (timing, advances, credit notes...)
 //   matched   - agrees
-export type AnnualStatus = "mismatch" | "explained" | "matched";
+//   pending   - the table can't be reconciled until a document is added (see AnnualTable.needsDocument)
+export type AnnualStatus = "mismatch" | "explained" | "matched" | "pending";
 
 export interface AnnualInvoice {
   ref: string;
@@ -110,11 +114,15 @@ export interface AnnualInvoice {
   /** Why this invoice differs, e.g. "In the sales register, missing from GSTR-1". */
   cause: string;
   difference: number;
+  status: AnnualStatus;
 }
 
 export interface AnnualMonth {
   month: string;
   difference: number;
+  /** The worst status among its invoices; "matched" for a month that agrees. */
+  status: AnnualStatus;
+  /** Empty for a month that agrees. */
   invoices: AnnualInvoice[];
 }
 
@@ -127,7 +135,7 @@ export interface AnnualComponent {
   status: AnnualStatus;
   /** The known reason, for an explained difference. */
   reason?: string;
-  /** Only the months that differ; the rest agree. Empty for a matched component. */
+  /** All twelve months of the year; the ones that agree carry no invoices. */
   months: AnnualMonth[];
 }
 
@@ -141,6 +149,8 @@ export interface AnnualTable {
   difference: number;
   /** The worst status among its components. */
   status: AnnualStatus;
+  /** Set when the table is waiting for a document: what to add to reconcile it. */
+  needsDocument?: string;
   components: AnnualComponent[];
 }
 
@@ -278,7 +288,14 @@ export const VERIFICATION_STEPS = [
 
 export interface UploadedFile {
   fileId: string;
+  /** What the file is called in the conversation: the file itself, or "first.pdf +2 more" when
+   * several were added (see `fileNames`). */
   fileName: string;
+  /** Every file added for a requirement that accepts several; absent for single-file ones. */
+  fileNames?: string[];
+  /** For a requirement that takes several files: the user said they are done adding. Checking only
+   * starts then, so a first file doesn't start the next step before the rest are in. */
+  filesConfirmed?: boolean;
   status: "uploaded" | "recognised" | "ready";
   /** The next required file to mention once this one reaches "ready", captured at that moment so
    * the acknowledgement message it appears in never changes after the fact — see

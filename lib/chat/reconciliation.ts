@@ -99,6 +99,8 @@ type ReconciliationScript = Pick<
    * the catalogue entry's files are dropped rather than asked up front, so a scripted flow can
    * introduce them as its own later rounds instead. */
   baseFileIds?: string[];
+  /** Required files that take more than one upload. */
+  multipleFileIds?: string[];
 };
 
 // The optional documents of the umbrella Sales with GST check, in the order they're offered. The
@@ -402,6 +404,7 @@ const RECONCILIATION_SCRIPTS: Record<string, ReconciliationScript> = {
   // drill-down to the invoice that unlocks (see generateAnnualGstResult and AnnualDrilldown).
   "8.19": {
     baseFileIds: ["F15", "F14"],
+    multipleFileIds: ["F15"],
     requiredFileNameOverrides: { F15: "Audited Books", F14: "GSTR-9 (Annual)" },
     requiredFileWhyOverrides: {
       F15: "Gives the turnover, tax and ITC figures in your audited books for the financial year, which is the books side of the reconciliation.",
@@ -679,7 +682,7 @@ export function buildResolvedTopic(reconciliationId: string): ReconciliationTopi
   const { required, optional } = buildFileRequirements(entry);
   const flow = FLOW_BY_ID[entry.id];
   const written = RECONCILIATION_SCRIPTS[entry.id] ?? (flow ? scriptFromFlow(entry, flow, CHAT_LABEL_OVERRIDES[entry.id] ?? entry.name) : undefined);
-  const { requiredFileNameOverrides, requiredFileWhyOverrides, baseFileIds, ...script } = written ?? {};
+  const { requiredFileNameOverrides, requiredFileWhyOverrides, baseFileIds, multipleFileIds, ...script } = written ?? {};
   const requiredBase = baseFileIds
     ? baseFileIds.map((id) => required.find((f) => f.fileId === id)).filter((f): f is FileRequirement => Boolean(f))
     : required;
@@ -687,6 +690,7 @@ export function buildResolvedTopic(reconciliationId: string): ReconciliationTopi
     ...f,
     name: requiredFileNameOverrides?.[f.fileId] ?? f.name,
     why: requiredFileWhyOverrides?.[f.fileId] ?? f.why,
+    ...(multipleFileIds?.includes(f.fileId) ? { multiple: true } : {}),
   }));
   return {
     id: entry.id,

@@ -34,3 +34,9 @@ export const MOCK_ISSUE_MISSING_COUNT = MOCK_ISSUE_ROWS.filter((row) => !row.gst
 export function describeMockFileIssue(): string {
   return `${MOCK_ISSUE_FIELD} column is missing for ${MOCK_ISSUE_MISSING_COUNT} of ${MOCK_ISSUE_ROWS.length} rows — without it, those rows cannot be confidently matched during reconciliation.`;
 }
+
+// The mock finding belongs to one file. With several files under one requirement it is pinned to the
+// last one added, so it never reads as if the first file is always the one at fault.
+export function issueFileName(upload: { fileName: string; fileNames?: string[] }): string {
+  return upload.fileNames?.length ? upload.fileNames[upload.fileNames.length - 1] : upload.fileName;
+}

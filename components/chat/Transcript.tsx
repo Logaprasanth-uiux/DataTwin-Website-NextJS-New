@@ -42,7 +42,8 @@ export interface TranscriptActions {
   onSubmitCustomPeriod: (range: CustomPeriodRange) => void;
   onUpload: (fileId: string, fileName: string) => void;
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
-  onRemoveUpload: (fileId: string) => void;
+  onRemoveUpload: (fileId: string, fileName?: string) => void;
+  onConfirmFiles: (fileId: string) => void;
   onContinueFiles: () => void;
   onChooseOptionalGroups: (groupIds: string[]) => void;
   onChooseFileSource: (fileId: string, source: FileSourceChoice) => void;
@@ -199,6 +200,7 @@ export function Transcript({
                   onUpload={actions.onUpload}
                   onAdvanceStatus={actions.onAdvanceStatus}
                   onRemove={actions.onRemoveUpload}
+                  onConfirmFiles={actions.onConfirmFiles}
                   onContinue={actions.onContinueFiles}
                   optionalGroups={state.optionalGroups}
                   onChooseGroups={actions.onChooseOptionalGroups}

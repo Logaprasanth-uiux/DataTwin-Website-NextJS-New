@@ -298,12 +298,50 @@ function nextFileEventId(state: ConversationState): string {
 // rewriting the original upload exchange.
 export function recordUpload(state: ConversationState, fileId: string, fileName: string): ConversationState {
   const previous = state.uploads[fileId];
+  const multiple = getEffectiveTopic(state)?.requiredFiles.some((f) => f.fileId === fileId && f.multiple);
+  if (previous && multiple) return addUploadFile(state, fileId, fileName);
   const upload: UploadedFile = { fileId, fileName, status: "uploaded" };
   const wasReady = previous?.status === "ready";
   const fileEvents = wasReady
     ? [...state.fileEvents, { id: nextFileEventId(state), kind: "replace" as const, fileId, fileName }]
     : state.fileEvents;
   return touch({ ...state, uploads: { ...state.uploads, [fileId]: upload }, fileEvents });
+}
+
+// A requirement that takes several files (audited books): each upload is added to the list instead of
+// replacing the file, so the status and the acknowledgement already given stay as they are.
+export function addUploadFile(state: ConversationState, fileId: string, fileName: string): ConversationState {
+  const previous = state.uploads[fileId];
+  if (!previous) return recordUpload(state, fileId, fileName);
+  const fileNames = [...(previous.fileNames ?? [previous.fileName]), fileName];
+  return touch({
+    ...state,
+    uploads: { ...state.uploads, [fileId]: { ...previous, fileNames, fileName: summariseFileNames(fileNames) } },
+  });
+}
+
+// Removes one of several files; removing the last one is the same as removing the requirement.
+export function removeUploadFile(state: ConversationState, fileId: string, fileName: string): ConversationState {
+  const previous = state.uploads[fileId];
+  const fileNames = previous?.fileNames;
+  if (!previous || !fileNames || fileNames.length <= 1) return removeUpload(state, fileId);
+  const index = fileNames.indexOf(fileName);
+  const rest = index === -1 ? fileNames : fileNames.filter((_, i) => i !== index);
+  return touch({
+    ...state,
+    uploads: { ...state.uploads, [fileId]: { ...previous, fileNames: rest, fileName: summariseFileNames(rest) } },
+  });
+}
+
+// The user is done adding files for a multi-file requirement; checking starts now.
+export function confirmUploadFiles(state: ConversationState, fileId: string): ConversationState {
+  const previous = state.uploads[fileId];
+  if (!previous) return state;
+  return touch({ ...state, uploads: { ...state.uploads, [fileId]: { ...previous, filesConfirmed: true } } });
+}
+
+function summariseFileNames(names: string[]): string {
+  return names.length <= 1 ? (names[0] ?? "") : `${names[0]} +${names.length - 1} more`;
 }
 
 export function advanceUploadStatus(

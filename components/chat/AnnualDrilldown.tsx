@@ -13,9 +13,10 @@ const STATUS: Record<AnnualStatus, { label: string; dot: string; pill: string; h
   mismatch: { label: "Mismatch", dot: "bg-loss", pill: "bg-loss/[0.14] text-loss", hint: "A difference with no explanation yet" },
   explained: { label: "Explained", dot: "bg-accent", pill: "bg-accent/[0.16] text-navy", hint: "A difference with a known reason" },
   matched: { label: "Matched", dot: "bg-[#3d8b6e]", pill: "bg-[#3d8b6e]/[0.14] text-navy", hint: "Agrees with GSTR-9" },
+  pending: { label: "Needs document", dot: "bg-navy-faint", pill: "bg-navy/[0.07] text-navy-muted", hint: "Add the document named under the table to reconcile it" },
 };
 
-const ORDER: AnnualStatus[] = ["mismatch", "explained", "matched"];
+const ORDER: AnnualStatus[] = ["mismatch", "explained", "matched", "pending"];
 
 const GRID = "grid-cols-[minmax(0,1fr)_auto] @xl:grid-cols-[minmax(0,2.2fr)_repeat(3,minmax(0,1fr))_6.5rem]";
 const BLUR = "blur-[6px] select-none";
@@ -64,7 +65,7 @@ export function AnnualDrilldown({
   const money = (amount: number) => (ready ? formatter.format(amount) : "");
   const signed = (amount: number) => (amount === 0 ? money(0) : `${amount > 0 ? "+" : "−"}${money(Math.abs(amount))}`);
   const hide = locked ? BLUR : "";
-  const allStatuses = tables.flatMap((t) => t.components.map((c) => c.status));
+  const allStatuses = tables.flatMap((t) => (t.status === "pending" ? [t.status] : t.components.map((c) => c.status)));
 
   // One line of the table at any depth. `figures` are blurred while locked; the indicator never is.
   const Line = ({
@@ -81,7 +82,7 @@ export function AnnualDrilldown({
     label: ReactNode;
     sub?: ReactNode;
     status: AnnualStatus;
-    figures: { books?: number; gstr9?: number; difference: number };
+    figures: { books?: number; gstr9?: number; difference?: number };
     expandable: boolean;
   }) => {
     const isOpen = open.has(id);
@@ -107,9 +108,9 @@ export function AnnualDrilldown({
           className={`text-right text-[13.5px] font-medium tabular-nums ${status === "mismatch" ? "text-loss" : "text-navy"} ${hide}`}
           aria-hidden={locked}
         >
-          {signed(figures.difference)}
+          {figures.difference === undefined ? "—" : signed(figures.difference)}
         </span>
-        <span className="col-span-2 flex @xl:col-span-1 @xl:justify-end">{depth <= 1 ? <StatusPill status={status} /> : <StatusDot status={status} />}</span>
+        <span className="col-span-2 flex @xl:col-span-1 @xl:justify-end"><StatusPill status={status} /></span>
       </>
     );
     const rowClass = `grid ${GRID} items-center gap-x-4 gap-y-1.5 px-1 py-3 text-left`;
@@ -128,12 +129,12 @@ export function AnnualDrilldown({
       <h3 className="mt-1.5 text-[17px] font-semibold text-navy sm:text-[19px]">Audited books vs GSTR-9</h3>
       <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-navy-body">
         {locked
-          ? "Every line is marked mismatch, explained or matched. Unlock the drill-down to see the figures and trace each difference to the invoice behind it."
-          : "Open any line to trace it: table, then component, then the months that differ, then the invoices. The cause is named at the last item."}
+          ? "Every table, line, month and invoice is marked mismatch, explained or matched. Unlock the drill-down to see the figures and trace each difference to the invoice behind it."
+          : "Open any line to trace it: table, then line, then the twelve months, then the invoices. Every level carries its own indicator, and the cause is named at the invoice."}
       </p>
 
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-        {ORDER.map((status) => (
+        {ORDER.filter((status) => status !== "pending" || allStatuses.includes(status)).map((status) => (
           <span key={status} className="flex items-center gap-2 text-[12.5px] text-navy-body" title={STATUS[status].hint}>
             <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${STATUS[status].dot}`} />
             <span className="font-medium text-navy">{allStatuses.filter((s) => s === status).length}</span>
@@ -159,9 +160,12 @@ export function AnnualDrilldown({
               depth: 0,
               id: table.id,
               label: `${table.ref} · ${table.label}`,
-              sub: counts(table.components.map((c) => c.status)),
+              sub:
+                table.status === "pending"
+                  ? table.needsDocument
+                  : `${table.components.length} lines · ${counts(table.components.map((c) => c.status))}`,
               status: table.status,
-              figures: { books: table.books, gstr9: table.gstr9, difference: table.difference },
+              figures: table.status === "pending" ? {} : { books: table.books, gstr9: table.gstr9, difference: table.difference },
               expandable: table.components.length > 0,
             })}
             {!locked && open.has(table.id) && (
@@ -172,7 +176,16 @@ export function AnnualDrilldown({
                       depth: 1,
                       id: component.id,
                       label: component.label,
-                      sub: component.reason ? `Reason: ${component.reason}` : undefined,
+                      sub: (
+                        <>
+                          {component.reason ? <span className="block">Reason: {component.reason}</span> : null}
+                          <span className="block">
+                            {component.status === "matched"
+                              ? "All 12 months agree"
+                              : `${component.months.filter((m) => m.status !== "matched").length} of 12 months differ`}
+                          </span>
+                        </>
+                      ),
                       status: component.status,
                       figures: { books: component.books, gstr9: component.gstr9, difference: component.difference },
                       expandable: component.months.length > 0,
@@ -186,8 +199,11 @@ export function AnnualDrilldown({
                               depth: 2,
                               id: monthId,
                               label: month.month,
-                              sub: `${month.invoices.length} ${month.invoices.length === 1 ? "invoice" : "invoices"}`,
-                              status: component.status,
+                              sub:
+                                month.invoices.length === 0
+                                  ? "Agrees with GSTR-9"
+                                  : `${month.invoices.length} invoices · ${counts(month.invoices.map((i) => i.status))}`,
+                              status: month.status,
                               figures: { difference: month.difference },
                               expandable: month.invoices.length > 0,
                             })}
@@ -199,7 +215,7 @@ export function AnnualDrilldown({
                                     id: `${monthId}:${invoice.ref}`,
                                     label: `${invoice.ref} · ${invoice.party}`,
                                     sub: invoice.cause,
-                                    status: component.status,
+                                    status: invoice.status,
                                     figures: { difference: invoice.difference },
                                     expandable: false,
                                   })}
@@ -235,10 +251,6 @@ export function AnnualDrilldown({
       )}
     </div>
   );
-}
-
-function StatusDot({ status }: { status: AnnualStatus }) {
-  return <span title={STATUS[status].label} aria-label={STATUS[status].label} className={`h-2.5 w-2.5 rounded-full ${STATUS[status].dot}`} />;
 }
 
 function ChevronIcon({ className = "" }: { className?: string }) {

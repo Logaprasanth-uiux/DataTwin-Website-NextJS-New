@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { describeMockFileIssue } from "@/lib/chat/mockFileIssue";
+import { describeMockFileIssue, issueFileName } from "@/lib/chat/mockFileIssue";
 import type { FileRequirement, FileValidationStage, UploadedFile } from "@/lib/chat/types";
 import { FileRequirementCard } from "./FileRequirementCard";
 import { MessageTurn } from "./MessageTurn";
@@ -23,6 +23,8 @@ export function FileValidationFlow({
   onFlagIssue,
   onContinueAnyway,
   onReplace,
+  onRemoveFile,
+  onConfirmFiles,
   onTogglePreview,
   onChoosePortal,
 }: {
@@ -36,6 +38,9 @@ export function FileValidationFlow({
   onFlagIssue: (fileId: string) => void;
   onContinueAnyway: (fileId: string) => void;
   onReplace: (fileId: string) => void;
+  /** Takes one file off a requirement that accepts several. */
+  onRemoveFile: (fileId: string, fileName: string) => void;
+  onConfirmFiles: (fileId: string) => void;
   onTogglePreview: (fileId: string) => void;
   /** Offers "Fetch from GST Portal" on the upload prompt, for a first file that can be fetched. */
   onChoosePortal?: () => void;
@@ -72,7 +77,8 @@ export function FileValidationFlow({
         upload={upload}
         onUpload={onUpload}
         onAdvanceStatus={onAdvanceStatus}
-        onRemove={() => onReplace(requirement.fileId)}
+        onRemove={(fileId, fileName) => (fileName ? onRemoveFile(fileId, fileName) : onReplace(fileId))}
+        onConfirmFiles={onConfirmFiles}
         holdAtRecognised
         onChoosePortal={onChoosePortal}
       />
@@ -91,6 +97,12 @@ export function FileValidationFlow({
     );
   }
 
+  // With several files, the finding is pinned to one of them and named.
+  const issueTarget =
+    upload.fileNames && upload.fileNames.length > 1
+      ? `${issueFileName(upload)} (in ${requirement.name})`
+      : requirement.name;
+
   // "issue" (awaiting a decision) or "acknowledged" (continued anyway — FileUploadStep swaps this
   // slot for the normal ready acknowledgement as soon as the upload itself reaches "ready", so
   // this branch is only ever visible for the brief moment in between).
@@ -98,11 +110,11 @@ export function FileValidationFlow({
     <div className="flex flex-col gap-3">
       <MessageTurn
         speaker="DataTwin"
-        text={`We found an issue in ${requirement.name}. The GSTIN field appears to be missing for some records, so the reconciliation can currently use only part of the available data.`}
+        text={`We found an issue in ${issueTarget}. The GSTIN field appears to be missing for some records, so the reconciliation can currently use only part of the available data.`}
       />
       <div className="flex flex-col gap-3 rounded-2xl border border-crimson/25 bg-crimson/[0.03] p-5 shadow-soft">
         <div className="flex items-start justify-between gap-3">
-          <span className="truncate text-[13.5px] font-medium text-navy">{upload.fileName}</span>
+          <span className="truncate text-[13.5px] font-medium text-navy">{issueFileName(upload)}</span>
           <span className="flex-shrink-0 rounded-full bg-crimson/[0.1] px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.06em] text-crimson uppercase">
             Issue found
           </span>

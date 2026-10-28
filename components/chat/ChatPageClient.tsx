@@ -25,6 +25,8 @@ import {
   applyAccuracyExtras,
   openSchedule,
   recordUpload,
+  removeUploadFile,
+  confirmUploadFiles,
   rejectIntent,
   removeUpload,
   replaceFlaggedFile,
@@ -341,7 +343,8 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
   }
 
   const update = (updater: (prev: ConversationState) => ConversationState) => {
-    setOverride(updater(state));
+    // Applied to the latest state, so several updates in one event (a few files picked at once) all land.
+    setOverride((current) => updater(current ?? state));
   };
 
   const openNewConversation = () => router.push(`/chat?cid=${createConversationId()}`);
@@ -361,7 +364,9 @@ export function ChatPageClient({ conversationId }: { conversationId: string }) {
     onSubmitCustomPeriod: (range) => update((prev) => submitCustomPeriod(prev, range)),
     onUpload: (fileId, fileName) => update((prev) => recordUpload(prev, fileId, fileName)),
     onAdvanceStatus: (fileId, status) => update((prev) => advanceUploadStatus(prev, fileId, status)),
-    onRemoveUpload: (fileId) => update((prev) => removeUpload(prev, fileId)),
+    onConfirmFiles: (fileId) => update((prev) => confirmUploadFiles(prev, fileId)),
+    onRemoveUpload: (fileId, fileName) =>
+      update((prev) => (fileName ? removeUploadFile(prev, fileId, fileName) : removeUpload(prev, fileId))),
     onContinueFiles: () => update((prev) => beginVerification(prev)),
     onChooseOptionalGroups: (groupIds) => update((prev) => chooseOptionalGroups(prev, groupIds)),
     onChooseFileSource: (fileId, source) => update((prev) => chooseFileSource(prev, fileId, source)),

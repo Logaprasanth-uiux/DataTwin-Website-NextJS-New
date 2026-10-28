@@ -123,11 +123,12 @@ const ANNUAL_TURNOVER: IntentSummary = {
 const ANNUAL_9C: IntentSummary = {
   problem:
     "Your audited books for the year may not agree with your annual return (GSTR-9), so the GSTR-9C reconciliation statement would carry differences that are not yet explained.",
-  intent: "Reconcile the audited books with GSTR-9 table by table, and trace every difference down to the invoice behind it before the annual return and GSTR-9C are filed.",
+  intent: "Reconcile the audited books with GSTR-9 table by table, and trace each difference through the 9C lines and months to the invoices behind it, before the annual return and GSTR-9C are filed.",
   checks: [
     "Gross and taxable turnover in the audited books vs GSTR-9 (Tables 5 and 7)",
     "Tax liability by rate and ITC availed vs GSTR-9 (Tables 9 and 12)",
-    "Each difference marked mismatch, explained or matched, down to the invoice",
+    "Every table, line, month and invoice marked mismatch, explained or matched",
+    "Tables that need a document you haven't added yet, and which one unlocks them",
   ],
 };
 

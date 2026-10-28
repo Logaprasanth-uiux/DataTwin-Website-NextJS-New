@@ -163,6 +163,7 @@ export function FileUploadStep({
   onUpload,
   onAdvanceStatus,
   onRemove,
+  onConfirmFiles,
   onContinue,
   optionalGroups,
   onChooseGroups,
@@ -203,6 +204,7 @@ export function FileUploadStep({
   onUpload: (fileId: string, fileName: string) => void;
   onAdvanceStatus: (fileId: string, status: UploadedFile["status"]) => void;
   onRemove: (fileId: string) => void;
+  onConfirmFiles: (fileId: string) => void;
   onContinue: () => void;
   /** What was answered on the topic's optional-groups question (see OptionalDocsOffer). */
   optionalGroups?: string[];
@@ -290,6 +292,8 @@ export function FileUploadStep({
               onFlagIssue={onFlagIssue}
               onContinueAnyway={onContinueAnyway}
               onReplace={onReplaceFlagged}
+              onRemoveFile={onRemove}
+              onConfirmFiles={onConfirmFiles}
               onTogglePreview={onTogglePreview}
               onChoosePortal={canFetch ? () => onChooseFileSource(file.fileId, "portal") : undefined}
             />
@@ -310,6 +314,7 @@ export function FileUploadStep({
             }}
             onAdvanceStatus={onAdvanceStatus}
             onRemove={onRemove}
+            onConfirmFiles={onConfirmFiles}
             onChoosePortal={
               canFetch ? () => onChooseFileSource(file.fileId, "portal") : undefined
             }

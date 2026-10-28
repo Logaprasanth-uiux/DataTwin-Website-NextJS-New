@@ -485,15 +485,18 @@ export const ANNUAL_GST_IDS = new Set(["8.19"]);
 
 const SALES_FILE_IDS = ["F17", "AR-OUTWARD", "F18", "F03"];
 const PURCHASE_FILE_IDS = ["F05", "F02", "F03"];
+const SALES_UNLOCK = "Add GSTR-1, GSTR-3B, the Sales Register or Outward Sales Documents to reconcile this table.";
+const PURCHASE_UNLOCK = "Add GSTR-2B, GSTR-3B or the Purchase Register to reconcile this table.";
 const FY_MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
 const SALES_PARTIES = ["Aster Retail Pvt Ltd", "Nimbus Traders", "Orion Components", "Kestrel Foods", "Brightway Logistics", "Zenith Packaging", "Meridian Pharma", "Lotus Textiles"];
 const VENDOR_PARTIES = ["Crestline Metals", "Polar Chemicals Pvt Ltd", "Harbor Freight Services", "Vega Electricals", "Summit Stationers", "Delta Software Services", "Ridge Engineering", "Palm Packaging Co"];
-const STATUS_RANK: Record<AnnualStatus, number> = { matched: 0, explained: 1, mismatch: 2 };
+const STATUS_RANK: Record<AnnualStatus, number> = { pending: -1, matched: 0, explained: 1, mismatch: 2 };
 
 interface AnnualComponentSpec {
   id: string;
   label: string;
-  books: [number, number];
+  /** The figure in the books, fixed, or a range for a line not taken from the audited statements. */
+  books: number | [number, number];
   reason: string;
   causes: string[];
 }
@@ -510,40 +513,48 @@ interface AnnualTableSpec {
   components: AnnualComponentSpec[];
 }
 
+// Names follow the GSTR-9C form (Part II to IV). The books side uses the figures in the sample audited
+// statements (Vaigai Simtech, FY 2025-26, rupees lakhs) wherever they exist; the rest is derived from
+// them or invented, as marked per line:
+//   [doc]     read straight from the audited statements
+//   [derived] worked out from audited figures (a flat 18% rate, a rate split)
+const LAKH = 100_000;
 const ANNUAL_TABLES: AnnualTableSpec[] = [
   {
     id: "gross", ref: "Table 5", label: "Gross turnover", needs: "base", size: [600_000, 1_800_000], parties: SALES_PARTIES, invoicePrefix: "INV",
     components: [
-      { id: "sales", label: "Sales in the audited books", books: [380e6, 520e6], reason: "Sales booked in March and invoiced in April", causes: ["In the sales register, missing from GSTR-1", "Reported in GSTR-1 for a different month", "Booked in the audited books after the year-end cut-off", "Invoice value in GSTR-1 lower than the books"] },
-      { id: "advances", label: "Advances received", books: [20e6, 40e6], reason: "Advance taxed on receipt, booked as revenue on delivery", causes: ["Advance received, not reported in GSTR-1", "Advance adjusted against an invoice twice"] },
-      { id: "notes", label: "Credit and debit notes", books: [15e6, 30e6], reason: "Credit note issued after year-end and reported in the next year", causes: ["Credit note in the books, not reported in GSTR-1", "Debit note reported in GSTR-1 in the wrong year"] },
-      { id: "unbilled", label: "Unbilled and deferred revenue", books: [10e6, 25e6], reason: "Revenue recognised in the books, invoice raised next year", causes: ["Revenue recognised, no invoice raised in the year", "Deferred revenue reversed in the books only"] },
+      { id: "goods", label: "Sale of goods (5A)", books: 2400 * LAKH, reason: "Sales booked in March and invoiced in April", causes: ["In the sales register, missing from GSTR-1", "Reported in GSTR-1 for a different month", "Booked in the audited books after the year-end cut-off", "Invoice value in GSTR-1 lower than the books"] }, // [doc] Note 19(a)
+      { id: "services", label: "Sale of services (5A)", books: 1850 * LAKH, reason: "Service invoiced in the next month after completion", causes: ["Service invoice in the books, not in GSTR-1", "Reported in GSTR-1 for a different month", "Invoice value in GSTR-1 lower than the books"] }, // [doc] Note 19(b)
+      { id: "exports", label: "Exports and SEZ supplies (5A)", books: 500 * LAKH, reason: "Export invoice raised in March, shipped in April", causes: ["Export invoice without a shipping bill", "SEZ supply reported as taxable in GSTR-1"] }, // [doc] Note 19(c)+(d): 320 + 180
+      { id: "adjustments", label: "Unbilled revenue and advances (5B, 5C, 5H, 5I)", books: -11 * LAKH, reason: "Advance taxed on receipt, booked as revenue on delivery", causes: ["Advance received, not reported in GSTR-1", "Revenue recognised, no invoice raised in the year"] }, // [doc] +60 opening unbilled, +64 closing advances, -95 closing unbilled, -40 opening advances
     ],
   },
   {
     id: "taxable", ref: "Table 7", label: "Taxable turnover", needs: "base", size: [400_000, 1_400_000], parties: SALES_PARTIES, invoicePrefix: "INV",
     components: [
-      { id: "taxable", label: "Taxable outward supplies", books: [250e6, 400e6], reason: "Supply classified as taxable in the books and exempt in the return", causes: ["Reported in GSTR-1 as exempt, taxable in the books", "Tax rate in GSTR-1 differs from the books"] },
-      { id: "exempt", label: "Exempt, nil-rated and non-GST supplies", books: [30e6, 60e6], reason: "Nil-rated supply shown under non-GST in the books", causes: ["Nil-rated in GSTR-1, taxable in the books", "Non-GST income reported as exempt"] },
-      { id: "exports", label: "Exports and SEZ supplies", books: [60e6, 120e6], reason: "Export invoice raised in March, shipped in April", causes: ["Export invoice without a shipping bill", "SEZ supply reported as taxable in GSTR-1"] },
-      { id: "rcm", label: "Reverse-charge supplies", books: [5e6, 15e6], reason: "Reverse-charge supply recorded in a different month", causes: ["Reverse-charge supply not shown in GSTR-9", "Reverse-charge value differs from the books"] },
+      { id: "goods", label: "Annual turnover after adjustments: goods (7A)", books: 2400 * LAKH, reason: "Supply classified as taxable in the books and exempt in the return", causes: ["Reported in GSTR-1 as exempt, taxable in the books", "Tax rate in GSTR-1 differs from the books"] }, // [doc]
+      { id: "services", label: "Annual turnover after adjustments: services (7A)", books: 1850 * LAKH, reason: "Nil-rated supply shown under non-GST in the books", causes: ["Nil-rated in GSTR-1, taxable in the books", "Non-GST income reported as exempt"] }, // [doc]
+      { id: "adjustments", label: "Unbilled revenue and advances (7A)", books: -11 * LAKH, reason: "Revenue recognised in the books, invoice raised next year", causes: ["Revenue recognised, no invoice raised in the year", "Deferred revenue reversed in the books only"] }, // [doc]
+      { id: "zero-rated", label: "Zero-rated supplies without payment of tax (7C)", books: -500 * LAKH, reason: "Supply to SEZ shown as taxable in GSTR-9", causes: ["SEZ supply reported as taxable in GSTR-1", "Export under LUT reported with tax"] }, // [doc] exports + SEZ under LUT
     ],
   },
   {
     id: "tax", ref: "Table 9", label: "Tax liability by rate", needs: "sales", size: [180_000, 760_000], parties: SALES_PARTIES, invoicePrefix: "INV",
     components: [
-      { id: "rate18", label: "Supplies at 18%", books: [40e6, 70e6], reason: "Tax paid in a later month with interest", causes: ["Tax in GSTR-1 lower than the rate for the HSN", "Short-paid in GSTR-3B against the invoice"] },
-      { id: "rate12", label: "Supplies at 12%", books: [4e6, 9e6], reason: "Rate corrected through an amendment", causes: ["Taxed at 5% in GSTR-1, 12% in the books", "Invoice reported twice in GSTR-1"] },
-      { id: "rate5", label: "Supplies at 5%", books: [1e6, 3e6], reason: "Rate corrected through an amendment", causes: ["Taxed at 12% in GSTR-1, 5% in the books", "Place of supply read as intra-state"] },
+      { id: "rate18", label: "Supplies at 18% (9E)", books: 54_900_000, reason: "Tax paid in a later month with interest", causes: ["Tax in GSTR-1 lower than the rate for the HSN", "Short-paid in GSTR-3B against the invoice"] }, // [derived] 3,050 lakhs at 18%
+      { id: "rate12", label: "Supplies at 12% (9C)", books: 9_600_000, reason: "Rate corrected through an amendment", causes: ["Taxed at 5% in GSTR-1, 12% in the books", "Invoice reported twice in GSTR-1"] }, // [derived] 800 lakhs at 12%
+      { id: "rate5", label: "Supplies at 5% (9A)", books: 1_945_000, reason: "Rate corrected through an amendment", causes: ["Taxed at 12% in GSTR-1, 5% in the books", "Place of supply read as intra-state"] }, // [derived] 389 lakhs at 5%
+      { id: "interest", label: "Interest on delayed payment (9L)", books: 110_000, reason: "Interest paid on tax paid late in the year", causes: ["Interest paid in cash, not shown in GSTR-9", "Tax paid late, interest not computed"] }, // [doc] Note 27(r)
+      { id: "late-fee", label: "Late fee (9M)", books: 40_000, reason: "Late fee paid for a delayed return", causes: ["Late fee paid, not shown in GSTR-9"] }, // [doc] Note 27(q)
     ],
   },
   {
-    id: "itc", ref: "Table 12", label: "ITC availed", needs: "purchase", size: [140_000, 620_000], parties: VENDOR_PARTIES, invoicePrefix: "PUR",
+    id: "itc", ref: "Table 12", label: "Net input tax credit (ITC)", needs: "purchase", size: [140_000, 620_000], parties: VENDOR_PARTIES, invoicePrefix: "PUR",
     components: [
-      { id: "inputs", label: "Inputs", books: [30e6, 50e6], reason: "Claimed in April of the next year", causes: ["Claimed in GSTR-3B, not in GSTR-2B because the vendor has not filed", "ITC claimed above the invoice value", "Blocked credit claimed under Section 17(5)"] },
-      { id: "services", label: "Input services", books: [6e6, 12e6], reason: "Claimed in April of the next year", causes: ["Claimed in GSTR-3B, not in GSTR-2B", "Vendor unpaid beyond 180 days, ITC not reversed"] },
-      { id: "capital", label: "Capital goods", books: [3e6, 8e6], reason: "Credit taken in the month the asset was put to use", causes: ["Capital goods credit claimed twice", "Asset capitalised in the next year"] },
-      { id: "imports", label: "Imports of goods", books: [1e6, 4e6], reason: "Bill of entry dated in March, credit claimed in April", causes: ["Bill of entry not matched to ICEGATE", "Import credit claimed above the bill of entry"] },
+      { id: "purchases", label: "Purchases of raw materials (14A)", books: 24_840_000, reason: "Claimed in April of the next year", causes: ["Claimed in GSTR-3B, not in GSTR-2B because the vendor has not filed", "ITC claimed above the invoice value", "Blocked credit claimed under Section 17(5)"] }, // [derived] 1,380 lakhs domestic purchases at 18%
+      { id: "services", label: "Input services and expenses (14B to 14N)", books: 7_290_000, reason: "Claimed in April of the next year", causes: ["Claimed in GSTR-3B, not in GSTR-2B", "Vendor unpaid beyond 180 days, ITC not reversed"] }, // [derived] 405 lakhs of eligible expenses (Note 27) at 18%
+      { id: "capital", label: "Capital goods (14O)", books: 3_060_000, reason: "Credit taken in the month the asset was put to use", causes: ["Capital goods credit claimed twice", "Asset capitalised in the next year"] }, // [derived] 170 lakhs: additions of 260 less the 90 imported, at 18%
+      { id: "imports", label: "Imported goods (14D)", books: 6_300_000, reason: "Bill of entry dated in March, credit claimed in April", causes: ["Bill of entry not matched to ICEGATE", "Import credit claimed above the bill of entry"] }, // [derived] 350 lakhs: imported raw materials 260 plus the imported machine 90, at 18%
     ],
   },
 ];
@@ -565,14 +576,23 @@ function generateAnnualGstResult(reconciliationId: string, fileIds: readonly str
   const tables: AnnualTable[] = [];
 
   for (const spec of ANNUAL_TABLES) {
-    if (spec.needs === "sales" && !has(SALES_FILE_IDS)) continue;
-    if (spec.needs === "purchase" && !has(PURCHASE_FILE_IDS)) continue;
+    // A table whose document isn't in yet stays on the list, marked as waiting for it.
+    const missing =
+      (spec.needs === "sales" && !has(SALES_FILE_IDS) && SALES_UNLOCK) || (spec.needs === "purchase" && !has(PURCHASE_FILE_IDS) && PURCHASE_UNLOCK);
+    if (missing) {
+      tables.push({ id: spec.id, ref: spec.ref, label: spec.label, books: 0, gstr9: 0, difference: 0, status: "pending", needsDocument: missing, components: [] });
+      continue;
+    }
     const isItc = spec.id === "itc";
     const components: AnnualComponent[] = [];
     let firstSize = 0;
     spec.components.forEach((c, index) => {
-      const books = round10k(c.books[0] + random() * (c.books[1] - c.books[0]));
-      const size = round10k(spec.size[0] + random() * (spec.size[1] - spec.size[0]));
+      const books = typeof c.books === "number" ? c.books : round10k(c.books[0] + random() * (c.books[1] - c.books[0]));
+      // A small line (interest, late fee) can't differ by more than a fraction of itself.
+      const size = Math.min(
+        round10k(spec.size[0] + random() * (spec.size[1] - spec.size[0])),
+        Math.max(10_000, round10k(Math.abs(books) * 0.4)),
+      );
       const roll = random();
       // The first line of every table is a mismatch (so there is always something to see); on the ITC
       // table only the second may go the other way, and smaller, so what is recoverable never outweighs
@@ -594,25 +614,51 @@ function generateAnnualGstResult(reconciliationId: string, fileIds: readonly str
       if (status === "mismatch" && difference === 0) status = "matched";
       const gstr9 = books - difference;
 
-      // Only the months that differ are listed; each splits the component's difference, and each
-      // month splits its own into invoices.
-      const months: AnnualMonth[] = [];
+      // Every month of the year is listed. The months that differ split the component's difference, and
+      // each of those splits its own into invoices: the ones that differ (mismatch, or explained when the
+      // component is) and a few that agree. The first differing invoice of a mismatch stays a mismatch, so
+      // the line never reads as mismatch with nothing unexplained under it.
+      const differing = new Map<number, number>();
       if (difference !== 0) {
         const monthCount = 2 + Math.floor(random() * 2);
         const picked = shuffled(FY_MONTHS.map((_, i) => i), random).slice(0, monthCount).sort((a, b) => a - b);
         const monthParts = splitExact(difference, picked.length, random);
-        picked.forEach((monthIndex, i) => {
-          const invoiceCount = 2 + Math.floor(random() * 2);
-          const invoiceParts = splitExact(monthParts[i], invoiceCount, random);
-          const invoices: AnnualInvoice[] = invoiceParts.map((part, j) => ({
+        picked.forEach((monthIndex, i) => differing.set(monthIndex, monthParts[i]));
+      }
+      let firstMismatchPlaced = false;
+      const months: AnnualMonth[] = FY_MONTHS.map((monthName, monthIndex): AnnualMonth => {
+        const monthDifference = differing.get(monthIndex);
+        if (monthDifference === undefined) return { month: monthName, difference: 0, status: "matched", invoices: [] };
+        const differCount = 2 + Math.floor(random() * 2);
+        const parts = splitExact(monthDifference, differCount, random);
+        const invoices: AnnualInvoice[] = parts.map((part, j) => {
+          let invoiceStatus: AnnualStatus = "explained";
+          if (status === "mismatch" && (!firstMismatchPlaced || random() > 0.3)) {
+            invoiceStatus = "mismatch";
+            firstMismatchPlaced = true;
+          }
+          return {
             ref: `${spec.invoicePrefix}/25-26/${String(1000 + Math.floor(random() * 8000)).padStart(4, "0")}`,
             party: spec.parties[Math.floor(random() * spec.parties.length)],
-            cause: status === "explained" ? c.reason : c.causes[(i + j) % c.causes.length],
+            cause: invoiceStatus === "explained" ? c.reason : c.causes[(monthIndex + j) % c.causes.length],
             difference: part,
-          }));
-          months.push({ month: FY_MONTHS[monthIndex], difference: monthParts[i], invoices });
+            status: invoiceStatus,
+          };
         });
-      }
+        const agreeing = 1 + Math.floor(random() * 2);
+        for (let k = 0; k < agreeing; k++) {
+          invoices.push({
+            ref: `${spec.invoicePrefix}/25-26/${String(1000 + Math.floor(random() * 8000)).padStart(4, "0")}`,
+            party: spec.parties[Math.floor(random() * spec.parties.length)],
+            cause: "Agrees with GSTR-9",
+            difference: 0,
+            status: "matched",
+          });
+        }
+        const ordered = shuffled(invoices, random);
+        const worst = ordered.reduce<AnnualStatus>((w, inv) => (STATUS_RANK[inv.status] > STATUS_RANK[w] ? inv.status : w), "matched");
+        return { month: monthName, difference: monthDifference, status: worst, invoices: ordered };
+      });
       components.push({
         id: `${spec.id}-${c.id}`,
         label: c.label,
@@ -641,8 +687,9 @@ function generateAnnualGstResult(reconciliationId: string, fileIds: readonly str
   const mismatchSum = (tableId: string, pick: (difference: number) => boolean = () => true) =>
     tables
       .find((t) => t.id === tableId)
-      ?.components.filter((c) => c.status === "mismatch" && pick(c.difference))
-      .reduce((sum, c) => sum + c.difference, 0) ?? 0;
+      ?.components.flatMap((c) => c.months.flatMap((m) => m.invoices))
+      .filter((inv) => inv.status === "mismatch" && pick(inv.difference))
+      .reduce((sum, inv) => sum + inv.difference, 0) ?? 0;
   const area = (id: SalesGstArea["id"], label: string, description: string, amount: number, kind: SalesGstArea["kind"]): SalesGstArea => ({
     id, label, description, amount, kind,
   });
@@ -656,23 +703,23 @@ function generateAnnualGstResult(reconciliationId: string, fileIds: readonly str
         : area(id, label, "Turnover in GSTR-9 above your audited books, tax on which you can recover", amount, "recoverable"),
     );
   };
-  addTurnover("annual-turnover", "Gross turnover difference", mismatchSum("gross"));
-  addTurnover("annual-taxable", "Taxable turnover difference", mismatchSum("taxable"));
+  addTurnover("annual-turnover", "Un-reconciled gross turnover (5R)", mismatchSum("gross"));
+  addTurnover("annual-taxable", "Un-reconciled taxable turnover (7G)", mismatchSum("taxable"));
   const taxSum = mismatchSum("tax");
   if (taxSum !== 0) {
     areas.push(
       taxSum > 0
-        ? area("annual-tax", "Tax liability difference", "Tax by rate in your books above what GSTR-9 shows as payable", Math.abs(taxSum), "payable")
-        : area("annual-tax", "Tax liability difference", "Tax paid by rate above what your books show", Math.abs(taxSum), "recoverable"),
+        ? area("annual-tax", "Un-reconciled tax payment (9R)", "Tax by rate in your books above what GSTR-9 shows as payable", Math.abs(taxSum), "payable")
+        : area("annual-tax", "Un-reconciled tax payment (9R)", "Tax paid by rate above what your books show", Math.abs(taxSum), "recoverable"),
     );
   }
   const excessItc = -mismatchSum("itc", (d) => d < 0);
   const unclaimedItc = mismatchSum("itc", (d) => d > 0);
-  if (excessItc > 0) areas.push(area("annual-itc-excess", "ITC claimed above books", "ITC availed in GSTR-9 beyond what your books support, to be reversed", excessItc, "payable"));
-  if (unclaimedItc > 0) areas.push(area("annual-itc-unclaimed", "ITC in books not claimed", "Eligible ITC in your books that GSTR-9 does not show, which you can still recover", unclaimedItc, "recoverable"));
+  if (excessItc > 0) areas.push(area("annual-itc-excess", "Un-reconciled ITC: claimed above books (12F)", "ITC availed in GSTR-9 beyond what your books support, to be reversed", excessItc, "payable"));
+  if (unclaimedItc > 0) areas.push(area("annual-itc-unclaimed", "Un-reconciled ITC: in books, not claimed (12F)", "Eligible ITC in your books that GSTR-9 does not show, which you can still recover", unclaimedItc, "recoverable"));
   const payableBeforeInterest = areas.filter((a) => a.kind === "payable").reduce((sum, a) => sum + a.amount, 0);
   const interest = round10k(payableBeforeInterest * (0.12 + random() * 0.08));
-  if (interest > 0) areas.push(area("annual-interest", "Interest exposure", "Interest on tax short-paid and on ITC claimed in excess", interest, "payable"));
+  if (interest > 0) areas.push(area("annual-interest", "Interest on additional liability (Table 16)", "Interest on tax short-paid and on ITC claimed in excess", interest, "payable"));
 
   const grossPositive = areas.filter((a) => a.kind === "recoverable").reduce((sum, a) => sum + a.amount, 0);
   const grossNegative = areas.filter((a) => a.kind === "payable").reduce((sum, a) => sum + a.amount, 0);
